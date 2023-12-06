@@ -45,7 +45,7 @@ options use-vc timeout:2 attempts:5
 search ec2.internal
 ; Ip of AWS DNS resolver located at base of VPC IPV4 network range, plus two.
 ; See https://docs.aws.amazon.com/vpc/latest/userguide/vpc-dns.html#AmazonDNS
-nameserver 10.0.0.2)resolv";
+nameserver 8.8.8.8)resolv";
 
 }  // namespace
 
