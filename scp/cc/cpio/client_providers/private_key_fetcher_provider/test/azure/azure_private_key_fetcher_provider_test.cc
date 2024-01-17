@@ -28,7 +28,6 @@
 #include "absl/synchronization/notification.h"
 #include "cpio/client_providers/auth_token_provider/mock/mock_auth_token_provider.h"
 #include "cpio/client_providers/private_key_fetcher_provider/src/error_codes.h"
-#include "cpio/client_providers/private_key_fetcher_provider/src/azure/error_codes.h"
 #include "public/core/interface/execution_result.h"
 #include "public/core/test/interface/execution_result_matchers.h"
 
@@ -41,8 +40,6 @@ using google::scp::core::HttpMethod;
 using google::scp::core::HttpRequest;
 using google::scp::core::HttpResponse;
 using google::scp::core::SuccessExecutionResult;
-using google::scp::core::errors::
-    SC_GCP_PRIVATE_KEY_FETCHER_PROVIDER_CREDENTIALS_PROVIDER_NOT_FOUND;
 using google::scp::core::errors::
     SC_PRIVATE_KEY_FETCHER_PROVIDER_HTTP_CLIENT_NOT_FOUND;
 using google::scp::core::http2_client::mock::MockHttpClient;
@@ -83,7 +80,6 @@ class AzurePrivateKeyFetcherProviderTest : public ::testing::Test {
     request_ = std::make_shared<PrivateKeyFetchingRequest>();
     request_->key_id = std::make_shared<std::string>(kKeyId);
     auto endpoint = std::make_shared<PrivateKeyVendingEndpoint>();
-    // AZURE_TODO: do we need to set all of them?
     endpoint->gcp_private_key_vending_service_cloudfunction_url =
         kPrivateKeyCloudfunctionUri;
     endpoint->private_key_vending_service_endpoint = kPrivateKeyBaseUri;
@@ -96,12 +92,6 @@ class AzurePrivateKeyFetcherProviderTest : public ::testing::Test {
     if (azure_private_key_fetcher_provider_) {
       EXPECT_SUCCESS(azure_private_key_fetcher_provider_->Stop());
     }
-  }
-
-  // AZURE_TODO: what is it used for?
-  void MockRequest(const std::string& uri) {
-    http_client_->request_mock = HttpRequest();
-    http_client_->request_mock.path = std::make_shared<std::string>(uri);
   }
 
   void MockResponse(const std::string& str) {
@@ -134,12 +124,6 @@ TEST_F(AzurePrivateKeyFetcherProviderTest, MissingCredentialsProvider) {
       azure_private_key_fetcher_provider_->Init(),
       ResultIs(FailureExecutionResult(
           SC_GCP_PRIVATE_KEY_FETCHER_PROVIDER_CREDENTIALS_PROVIDER_NOT_FOUND)));
-}
-
-// AZURE_TODO: remove this?
-MATCHER_P(TargetAudienceUriEquals, expected_target_audience_uri, "") {
-  return ExplainMatchResult(*arg.request->token_target_audience_uri,
-                            expected_target_audience_uri, result_listener);
 }
 
 // AZURE_TODO: Make it similar to the GCP's equivalent test once we use JWT for authentication

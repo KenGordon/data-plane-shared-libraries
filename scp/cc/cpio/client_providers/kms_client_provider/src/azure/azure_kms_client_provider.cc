@@ -104,11 +104,6 @@ ExecutionResult AzureKmsClientProvider::Decrypt(
 
   http_context.callback = bind(&AzureKmsClientProvider::OnDecryptCallback,
                                this, decrypt_context, _1);
-  // Other KMS clients provide a key ID, but ours doesn't advertise that (it
-  // appears to have code for it though, check with Ronny)
-
-  // The KID needs to match the KID of the public key used to encrypt the
-  // keys I guess that the code is already doing this, should confirm
 
   auto execution_result = http_client_->PerformRequest(http_context);
   if (!execution_result.Successful()) {
