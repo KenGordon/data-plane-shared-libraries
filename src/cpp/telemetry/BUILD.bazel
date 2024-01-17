@@ -186,6 +186,9 @@ cc_library(
         "//:aws_instance": [
             ":init_aws",
         ],
+        "//:azure_instance": [
+            ":init_aws", # AZURE_TODO
+        ],
         "//:gcp_instance": [
             ":init_gcp",
         ],

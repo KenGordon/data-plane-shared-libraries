@@ -27,6 +27,7 @@ enum class CloudPlatform {
   kLocal,
   kGcp,
   kAws,
+  kAzure,
 };
 
 }  // namespace privacy_sandbox::server_common
