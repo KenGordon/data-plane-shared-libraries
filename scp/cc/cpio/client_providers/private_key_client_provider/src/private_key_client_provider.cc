@@ -1,6 +1,5 @@
 /*
  * Copyright 2022 Google LLC
- * Copyright (C) Microsoft Corporation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,8 +58,7 @@ ExecutionResult PrivateKeyClientProvider::Init() noexcept {
       private_key_client_options_->primary_private_key_vending_endpoint);
   for (const auto& endpoint :
        private_key_client_options_->secondary_private_key_vending_endpoints) {
-    if (!endpoint.private_key_vending_service_endpoint.empty())
-      endpoint_list_.push_back(endpoint);
+    endpoint_list_.push_back(endpoint);
   }
   endpoint_count_ = endpoint_list_.size();
 
