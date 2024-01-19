@@ -79,7 +79,7 @@ ExecutionResult AzureInstanceClientProvider::GetCurrentInstanceResourceName(
         get_resource_name_context) noexcept {
   get_resource_name_context.response =
         std::make_shared<GetCurrentInstanceResourceNameResponse>();
-  // AZURE_TODO: Figure out what we should return here.
+  // We need to figure out what we should return here.
   get_resource_name_context.response->set_instance_resource_name(kResourceNameValue);
   get_resource_name_context.result = SuccessExecutionResult();
   get_resource_name_context.Finish();
@@ -108,11 +108,11 @@ ExecutionResult AzureInstanceClientProvider::GetInstanceDetailsByResourceName(
         get_instance_details_context) noexcept {
   get_instance_details_context.response =
       std::make_shared<GetInstanceDetailsByResourceNameResponse>();
-  // AZURE_TODO: Figure out what we should return here.
+  // We need to igure out what we should return here.
   InstanceDetails instance_details;
   instance_details.set_instance_id(kInstanceId);
 
-  // AZURE_TODO: Provide network info here.
+  // We need to provide network info here.
   // auto* network = instance_details.add_networks();
   // network->set_private_ipv4_address(std::move(private_ip));
   // network->set_public_ipv4_address(std::move(public_ip));

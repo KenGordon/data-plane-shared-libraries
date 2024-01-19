@@ -126,7 +126,6 @@ TEST_F(AzurePrivateKeyFetcherProviderTest, MissingCredentialsProvider) {
           SC_GCP_PRIVATE_KEY_FETCHER_PROVIDER_CREDENTIALS_PROVIDER_NOT_FOUND)));
 }
 
-// AZURE_TODO: Make it similar to the GCP's equivalent test once we use JWT for authentication
 TEST_F(AzurePrivateKeyFetcherProviderTest, SignHttpRequest) {
   absl::Notification condition;
   AsyncContext<PrivateKeyFetchingRequest, HttpRequest> context(
@@ -142,7 +141,5 @@ TEST_F(AzurePrivateKeyFetcherProviderTest, SignHttpRequest) {
               IsSuccessful());
   condition.WaitForNotification();
 }
-
-// AZURE_TODO: Add a test case FailedToGetCredentials once we use JWT.
 
 }  // namespace google::scp::cpio::client_providers::test

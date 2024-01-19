@@ -110,7 +110,7 @@ ExecutionResult AzureParameterClientProvider::GetParameter(
   const auto& flag = parameter_name.substr(prefix.size(), parameter_name.size() - prefix.size());
 
   // Get flag values from environment variables.
-  // AZURE_TODO: consider adding prefix for environment variables to avoid collision.
+  // We need to consider adding prefix for environment variables to avoid collision.
   const char* value_from_env = std::getenv(flag.c_str());
   if (value_from_env) {
     get_parameter_context.response->set_parameter_value(value_from_env);

@@ -122,7 +122,7 @@ TEST_F(AzureInstanceClientProviderTest, GetInstanceDetailsSuccess) {
             ASSERT_SUCCESS(context.result);
             const auto& details = context.response->instance_details();
             EXPECT_THAT(details.instance_id(),StrEq(kInstanceId));
-            // AZURE_TODO: update implementation to return networks.
+            // We need to update implementation to return networks.
             EXPECT_THAT(details.networks(), SizeIs(0));
             EXPECT_THAT(details.labels(),
               UnorderedElementsAre(Pair(kOperatorTagName, kOperatorTagValue),

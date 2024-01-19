@@ -46,7 +46,4 @@ TEST(AzurePrivateKeyFetchingClientUtilsTest, CreateHttpRequest) {
   EXPECT_EQ(*http_request.path, std::string(kPrivateKeyBaseUri));
 }
 
-// AZURE_TODO: Add CreateHttpRequestForKeyId once we support key_id parameter
-
-// AZURE_TODO: Add CreateHttpRequestForMaxAgeSeconds once we support max_age_seconds parameter
 }  // namespace google::scp::cpio::client_providers::test

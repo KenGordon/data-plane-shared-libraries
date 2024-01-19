@@ -42,7 +42,7 @@ namespace google::scp::cpio::client_providers {
 
 static constexpr char kAzureKmsClientProvider[] = "AzureKmsClientProvider";
 
-// AZURE_TODO: Take this value from a command line option (It already exists somewhere).
+// We need to take this value from a command line option (It already exists somewhere).
 constexpr char kKMSUnwrapPath[] =
     "https://127.0.0.1:8000/app/unwrapKey?fmt=tink";
 

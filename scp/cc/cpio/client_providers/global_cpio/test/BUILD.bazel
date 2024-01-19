@@ -26,7 +26,6 @@ cc_library(
     copts =
         select(
             {
-                # AZURE_TODO: azure
                 "//:aws_platform": [
                     "-DAWS_TEST=1",
                 ],
@@ -41,7 +40,6 @@ cc_library(
     deps =
         select(
             {
-                # AZURE_TODO: azure
                 "//:aws_platform": [
                     "//scp/cc/cpio/client_providers/instance_client_provider/test/aws:test_aws_instance_client_provider_lib",
                     "//scp/cc/cpio/client_providers/role_credentials_provider/test/aws:test_aws_role_credentials_provider_lib",
