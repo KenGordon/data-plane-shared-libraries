@@ -41,6 +41,8 @@ using google::scp::core::HttpResponse;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::
     SC_PRIVATE_KEY_FETCHER_PROVIDER_HTTP_CLIENT_NOT_FOUND;
+using google::scp::core::errors::
+    SC_AZURE_PRIVATE_KEY_FETCHER_PROVIDER_CREDENTIALS_PROVIDER_NOT_FOUND;
 using google::scp::core::http2_client::mock::MockHttpClient;
 using google::scp::core::test::IsSuccessful;
 using google::scp::core::test::ResultIs;
@@ -122,7 +124,7 @@ TEST_F(AzurePrivateKeyFetcherProviderTest, MissingCredentialsProvider) {
   EXPECT_THAT(
       azure_private_key_fetcher_provider_->Init(),
       ResultIs(FailureExecutionResult(
-          SC_GCP_PRIVATE_KEY_FETCHER_PROVIDER_CREDENTIALS_PROVIDER_NOT_FOUND)));
+          SC_AZURE_PRIVATE_KEY_FETCHER_PROVIDER_CREDENTIALS_PROVIDER_NOT_FOUND)));
 }
 
 TEST_F(AzurePrivateKeyFetcherProviderTest, SignHttpRequest) {
