@@ -16,6 +16,7 @@
 
 #include "azure_kms_client_provider.h"
 
+#include <cstdlib>
 #include <nlohmann/json.hpp>
 
 #include "cpio/client_providers/interface/kms_client_provider_interface.h"
@@ -57,10 +58,6 @@ using std::pair;
 namespace google::scp::cpio::client_providers {
 
 static constexpr char kAzureKmsClientProvider[] = "AzureKmsClientProvider";
-
-// We need to take this value from a command line option (It already exists somewhere).
-constexpr char kKMSUnwrapPath[] =
-    "https://127.0.0.1:8000/app/unwrapKey?fmt=tink";
 
 ExecutionResult AzureKmsClientProvider::Init() noexcept {
   return SuccessExecutionResult();
@@ -105,7 +102,7 @@ ExecutionResult AzureKmsClientProvider::Decrypt(
   AsyncContext<HttpRequest, HttpResponse> http_context;
   http_context.request = std::make_shared<HttpRequest>();
 
-  http_context.request->path = std::make_shared<Uri>(kKMSUnwrapPath);
+  http_context.request->path = std::make_shared<Uri>(unwrap_url_);
   http_context.request->method = HttpMethod::POST;
 
   // Get Attestation Report

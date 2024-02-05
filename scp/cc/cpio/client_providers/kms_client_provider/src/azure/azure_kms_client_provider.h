@@ -37,7 +37,15 @@ class AzureKmsClientProvider : public KmsClientProviderInterface {
   explicit AzureKmsClientProvider(
       const std::shared_ptr<core::HttpClientInterface>&
           http_client)
-      : http_client_(http_client) {}
+      : http_client_(http_client) {
+          // We initialize unwrap_url_ because Init() is not used.
+          const char* value_from_env = std::getenv(kAzureKmsUnwrapUrlEnvVar);
+          if (value_from_env) {
+            unwrap_url_ = value_from_env;
+          } else {
+              throw std::runtime_error("Unwrap URL is not set");
+          }
+      }
 
   core::ExecutionResult Init() noexcept override;
 
@@ -67,6 +75,8 @@ class AzureKmsClientProvider : public KmsClientProviderInterface {
           http_client_context) noexcept;
 
   std::shared_ptr<core::HttpClientInterface> http_client_;
+  std::string unwrap_url_;
+  static constexpr char kAzureKmsUnwrapUrlEnvVar[] = "KMS_UNWRAP_URL";
 };
 }  // namespace google::scp::cpio::client_providers
 
