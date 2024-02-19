@@ -18,11 +18,14 @@
 #define ATTESTATION_UVM_ENDORSEMENTS_H
 
 #include <string>
+#include "utils/security_context.h"
+
+using google::scp::azure::attestation::utils::getSecurityContextFile;
 
 namespace google::scp::azure::attestation {
     
     std::string getSnpUvmEndorsements() {
-        return "";
+        return getSecurityContextFile("/reference-info-base64");
     }
 
 } // namespace google::scp::azure::attestation

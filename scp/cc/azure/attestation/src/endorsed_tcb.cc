@@ -18,11 +18,25 @@
 #define ATTESTATION_ENDORSED_TCB_H
 
 #include <string>
+#include "utils/host_amd_certs.h"
 
+using google::scp::azure::attestation::utils::getHostAmdCerts;
 namespace google::scp::azure::attestation {
     
     std::string getSnpEndorsedTcb() {
-        return "";
+        
+        auto host_certs_json = getHostAmdCerts();
+        
+        // Extract the endorsed TCB from the JSON
+        std::string endorsed_tcb_reversed_endian = host_certs_json["tcbm"];
+
+        // Reverse the endianess of the endorsed TCB
+        std::string endorsed_tcb = "";
+        for (int i = endorsed_tcb_reversed_endian.length() - 2; i >= 0; i -= 2) {
+            endorsed_tcb += endorsed_tcb_reversed_endian.substr(i, 2);
+        }
+
+        return endorsed_tcb;
     }
 
 } // namespace google::scp::azure::attestation
