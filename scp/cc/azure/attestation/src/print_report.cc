@@ -15,7 +15,6 @@
  */
 
 #include <iostream>
-#include <nlohmann/json.hpp>
 
 #include "scp/cc/azure/attestation/src/report.h"
 
@@ -23,16 +22,11 @@ using google::scp::azure::attestation::fetchFakeSnpAttestation;
 using google::scp::azure::attestation::fetchSnpAttestation;
 using google::scp::azure::attestation::hasSnp;
 
-namespace google::scp::cc::azure::attestation {
-
-  int main() {
-    const auto attestation_report =
-        hasSnp() ? fetchSnpAttestation() : fetchFakeSnpAttestation();
-    std::cout << "report (fake=" << !hasSnp() << "):\n";
-    nlohmann::json json_report = attestation_report;
-    std::cout << json_report.dump(2) << std::endl;
-    return 0;
-  }
-
-}  // namespace google::scp::cc::azure::attestation
-
+int main() {
+  const auto report =
+      hasSnp() ? fetchSnpAttestation() : fetchFakeSnpAttestation();
+  std::cout << "report (fake=" << !hasSnp() << "):\n";
+  nlohmann::json json_report = report;
+  std::cout << json_report.dump(2) << std::endl;
+  return 0;
+}
