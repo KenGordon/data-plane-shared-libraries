@@ -12,44 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
-
 package(default_visibility = ["//visibility:public"])
 
-cc_library(
-    name = "aci_attestation_lib",
-    srcs = glob(
-        [
-            "json_attestation_report.cc",
-            "json_attestation_report.h",
-            "security_context_fetcher.cc",
-            "security_context_fetcher.h",
-        ],
-    ),
-    deps = [
-        ":get-snp-report",
-        "//scp/cc/core/utils/src:core_utils",
-        "@boost//:system",
-        "@com_google_absl//absl/log:check",
-        "@com_google_absl//absl/strings",
-        "@nlohmann_json//:lib",
-    ],
+alias(
+    name = "src",
+    actual = "//scp/cc/azure/attestation/src:attestation",
 )
 
-cc_library(
-    name = "get-snp-report",
-    srcs = glob(["get-snp-report/*.c"]),
-    hdrs = glob(["get-snp-report/*.h"]),
-)
-
-cc_binary(
-    name = "print_snp_json",
-    srcs = ["print_snp_json.cc"],
-    features = ["fully_static_link"],
-    linkopts = ["-static"],
-    linkstatic = True,
-    visibility = ["//visibility:public"],
-    deps = [
-        "aci_attestation_lib",
-    ],
+alias(
+    name = "print_report",
+    actual = "//scp/cc/azure/attestation/src:print_report",
 )

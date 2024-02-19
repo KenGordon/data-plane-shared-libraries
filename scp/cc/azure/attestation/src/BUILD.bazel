@@ -12,9 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
 package(default_visibility = ["//visibility:public"])
 
-alias(
+cc_library(
     name = "attestation",
-    actual = "//scp/cc/azure/attestation:src",
+    srcs = ["report.cc"],
+    hdrs = ["report.h"],
+    deps = [
+        "//scp/cc/core/test/utils:utils_lib",
+    ],
+)
+
+cc_binary(
+    name = "print_report",
+    srcs = ["print_report.cc"],
+    features = ["fully_static_link"],
+    linkopts = ["-static"],
+    linkstatic = True,
+    deps = [
+        "attestation",
+    ],
 )
