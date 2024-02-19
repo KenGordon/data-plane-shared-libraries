@@ -45,7 +45,15 @@ namespace google::scp::azure::attestation {
     AttestationReport fetchSnpAttestation(const std::string report_data = "");
     
     AttestationReport fetchFakeSnpAttestation();
-    
+
+    std::string getSnpEvidence(const std::string report_data);
+
+    std::string getSnpEndorsements();
+
+    std::string getSnpUvmEndorsements();
+
+    std::string getSnpEndorsedTcb();
+
 } // namespace google::scp::azure::attestation
 
 #endif // ATTESTATION_H

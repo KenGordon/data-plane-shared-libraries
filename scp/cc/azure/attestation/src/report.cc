@@ -14,23 +14,18 @@
  * limitations under the License.
  */
 
-#include "report.h"
+#include "attestation.h"
 
 namespace google::scp::azure::attestation {
-
-  bool hasSnp() {
-    std::ifstream sev_file("/dev/sev");
-    return sev_file.good();
-  }
   
   AttestationReport fetchSnpAttestation(const std::string report_data) {
     assert(hasSnp());
 
     return {
-      "",
-      "",
-      "",
-      "",
+      getSnpEvidence(report_data),
+      getSnpEndorsements(),
+      getSnpUvmEndorsements(),
+      getSnpEndorsedTcb(),
     };
   }
   

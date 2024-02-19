@@ -16,7 +16,7 @@
 #include <gtest/gtest.h>
 #include "public/core/interface/execution_result.h"
 #include "public/core/test/interface/execution_result_matchers.h"
-#include "scp/cc/azure/attestation/src/report.h"
+#include "scp/cc/azure/attestation/src/attestation.h"
 
 using google::scp::azure::attestation::fetchFakeSnpAttestation;
 using google::scp::azure::attestation::fetchSnpAttestation;
@@ -33,7 +33,6 @@ class JsonAttestationReportTest : public ::testing::Test {
 
 TEST_F(JsonAttestationReportTest, FetchFakeAttestation) {
     const auto report = fetchFakeSnpAttestation();
-    EXPECT_EQ(true, true);
   }
 
 TEST_F(JsonAttestationReportTest, FetchRealAttestation) {

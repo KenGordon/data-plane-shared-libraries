@@ -14,18 +14,17 @@
  * limitations under the License.
  */
 
-#include <iostream>
+#ifndef ATTESTATION_UVM_ENDORSEMENTS_H
+#define ATTESTATION_UVM_ENDORSEMENTS_H
 
-#include "scp/cc/azure/attestation/src/attestation.h"
+#include <string>
 
-using google::scp::azure::attestation::fetchFakeSnpAttestation;
-using google::scp::azure::attestation::fetchSnpAttestation;
-using google::scp::azure::attestation::hasSnp;
+namespace google::scp::azure::attestation {
+    
+    std::string getSnpUvmEndorsements() {
+        return "";
+    }
 
-int main() {
-  const auto report =
-      hasSnp() ? fetchSnpAttestation() : fetchFakeSnpAttestation();
-  std::cout << "report (fake=" << !hasSnp() << "):\n";
-  std::cout << nlohmann::json(report).dump(2) << std::endl;
-  return 0;
-}
+} // namespace google::scp::azure::attestation
+
+#endif // ATTESTATION_UVM_ENDORSEMENTS_H

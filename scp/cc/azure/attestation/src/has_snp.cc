@@ -14,18 +14,13 @@
  * limitations under the License.
  */
 
-#include <iostream>
+#include "attestation.h"
 
-#include "scp/cc/azure/attestation/src/attestation.h"
+namespace google::scp::azure::attestation {
 
-using google::scp::azure::attestation::fetchFakeSnpAttestation;
-using google::scp::azure::attestation::fetchSnpAttestation;
-using google::scp::azure::attestation::hasSnp;
+  bool hasSnp() {
+    std::ifstream sev_file("/dev/sev");
+    return sev_file.good();
+  }
 
-int main() {
-  const auto report =
-      hasSnp() ? fetchSnpAttestation() : fetchFakeSnpAttestation();
-  std::cout << "report (fake=" << !hasSnp() << "):\n";
-  std::cout << nlohmann::json(report).dump(2) << std::endl;
-  return 0;
-}
+} // namespace google::scp::azure::attestation

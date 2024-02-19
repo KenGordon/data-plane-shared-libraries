@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,18 +14,21 @@
  * limitations under the License.
  */
 
-#include <iostream>
+#include "security_context.h"
+#include "core/utils/src/base64.h"
 
-#include "scp/cc/azure/attestation/src/attestation.h"
+#include <nlohmann/json.hpp>
 
-using google::scp::azure::attestation::fetchFakeSnpAttestation;
-using google::scp::azure::attestation::fetchSnpAttestation;
-using google::scp::azure::attestation::hasSnp;
+using google::scp::core::utils::Base64Decode;
 
-int main() {
-  const auto report =
-      hasSnp() ? fetchSnpAttestation() : fetchFakeSnpAttestation();
-  std::cout << "report (fake=" << !hasSnp() << "):\n";
-  std::cout << nlohmann::json(report).dump(2) << std::endl;
-  return 0;
+nlohmann::json loadHostAmdCerts() {
+  // Read the local Base64 encoded AMD certs
+  const auto host_certs_b64 = getSecurityContextFile("/host-amd-cert-base64");
+
+  // Decode the contents of the file
+  std::string host_certs_str;
+  Base64Decode(host_certs_b64, host_certs_str);
+
+  // Parse the decoded string into JSON
+  return nlohmann::json::parse(host_certs_str);
 }

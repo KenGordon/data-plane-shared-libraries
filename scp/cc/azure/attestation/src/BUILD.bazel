@@ -18,10 +18,20 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "attestation",
-    srcs = ["report.cc"],
-    hdrs = ["report.h"],
+    srcs = [
+        "report.cc",
+        "has_snp.cc",
+        "evidence.cc",
+        "endorsements.cc",
+        "uvm_endorsements.cc",
+        "endorsed_tcb.cc",
+    ],
+    hdrs = [
+        "attestation.h",
+    ],
     deps = [
         "//scp/cc/core/utils/src:core_utils",
+        "//scp/cc/azure/attestation:utils",
         "@nlohmann_json//:lib",
     ],
 )

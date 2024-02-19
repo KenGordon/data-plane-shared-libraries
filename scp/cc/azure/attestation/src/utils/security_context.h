@@ -14,18 +14,11 @@
  * limitations under the License.
  */
 
-#include <iostream>
+#include <string>
+#include <cstdlib>
+#include <fstream>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
-#include "scp/cc/azure/attestation/src/attestation.h"
-
-using google::scp::azure::attestation::fetchFakeSnpAttestation;
-using google::scp::azure::attestation::fetchSnpAttestation;
-using google::scp::azure::attestation::hasSnp;
-
-int main() {
-  const auto report =
-      hasSnp() ? fetchSnpAttestation() : fetchFakeSnpAttestation();
-  std::cout << "report (fake=" << !hasSnp() << "):\n";
-  std::cout << nlohmann::json(report).dump(2) << std::endl;
-  return 0;
-}
+std::string getSecurityContextFile(std::string file_path);
