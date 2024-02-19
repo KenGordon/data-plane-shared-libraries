@@ -18,9 +18,26 @@
 
 namespace google::scp::azure::attestation {
 
-  bool hasSnp() {
+  enum SnpType {
+    SEV,
+    SEV_GUEST,
+    NONE
+  };
+
+  SnpType getSnpType() {
     std::ifstream sev_file("/dev/sev");
-    return sev_file.good();
+    if (sev_file.good()) {
+      return SnpType::SEV;
+    }
+    std::ifstream sev_guest_file("/dev/sev-guest");
+    if (sev_file.good()) {
+      return SnpType::SEV_GUEST;
+    }
+    return SnpType::NONE;
+  }
+
+  bool hasSnp() {
+    return getSnpType() != SnpType::NONE;
   }
 
 } // namespace google::scp::azure::attestation

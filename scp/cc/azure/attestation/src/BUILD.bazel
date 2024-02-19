@@ -21,7 +21,7 @@ cc_library(
     srcs = [
         "report.cc",
         "fake_report.cc",
-        "has_snp.cc",
+        "snp.cc",
         "evidence.cc",
         "endorsements.cc",
         "uvm_endorsements.cc",
