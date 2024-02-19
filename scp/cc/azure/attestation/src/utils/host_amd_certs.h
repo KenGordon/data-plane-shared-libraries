@@ -14,19 +14,10 @@
  * limitations under the License.
  */
 
-#include "attestation.h"
+#include <nlohmann/json.hpp>
 
-namespace google::scp::azure::attestation {
-  
-  AttestationReport fetchSnpAttestation(const std::string report_data) {
-    assert(hasSnp());
+namespace google::scp::azure::attestation::utils {
 
-    return {
-      getSnpEvidence(report_data),
-      getSnpEndorsements(),
-      getSnpUvmEndorsements(),
-      getSnpEndorsedTcb(),
-    };
-  }
-  
-}  // namespace google::scp::azure::attestation
+    nlohmann::json getHostAmdCerts();
+
+}

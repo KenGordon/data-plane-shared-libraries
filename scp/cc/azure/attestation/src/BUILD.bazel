@@ -20,6 +20,7 @@ cc_library(
     name = "attestation",
     srcs = [
         "report.cc",
+        "fake_report.cc",
         "has_snp.cc",
         "evidence.cc",
         "endorsements.cc",

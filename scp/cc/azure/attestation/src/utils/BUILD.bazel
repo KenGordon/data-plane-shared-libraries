@@ -22,7 +22,10 @@ cc_library(
         "security_context.cc",
         "host_amd_certs.cc",
     ],
-    hdrs = ["security_context.h"],
+    hdrs = [
+        "security_context.h",
+        "host_amd_certs.h",
+    ],
     deps = [
         "//scp/cc/core/utils/src:core_utils",
         "@nlohmann_json//:lib",

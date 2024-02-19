@@ -20,5 +20,10 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <nlohmann/json.hpp>
 
-std::string getSecurityContextFile(std::string file_path);
+namespace google::scp::azure::attestation::utils {
+
+    std::string getSecurityContextFile(std::string file_path);
+
+}

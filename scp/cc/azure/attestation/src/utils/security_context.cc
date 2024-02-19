@@ -16,23 +16,27 @@
 
 #include "security_context.h"
 
-std::string getSecurityContextFile(std::string file_path) {
-  const char* dir = std::getenv("UVM_SECURITY_CONTEXT_DIR");
-  if (!dir) {
-    throw std::runtime_error(
-        "UVM_SECURITY_CONTEXT_DIR environment variable is not set");
+namespace google::scp::azure::attestation::utils {
+    
+  std::string getSecurityContextFile(std::string file_path) {
+    const char* dir = std::getenv("UVM_SECURITY_CONTEXT_DIR");
+    if (!dir) {
+      throw std::runtime_error(
+          "UVM_SECURITY_CONTEXT_DIR environment variable is not set");
+    }
+
+    std::string full_path = std::string(dir) + file_path;
+    std::ifstream file(full_path, std::ios::binary);
+
+    if (!file) {
+      throw std::runtime_error("Unable to open file at full_path: " + full_path);
+    }
+
+    std::vector<uint8_t> file_bytes = {std::istreambuf_iterator<char>(file),
+            std::istreambuf_iterator<char>()};
+    
+    return std::string(file_bytes.begin(), file_bytes.end());
+
   }
 
-  std::string full_path = std::string(dir) + file_path;
-  std::ifstream file(full_path, std::ios::binary);
-
-  if (!file) {
-    throw std::runtime_error("Unable to open file at full_path: " + full_path);
-  }
-
-  std::vector<uint8_t> file_bytes = {std::istreambuf_iterator<char>(file),
-          std::istreambuf_iterator<char>()};
-  
-  return std::string(file_bytes.begin(), file_bytes.end());
-
-}
+} // namespace google::scp::azure::attestation::utils

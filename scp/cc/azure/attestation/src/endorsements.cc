@@ -17,13 +17,47 @@
 #ifndef ATTESTATION_ENDORSEMENTS_H
 #define ATTESTATION_ENDORSEMENTS_H
 
+#include "core/utils/src/base64.h"
+#include "utils/host_amd_certs.h"
+
 #include <string>
 
+using google::scp::core::utils::Base64Encode;
+using google::scp::azure::attestation::utils::getHostAmdCerts;
+
 namespace google::scp::azure::attestation {
-    
-    std::string getSnpEndorsements() {
-        return "";
+
+  std::string replace(const std::string& input, const std::string toReplace,
+                      const std::string replaceWith) {
+    std::string output = input;
+    size_t pos = 0;
+    while ((pos = output.find(toReplace, pos)) != std::string::npos) {
+      output.replace(pos, toReplace.length(), replaceWith);
+      pos += replaceWith.length();
     }
+    return output;
+  }
+    
+  std::string getSnpEndorsements() {
+
+    auto host_certs_json = getHostAmdCerts();
+
+    // Extract the certs from the JSON
+    std::string vcekCert = host_certs_json["vcekCert"].dump();
+    std::string certificateChain = host_certs_json["certificateChain"].dump();
+
+    // Combine the certs into a chain and cleanup characters that shouldn't be
+    // there
+    std::string endorsementCerts = vcekCert + certificateChain;
+    endorsementCerts.erase(
+        std::remove(endorsementCerts.begin(), endorsementCerts.end(), '\"'),
+        endorsementCerts.cend());
+    endorsementCerts = replace(endorsementCerts, "\\n", "\n");
+
+    // Base64 encode the certificate chain
+    Base64Encode(endorsementCerts, endorsementCerts);
+    return endorsementCerts;
+  }
 
 } // namespace google::scp::azure::attestation
 
