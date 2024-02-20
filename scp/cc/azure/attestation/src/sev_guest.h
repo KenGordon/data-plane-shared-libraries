@@ -15,6 +15,7 @@
  */
 
 #include <stdint.h>
+#include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
 
@@ -35,5 +36,22 @@ namespace google::scp::azure::attestation::sev_guest {
   constexpr auto GET_REPORT = _IOWR(IOCTL_TYPE, 0x0, sizeof(Request));
   constexpr auto GET_DERIVED_KEY = _IOWR(IOCTL_TYPE, 0x1, sizeof(Request));
   constexpr auto GET_EXT_REPORT = _IOWR(IOCTL_TYPE, 0x2, sizeof(Request));
+
+  SnpReport getReport(const std::string report_data) {
+  
+    SnpRequest request = {};
+    std::memcpy(request.report_data, report_data.c_str(), report_data.size());
+    SnpResponse response = {};
+
+    Request payload = {
+      .msg_version = 1,
+      .req_data = (uint64_t)&request,
+      .resp_data = (uint64_t)&response,
+    };
+
+    auto sev_file = open("/dev/sev-guest", O_RDWR | O_CLOEXEC);
+    ioctl(sev_file, GET_REPORT, &payload);
+    return response.report;
+  }
 
 } // namespace google::scp::azure::attestation::sev_guest
