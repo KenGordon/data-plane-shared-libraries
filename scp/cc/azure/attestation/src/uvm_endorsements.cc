@@ -17,7 +17,6 @@
 #ifndef ATTESTATION_UVM_ENDORSEMENTS_H
 #define ATTESTATION_UVM_ENDORSEMENTS_H
 
-#include <string>
 #include "utils/security_context.h"
 
 using google::scp::azure::attestation::utils::getSecurityContextFile;

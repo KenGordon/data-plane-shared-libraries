@@ -21,14 +21,16 @@ cc_library(
     srcs = [
         "report.cc",
         "fake_report.cc",
-        "snp.cc",
         "evidence.cc",
         "endorsements.cc",
         "uvm_endorsements.cc",
         "endorsed_tcb.cc",
+        "snp.cc",
     ],
     hdrs = [
         "attestation.h",
+        "sev.h",
+        "sev_guest.h",
     ],
     deps = [
         "//scp/cc/core/utils/src:core_utils",

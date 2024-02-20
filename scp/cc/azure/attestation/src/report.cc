@@ -16,6 +16,7 @@
 
 #include "attestation.h"
 
+
 namespace google::scp::azure::attestation {
   
   AttestationReport fetchSnpAttestation(const std::string report_data) {

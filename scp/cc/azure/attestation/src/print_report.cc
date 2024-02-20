@@ -16,7 +16,7 @@
 
 #include <iostream>
 
-#include "scp/cc/azure/attestation/src/attestation.h"
+#include "attestation.h"
 
 using google::scp::azure::attestation::fetchFakeSnpAttestation;
 using google::scp::azure::attestation::fetchSnpAttestation;
