@@ -37,7 +37,7 @@ namespace google::scp::azure::attestation {
   
   std::string getSnpEvidence(const std::string report_data) {
 
-    SnpReport report;
+    SnpReport* report;
 
     switch (getSnpType()) {
       case SnpType::SEV:
@@ -52,7 +52,10 @@ namespace google::scp::azure::attestation {
         throw std::runtime_error("Unsupported or no SNP type");
     }
 
-    return base64EncodeBytes(reinterpret_cast<const uint8_t*>(&report), sizeof(report));
+    return base64EncodeBytes(
+      reinterpret_cast<uint8_t*>(report), 
+      sizeof(SnpReport)
+    );
   }
 
 } // namespace google::scp::azure::attestation

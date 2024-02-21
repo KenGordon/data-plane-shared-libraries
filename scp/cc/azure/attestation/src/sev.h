@@ -18,8 +18,21 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
+#include <vector>
+#include <string_view>
+#include <charconv>
+
+#include "utils/hex.h"
 
 namespace google::scp::azure::attestation::sev {
+
+#define SEV_GUEST_IOC_TYPE 'S'
+#define SEV_SNP_GUEST_MSG_REQUEST \
+  _IOWR(SEV_GUEST_IOC_TYPE, 0x0, struct google::scp::azure::attestation::sev::Request)
+#define SEV_SNP_GUEST_MSG_REPORT \
+  _IOWR(SEV_GUEST_IOC_TYPE, 0x1, struct google::scp::azure::attestation::sev::Request)
+#define SEV_SNP_GUEST_MSG_KEY \
+  _IOWR(SEV_GUEST_IOC_TYPE, 0x2, struct google::scp::azure::attestation::sev::Request)
 
   /* linux kernel 5.15.* versions of the ioctls that talk to the PSP */
 
@@ -35,31 +48,36 @@ namespace google::scp::azure::attestation::sev {
     uint32_t error; /* firmware error code on failure (see psp-sev.h) */
   };
 
-  constexpr auto IOCTL_TYPE = 'S';
-  constexpr auto REQUEST = _IOWR(IOCTL_TYPE, 0x0, sizeof(Request));
-  constexpr auto REPORT = _IOWR(IOCTL_TYPE, 0x1, sizeof(Request));
-  constexpr auto KEY = _IOWR(IOCTL_TYPE, 0x2, sizeof(Request));
-
-  SnpReport getReport(const std::string report_data) {
+  SnpReport* getReport(const std::string report_data) {
   
     SnpRequest request = {};
-    std::memcpy(request.report_data, report_data.c_str(), report_data.size());
+    auto decodedBytes = utils::decodeHexString(report_data, sizeof(request.report_data));
+    size_t numBytesToCopy = std::min(decodedBytes.size(), sizeof(request.report_data));
+    std::copy(decodedBytes.begin(), decodedBytes.begin() + numBytesToCopy, request.report_data);
+
     SnpResponse response = {};
 
     Request payload = {
-      .req_msg_type = SNP_MSG_REPORT_REQ,
-      .rsp_msg_type = SNP_MSG_REPORT_RSP,
-      .msg_version = 1,
-      .request_len = sizeof(request),
-      .request_uaddr = (uint64_t)(void*)&request,
-      .response_len = sizeof(response),
-      .response_uaddr = (uint64_t)(void*)&response,
-      .error = 0
+        .req_msg_type = SNP_MSG_REPORT_REQ,
+        .rsp_msg_type = SNP_MSG_REPORT_RSP,
+        .msg_version = 1,
+        .request_len = sizeof(request),
+        .request_uaddr = (uint64_t)(void*)&request,
+        .response_len = sizeof(response),
+        .response_uaddr = (uint64_t)(void*)&response,
+        .error = 0
     };
-
+    
     auto sev_file = open("/dev/sev", O_RDWR | O_CLOEXEC);
-    auto rc = ioctl(sev_file, REQUEST, &payload);
-    return response.report;
+
+    auto rc = ioctl(sev_file, SEV_SNP_GUEST_MSG_REPORT, &payload);
+    if (rc < 0) {
+      throw std::runtime_error("Failed to issue ioctl SEV_SNP_GUEST_MSG_REPORT");
+    }
+    
+    SnpReport* report = new SnpReport;
+    *report = response.report;
+    return report;
   }
 
 }  // namespace google::scp::azure::attestation::sev
