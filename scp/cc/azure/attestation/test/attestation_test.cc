@@ -30,30 +30,30 @@ class JsonAttestationReportTest : public ::testing::Test {
 };
 
 TEST_F(JsonAttestationReportTest, FetchFakeAttestation) {
-    const auto report = fetchFakeSnpAttestation();
-  }
+  const auto report = fetchFakeSnpAttestation();
+}
 
 TEST_F(JsonAttestationReportTest, FetchRealAttestation) {
-    if (!hasSnp()) {
-        return;
-    }
-    const auto report = fetchSnpAttestation();
+  if (!hasSnp()) {
+      return;
   }
+  const auto report = fetchSnpAttestation();
+}
 
 TEST_F(JsonAttestationReportTest, FetchRealAttestationNormalReportData) {
-    if (!hasSnp()) {
-        return;
-    }
-    const auto report = fetchSnpAttestation("example_report_data");
+  if (!hasSnp()) {
+      return;
   }
+  const auto report = fetchSnpAttestation("example_report_data");
+}
 
 TEST_F(JsonAttestationReportTest, FetchRealAttestationLongReportData) {
-    if (!hasSnp()) {
-        return;
-    }
-    const auto report = fetchSnpAttestation("a_very_long_report_data_string_which_is_so_long_that_it_exceeds_report_data_length");
+  if (!hasSnp()) {
+      return;
   }
+  const auto report = fetchSnpAttestation("a_very_long_report_data_string_which_is_so_long_that_it_exceeds_report_data_length");
+}
 
 TEST_F(JsonAttestationReportTest, FetchRealAttestationNonSnp) {
-  }
+}
 }  // namespace google::scp::cc::azure::test
