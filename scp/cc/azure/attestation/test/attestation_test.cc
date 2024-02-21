@@ -55,5 +55,9 @@ TEST_F(JsonAttestationReportTest, FetchRealAttestationLongReportData) {
 }
 
 TEST_F(JsonAttestationReportTest, FetchRealAttestationNonSnp) {
+  if (hasSnp()) {
+      return;
+  }
+  EXPECT_THROW(fetchSnpAttestation(), std::runtime_error);
 }
 }  // namespace google::scp::cc::azure::test
