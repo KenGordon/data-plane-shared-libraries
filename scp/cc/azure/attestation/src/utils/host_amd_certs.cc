@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-#include "core/utils/src/base64.h"
-
-#include "security_context.h"
+#include "host_amd_certs.h"
 
 using google::scp::azure::attestation::utils::getSecurityContextFile;
 using google::scp::core::utils::Base64Decode;

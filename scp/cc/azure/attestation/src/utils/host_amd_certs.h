@@ -16,6 +16,10 @@
 
 #include <nlohmann/json.hpp>
 
+#include "core/utils/src/base64.h"
+
+#include "security_context.h"
+
 namespace google::scp::azure::attestation::utils {
 
 nlohmann::json getHostAmdCerts();
