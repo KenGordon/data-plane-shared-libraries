@@ -37,7 +37,7 @@ namespace google::scp::azure::attestation {
     }
     return output;
   }
-    
+
   std::string getSnpEndorsements() {
 
     auto host_certs_json = getHostAmdCerts();

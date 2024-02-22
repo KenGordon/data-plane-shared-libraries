@@ -34,7 +34,7 @@ namespace google::scp::azure::attestation {
     int ret = EVP_EncodeBlock(buffer.get(), decoded, size);
     return std::string(reinterpret_cast<char*>(buffer.get()), ret);
   }
-  
+
   std::string getSnpEvidence(const std::string report_data) {
 
     SnpReport* report;
@@ -53,7 +53,7 @@ namespace google::scp::azure::attestation {
     }
 
     return base64EncodeBytes(
-      reinterpret_cast<uint8_t*>(report), 
+      reinterpret_cast<uint8_t*>(report),
       sizeof(SnpReport)
     );
   }

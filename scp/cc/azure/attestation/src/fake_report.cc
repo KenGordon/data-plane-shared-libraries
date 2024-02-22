@@ -17,7 +17,7 @@
 #include "attestation.h"
 
 namespace google::scp::azure::attestation {
-  
+
   AttestationReport fetchFakeSnpAttestation() {
     return {
       // Evidence
@@ -437,5 +437,5 @@ namespace google::scp::azure::attestation {
       "0300000000000873"
     };
   }
-  
+
 }  // namespace google::scp::azure::attestation

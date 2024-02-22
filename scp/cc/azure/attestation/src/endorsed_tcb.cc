@@ -22,11 +22,11 @@
 
 using google::scp::azure::attestation::utils::getHostAmdCerts;
 namespace google::scp::azure::attestation {
-    
+
     std::string getSnpEndorsedTcb() {
-        
+
         auto host_certs_json = getHostAmdCerts();
-        
+
         // Extract the endorsed TCB from the JSON
         std::string endorsed_tcb_reversed_endian = host_certs_json["tcbm"];
 

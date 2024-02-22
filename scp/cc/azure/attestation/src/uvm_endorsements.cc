@@ -22,7 +22,7 @@
 using google::scp::azure::attestation::utils::getSecurityContextFile;
 
 namespace google::scp::azure::attestation {
-    
+
     std::string getSnpUvmEndorsements() {
         return getSecurityContextFile("/reference-info-base64");
     }

@@ -41,7 +41,7 @@ namespace google::scp::azure::attestation::sev_guest {
   };
 
   SnpReport* getReport(const std::string report_data) {
-  
+
     SnpRequest request = {};
     auto decodedBytes = utils::decodeHexString(report_data, sizeof(request.report_data));
     size_t numBytesToCopy = std::min(decodedBytes.size(), sizeof(request.report_data));
@@ -56,7 +56,7 @@ namespace google::scp::azure::attestation::sev_guest {
     };
 
     auto sev_guest_file = open("/dev/sev-guest", O_RDWR | O_CLOEXEC);
-    
+
     auto rc = ioctl(sev_guest_file, SNP_GET_REPORT, &payload);
     if (rc < 0) {
       throw std::runtime_error("Failed to issue ioctl SNP_GET_REPORT");

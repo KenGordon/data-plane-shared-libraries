@@ -17,7 +17,7 @@
 #include "security_context.h"
 
 namespace google::scp::azure::attestation::utils {
-    
+
   std::string getSecurityContextFile(std::string file_path) {
     const char* dir = std::getenv("UVM_SECURITY_CONTEXT_DIR");
     if (!dir) {
@@ -34,7 +34,7 @@ namespace google::scp::azure::attestation::utils {
 
     std::vector<uint8_t> file_bytes = {std::istreambuf_iterator<char>(file),
             std::istreambuf_iterator<char>()};
-    
+
     return std::string(file_bytes.begin(), file_bytes.end());
 
   }
