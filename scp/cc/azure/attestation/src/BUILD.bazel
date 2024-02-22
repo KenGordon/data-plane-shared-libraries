@@ -12,20 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "attestation",
     srcs = [
-        "report.cc",
-        "fake_report.cc",
-        "evidence.cc",
-        "endorsements.cc",
-        "uvm_endorsements.cc",
         "endorsed_tcb.cc",
+        "endorsements.cc",
+        "evidence.cc",
+        "fake_report.cc",
+        "report.cc",
         "snp.cc",
+        "uvm_endorsements.cc",
     ],
     hdrs = [
         "attestation.h",
@@ -33,8 +33,8 @@ cc_library(
         "sev_guest.h",
     ],
     deps = [
-        "//scp/cc/core/utils/src:core_utils",
         "//scp/cc/azure/attestation:utils",
+        "//scp/cc/core/utils/src:core_utils",
         "@nlohmann_json//:lib",
     ],
 )

@@ -19,14 +19,14 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "attestation_utils",
     srcs = [
-        "security_context.cc",
-        "host_amd_certs.cc",
         "hex.cc",
+        "host_amd_certs.cc",
+        "security_context.cc",
     ],
     hdrs = [
-        "security_context.h",
-        "host_amd_certs.h",
         "hex.h",
+        "host_amd_certs.h",
+        "security_context.h",
     ],
     deps = [
         "//scp/cc/core/utils/src:core_utils",

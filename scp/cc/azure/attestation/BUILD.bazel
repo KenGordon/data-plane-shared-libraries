@@ -19,7 +19,7 @@ alias(
     actual = "//scp/cc/azure/attestation/src:attestation",
 )
 
-alias (
+alias(
     name = "utils",
     actual = "//scp/cc/azure/attestation/src/utils:attestation_utils",
 )
