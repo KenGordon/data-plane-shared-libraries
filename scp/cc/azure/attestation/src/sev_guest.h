@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-#include <algorithm>
 #include <fcntl.h>
 #include <stdint.h>
-#include <string>
 #include <sys/ioctl.h>
 #include <sys/types.h>
+
+#include <algorithm>
+#include <string>
 
 namespace google::scp::azure::attestation::sev_guest {
 
