@@ -19,7 +19,9 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 
+#include <algorithm>
 #include <charconv>
+#include <string>
 #include <string_view>
 #include <vector>
 
