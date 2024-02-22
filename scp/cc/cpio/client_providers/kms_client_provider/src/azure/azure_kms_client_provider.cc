@@ -146,13 +146,14 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
   http_context.request->method = HttpMethod::POST;
 
   // Get Attestation Report
-  const nlohmann::json report =
+  const auto report =
       hasSnp() ? fetchSnpAttestation() : fetchFakeSnpAttestation();
+  CHECK(report.has_value()) << "Failed to get attestation report";
 
   nlohmann::json payload;
   payload["wrapped"] = ciphertext;
   payload["kid"] = key_id;
-  payload["attestation"] = report;
+  payload["attestation"] = nlohmann::json(report);
 
   http_context.request->body = core::BytesBuffer(nlohmann::to_string(payload));
   http_context.request->headers = std::make_shared<core::HttpHeaders>();

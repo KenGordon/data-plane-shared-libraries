@@ -18,15 +18,21 @@
 
 namespace google::scp::azure::attestation {
 
-AttestationReport fetchSnpAttestation(const std::string report_data) {
-  assert(hasSnp());
+std::optional<AttestationReport> fetchSnpAttestation(const std::string report_data) {
+  if (!hasSnp()) {
+    return std::nullopt;
+  }
 
-  return {
-      getSnpEvidence(report_data),
-      getSnpEndorsements(),
-      getSnpUvmEndorsements(),
-      getSnpEndorsedTcb(),
-  };
+  try {
+    return AttestationReport{
+        getSnpEvidence(report_data),
+        getSnpEndorsements(),
+        getSnpUvmEndorsements(),
+        getSnpEndorsedTcb(),
+    };
+  } catch (...) {
+    return std::nullopt;
+  }
 }
 
 }  // namespace google::scp::azure::attestation

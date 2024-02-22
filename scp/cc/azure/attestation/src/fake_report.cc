@@ -18,8 +18,8 @@
 
 namespace google::scp::azure::attestation {
 
-AttestationReport fetchFakeSnpAttestation() {
-  return {
+std::optional<AttestationReport> fetchFakeSnpAttestation() {
+  return AttestationReport{
       // Evidence
       "AgAAAAIAAAAfAAMAAAAAAAEAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAEA"
       "AAADAAAAAAAI0gEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"

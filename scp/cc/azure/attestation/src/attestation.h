@@ -18,6 +18,7 @@
 #define AZURE_ATTESTATION_H
 
 #include <fstream>
+#include <optional>
 #include <string>
 
 #include <nlohmann/json.hpp>
@@ -132,9 +133,9 @@ SnpType getSnpType();
 
 bool hasSnp();
 
-AttestationReport fetchSnpAttestation(const std::string report_data = "");
+std::optional<AttestationReport> fetchSnpAttestation(const std::string report_data = "");
 
-AttestationReport fetchFakeSnpAttestation();
+std::optional<AttestationReport> fetchFakeSnpAttestation();
 
 std::string getSnpEvidence(const std::string report_data);
 
