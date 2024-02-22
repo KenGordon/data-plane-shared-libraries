@@ -31,6 +31,9 @@
 
 using google::cmrt::sdk::kms_service::v1::DecryptRequest;
 using google::cmrt::sdk::kms_service::v1::DecryptResponse;
+using google::scp::azure::attestation::hasSnp;
+using google::scp::azure::attestation::fetchSnpAttestation;
+using google::scp::azure::attestation::fetchFakeSnpAttestation;
 using google::scp::core::AsyncContext;
 using google::scp::core::AsyncExecutorInterface;
 using google::scp::core::ExecutionResult;
@@ -143,7 +146,7 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
   http_context.request->method = HttpMethod::POST;
 
   // Get Attestation Report
-  const auto report =
+  const nlohmann::json report =
       hasSnp() ? fetchSnpAttestation() : fetchFakeSnpAttestation();
 
   nlohmann::json payload;
