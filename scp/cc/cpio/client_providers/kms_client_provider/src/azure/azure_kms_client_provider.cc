@@ -153,7 +153,7 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
   nlohmann::json payload;
   payload["wrapped"] = ciphertext;
   payload["kid"] = key_id;
-  payload["attestation"] = nlohmann::json(report);
+  payload["attestation"] = nlohmann::json(report.value());
 
   http_context.request->body = core::BytesBuffer(nlohmann::to_string(payload));
   http_context.request->headers = std::make_shared<core::HttpHeaders>();

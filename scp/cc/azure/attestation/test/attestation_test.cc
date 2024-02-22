@@ -52,9 +52,10 @@ TEST_F(JsonAttestationReportTest, FetchRealAttestationLongReportData) {
   if (!hasSnp()) {
     return;
   }
-  EXPECT_TRUE(fetchSnpAttestation(
-      "a_very_long_report_data_string_which_is_so_long_that_it_exceeds_report_"
-      "data_length").has_value());
+  EXPECT_TRUE(fetchSnpAttestation("a_very_long_report_data_string_which_is_so_"
+                                  "long_that_it_exceeds_report_"
+                                  "data_length")
+                  .has_value());
 }
 
 TEST_F(JsonAttestationReportTest, FetchRealAttestationNonSnp) {

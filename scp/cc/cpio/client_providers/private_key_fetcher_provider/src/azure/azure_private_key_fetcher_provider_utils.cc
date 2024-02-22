@@ -39,6 +39,6 @@ void AzurePrivateKeyFetchingClientUtils::CreateHttpRequest(
   const auto report =
       hasSnp() ? fetchSnpAttestation() : fetchFakeSnpAttestation();
   CHECK(report.has_value()) << "Failed to get attestation report";
-  http_request.body = core::BytesBuffer(nlohmann::json(report).dump());
+  http_request.body = core::BytesBuffer(nlohmann::json(report.value()).dump());
 }
 }  // namespace google::scp::cpio::client_providers

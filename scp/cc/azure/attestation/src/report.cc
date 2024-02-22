@@ -18,7 +18,8 @@
 
 namespace google::scp::azure::attestation {
 
-std::optional<AttestationReport> fetchSnpAttestation(const std::string report_data) {
+std::optional<AttestationReport> fetchSnpAttestation(
+    const std::string report_data) {
   if (!hasSnp()) {
     return std::nullopt;
   }
