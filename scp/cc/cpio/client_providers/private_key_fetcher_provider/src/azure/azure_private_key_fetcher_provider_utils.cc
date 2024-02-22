@@ -20,12 +20,12 @@
 
 #include "azure/attestation/src/attestation.h"
 
+using google::scp::azure::attestation::fetchFakeSnpAttestation;
+using google::scp::azure::attestation::fetchSnpAttestation;
+using google::scp::azure::attestation::hasSnp;
 using google::scp::core::HttpMethod;
 using google::scp::core::HttpRequest;
 using google::scp::core::Uri;
-using google::scp::azure::attestation::hasSnp;
-using google::scp::azure::attestation::fetchSnpAttestation;
-using google::scp::azure::attestation::fetchFakeSnpAttestation;
 
 namespace google::scp::cpio::client_providers {
 
@@ -38,6 +38,6 @@ void AzurePrivateKeyFetchingClientUtils::CreateHttpRequest(
   http_request.path = std::make_shared<Uri>(base_uri);
   const nlohmann::json report =
       hasSnp() ? fetchSnpAttestation() : fetchFakeSnpAttestation();
-http_request.body = core::BytesBuffer(report.dump());
+  http_request.body = core::BytesBuffer(report.dump());
 }
 }  // namespace google::scp::cpio::client_providers

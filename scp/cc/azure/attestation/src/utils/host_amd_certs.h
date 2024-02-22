@@ -18,6 +18,6 @@
 
 namespace google::scp::azure::attestation::utils {
 
-    nlohmann::json getHostAmdCerts();
+nlohmann::json getHostAmdCerts();
 
 }

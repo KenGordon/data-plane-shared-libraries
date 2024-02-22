@@ -18,8 +18,8 @@
 
 namespace google::scp::azure::attestation {
 
-  AttestationReport fetchFakeSnpAttestation() {
-    return {
+AttestationReport fetchFakeSnpAttestation() {
+  return {
       // Evidence
       "AgAAAAIAAAAfAAMAAAAAAAEAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAEA"
       "AAADAAAAAAAI0gEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
@@ -434,8 +434,7 @@ namespace google::scp::azure::attestation {
       "71qZQEnmKhdWDim4sdVl8t7UIu4AbtMpqBEjea6leuXnckZytZVDGY6C6+"
       "4DnIlfB7jEHE4f11xqAnRcxKvSpSf6Vj",
       // Endorsed TCB
-      "0300000000000873"
-    };
-  }
+      "0300000000000873"};
+}
 
 }  // namespace google::scp::azure::attestation

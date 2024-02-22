@@ -18,20 +18,20 @@
 
 namespace google::scp::azure::attestation {
 
-  SnpType getSnpType() {
-    std::ifstream sev_file("/dev/sev");
-    if (sev_file.good()) {
-      return SnpType::SEV;
-    }
-    std::ifstream sev_guest_file("/dev/sev-guest");
-    if (sev_file.good()) {
-      return SnpType::SEV_GUEST;
-    }
-    return SnpType::NONE;
+SnpType getSnpType() {
+  std::ifstream sev_file("/dev/sev");
+  if (sev_file.good()) {
+    return SnpType::SEV;
   }
-
-  bool hasSnp() {
-    return getSnpType() != SnpType::NONE;
+  std::ifstream sev_guest_file("/dev/sev-guest");
+  if (sev_file.good()) {
+    return SnpType::SEV_GUEST;
   }
+  return SnpType::NONE;
+}
 
-} // namespace google::scp::azure::attestation
+bool hasSnp() {
+  return getSnpType() != SnpType::NONE;
+}
+
+}  // namespace google::scp::azure::attestation

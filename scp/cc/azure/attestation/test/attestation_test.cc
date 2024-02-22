@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "scp/cc/azure/attestation/src/attestation.h"
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include "scp/cc/azure/attestation/src/attestation.h"
 
 using google::scp::azure::attestation::fetchFakeSnpAttestation;
 using google::scp::azure::attestation::fetchSnpAttestation;
@@ -35,29 +36,31 @@ TEST_F(JsonAttestationReportTest, FetchFakeAttestation) {
 
 TEST_F(JsonAttestationReportTest, FetchRealAttestation) {
   if (!hasSnp()) {
-      return;
+    return;
   }
   const auto report = fetchSnpAttestation();
 }
 
 TEST_F(JsonAttestationReportTest, FetchRealAttestationNormalReportData) {
   if (!hasSnp()) {
-      return;
+    return;
   }
   const auto report = fetchSnpAttestation("example_report_data");
 }
 
 TEST_F(JsonAttestationReportTest, FetchRealAttestationLongReportData) {
   if (!hasSnp()) {
-      return;
+    return;
   }
-  const auto report = fetchSnpAttestation("a_very_long_report_data_string_which_is_so_long_that_it_exceeds_report_data_length");
+  const auto report = fetchSnpAttestation(
+      "a_very_long_report_data_string_which_is_so_long_that_it_exceeds_report_"
+      "data_length");
 }
 
 TEST_F(JsonAttestationReportTest, FetchRealAttestationNonSnp) {
   if (hasSnp()) {
-      return;
+    return;
   }
   EXPECT_THROW(fetchSnpAttestation(), std::runtime_error);
 }
-}  // namespace google::scp::cc::azure::test
+}  // namespace google::scp::cc::azure::attestation::test

@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-#include <vector>
-#include <string>
 #include <charconv>
+#include <string>
+#include <vector>
 
 namespace google::scp::azure::attestation::utils {
 
-    std::vector<uint8_t> decodeHexString(const std::string_view hexstring, size_t padTo);
+std::vector<uint8_t> decodeHexString(const std::string_view hexstring,
+                                     size_t padTo);
 
-} // namespace google::scp::azure::attestation::utils
+}  // namespace google::scp::azure::attestation::utils

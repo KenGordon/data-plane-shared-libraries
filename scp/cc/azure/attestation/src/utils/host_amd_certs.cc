@@ -14,24 +14,25 @@
  * limitations under the License.
  */
 
-#include "security_context.h"
 #include "core/utils/src/base64.h"
 
-using google::scp::core::utils::Base64Decode;
+#include "security_context.h"
+
 using google::scp::azure::attestation::utils::getSecurityContextFile;
+using google::scp::core::utils::Base64Decode;
 
 namespace google::scp::azure::attestation::utils {
 
-  nlohmann::json getHostAmdCerts() {
-    // Read the local Base64 encoded AMD certs
-    const auto host_certs_b64 = getSecurityContextFile("/host-amd-cert-base64");
+nlohmann::json getHostAmdCerts() {
+  // Read the local Base64 encoded AMD certs
+  const auto host_certs_b64 = getSecurityContextFile("/host-amd-cert-base64");
 
-    // Decode the contents of the file
-    std::string host_certs_str;
-    Base64Decode(host_certs_b64, host_certs_str);
+  // Decode the contents of the file
+  std::string host_certs_str;
+  Base64Decode(host_certs_b64, host_certs_str);
 
-    // Parse the decoded string into JSON
-    return nlohmann::json::parse(host_certs_str);
-  }
+  // Parse the decoded string into JSON
+  return nlohmann::json::parse(host_certs_str);
+}
 
-} // namespace google::scp::azure::attestation::utils
+}  // namespace google::scp::azure::attestation::utils

@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-#include <string>
 #include <cstdlib>
 #include <fstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
+
 #include <nlohmann/json.hpp>
 
 namespace google::scp::azure::attestation::utils {
 
-    std::string getSecurityContextFile(std::string file_path);
+std::string getSecurityContextFile(std::string file_path);
 
 }

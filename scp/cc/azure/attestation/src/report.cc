@@ -16,18 +16,17 @@
 
 #include "attestation.h"
 
-
 namespace google::scp::azure::attestation {
 
-  AttestationReport fetchSnpAttestation(const std::string report_data) {
-    assert(hasSnp());
+AttestationReport fetchSnpAttestation(const std::string report_data) {
+  assert(hasSnp());
 
-    return {
+  return {
       getSnpEvidence(report_data),
       getSnpEndorsements(),
       getSnpUvmEndorsements(),
       getSnpEndorsedTcb(),
-    };
-  }
+  };
+}
 
 }  // namespace google::scp::azure::attestation
