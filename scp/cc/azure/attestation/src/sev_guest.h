@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#ifndef AZURE_ATTESTATION_SEV_GUEST_H
+#define AZURE_ATTESTATION_SEV_GUEST_H
+
 #include <fcntl.h>
 #include <stdint.h>
 #include <sys/ioctl.h>
@@ -77,3 +80,5 @@ SnpReport* getReport(const std::string report_data) {
 }
 
 }  // namespace google::scp::azure::attestation::sev_guest
+
+#endif  // AZURE_ATTESTATION_SEV_GUEST_H

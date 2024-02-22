@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ATTESTATION_H
-#define ATTESTATION_H
+#ifndef AZURE_ATTESTATION_H
+#define AZURE_ATTESTATION_H
 
 #include <fstream>
 #include <string>
@@ -146,4 +146,4 @@ std::string getSnpEndorsedTcb();
 
 }  // namespace google::scp::azure::attestation
 
-#endif  // ATTESTATION_H
+#endif  // AZURE_ATTESTATION_H
