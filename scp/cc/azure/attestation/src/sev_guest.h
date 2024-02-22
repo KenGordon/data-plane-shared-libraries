@@ -22,6 +22,8 @@
 #include <algorithm>
 #include <string>
 
+#include "absl/strings/escaping.h"
+
 namespace google::scp::azure::attestation::sev_guest {
 
 #define SNP_GUEST_REQ_IOC_TYPE 'S'
@@ -48,8 +50,7 @@ struct Request {
 
 SnpReport* getReport(const std::string report_data) {
   SnpRequest request = {};
-  auto decodedBytes =
-      utils::decodeHexString(report_data, sizeof(request.report_data));
+  auto decodedBytes = absl::HexStringToBytes(report_data);
   size_t numBytesToCopy =
       std::min(decodedBytes.size(), sizeof(request.report_data));
   std::copy(decodedBytes.begin(), decodedBytes.begin() + numBytesToCopy,

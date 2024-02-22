@@ -19,12 +19,10 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "attestation_utils",
     srcs = [
-        "hex.cc",
         "host_amd_certs.cc",
         "security_context.cc",
     ],
     hdrs = [
-        "hex.h",
         "host_amd_certs.h",
         "security_context.h",
     ],

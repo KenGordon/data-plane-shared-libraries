@@ -25,7 +25,7 @@
 #include <string_view>
 #include <vector>
 
-#include "utils/hex.h"
+#include "absl/strings/escaping.h"
 
 namespace google::scp::azure::attestation::sev {
 
@@ -56,8 +56,7 @@ struct Request {
 
 SnpReport* getReport(const std::string report_data) {
   SnpRequest request = {};
-  auto decodedBytes =
-      utils::decodeHexString(report_data, sizeof(request.report_data));
+  auto decodedBytes = absl::HexStringToBytes(report_data);
   size_t numBytesToCopy =
       std::min(decodedBytes.size(), sizeof(request.report_data));
   std::copy(decodedBytes.begin(), decodedBytes.begin() + numBytesToCopy,
