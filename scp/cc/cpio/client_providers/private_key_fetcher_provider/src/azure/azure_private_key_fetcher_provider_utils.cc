@@ -19,6 +19,7 @@
 #include <memory>
 
 #include "azure/attestation/src/attestation.h"
+#include "glog/logging.h"
 
 using google::scp::azure::attestation::fetchFakeSnpAttestation;
 using google::scp::azure::attestation::fetchSnpAttestation;

@@ -30,6 +30,7 @@ cc_library(
         "//scp/cc/cpio/client_providers/interface:type_def",
         "//scp/cc/cpio/client_providers/private_key_fetcher_provider/src:private_key_fetcher_provider_lib",
         "//scp/cc/public/cpio/interface/private_key_client:type_def",
+        "@com_github_google_glog//:glog",
     ],
 )
 
