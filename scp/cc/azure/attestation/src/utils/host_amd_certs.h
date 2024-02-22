@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <string>
 #include <nlohmann/json.hpp>
 
 #include "core/utils/src/base64.h"
