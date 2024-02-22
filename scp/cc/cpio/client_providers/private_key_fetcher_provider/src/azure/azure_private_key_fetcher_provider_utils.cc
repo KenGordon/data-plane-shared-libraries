@@ -18,7 +18,7 @@
 
 #include <memory>
 
-#include "azure/attestation/json_attestation_report.h"
+#include "azure/attestation/src/attestation.h"
 
 using google::scp::core::HttpMethod;
 using google::scp::core::HttpRequest;
