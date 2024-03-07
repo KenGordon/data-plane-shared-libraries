@@ -44,7 +44,7 @@ class AzurePrivateKeyFetchingClientUtils {
   /**
    * @brief Generate a new wrapping key
    */
-  static RSA* GenerateWrappingKey();
+  static EVP_PKEY* GenerateWrappingKey();
 
   /**
    * @brief Wrap a key using RSA OAEP
@@ -53,7 +53,7 @@ class AzurePrivateKeyFetchingClientUtils {
    * @param key         Key in PEM format to wrap.
    */
   static std::vector<unsigned char> KeyWrap(
-      RSA* wrappingKey, const std::string& key);
+      EVP_PKEY* wrappingKey, const std::string& key);
 
   /**
    * @brief Unwrap a key using RSA OAEP
@@ -62,7 +62,7 @@ class AzurePrivateKeyFetchingClientUtils {
    * @param encrypted   Wrapped key to unwrap.
    */
   static std::string KeyUnwrap(
-      RSA* wrappingKey, const std::vector<unsigned char>& encrypted);
+      EVP_PKEY* wrappingKey, const std::vector<unsigned char>& encrypted);
 };
 }  // namespace google::scp::cpio::client_providers
 
