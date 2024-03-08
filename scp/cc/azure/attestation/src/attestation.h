@@ -136,7 +136,7 @@ SnpType getSnpType();
 bool hasSnp();
 
 std::optional<AttestationReport> fetchSnpAttestation(
-    const std::string report_data = "");
+    const std::string report_data = "8f767d6b02ce12229debae2ba3ce7fe917c564e178ce8b804a3d2abc486e0e4a");
 
 std::optional<AttestationReport> fetchFakeSnpAttestation();
 
