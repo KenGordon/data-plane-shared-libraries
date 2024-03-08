@@ -17,10 +17,6 @@
 #include "azure_private_key_fetcher_provider_utils.h"
 
 #include <memory>
-
-#include <openssl/evp.h>
-#include <openssl/rsa.h>
-
 #include "azure/attestation/src/attestation.h"
 
 using google::scp::azure::attestation::fetchFakeSnpAttestation;
@@ -32,7 +28,19 @@ using google::scp::core::Uri;
 
 namespace google::scp::cpio::client_providers {
 
-void AzurePrivateKeyFetchingClientUtils::CreateHttpRequest(
+bool AzurePrivateKeyFetchingClientUtils::isPrivate(EVP_PKEY* pkey) {
+  // Determine if the key is private or public
+  int key_type = EVP_PKEY_type(pkey->type);
+  bool is_private = false;
+  if (key_type == EVP_PKEY_RSA) {
+    const RSA* rsa_key = EVP_PKEY_get1_RSA(pkey);
+    is_private =
+        (rsa_key->e != NULL && rsa_key->n != NULL && rsa_key->d != NULL);
+  }
+  return is_private;
+}
+
+ EVP_PKEY* AzurePrivateKeyFetchingClientUtils::CreateHttpRequest(
     const PrivateKeyFetchingRequest& request, HttpRequest& http_request) {
   const auto& base_uri =
       request.key_vending_endpoint->private_key_vending_service_endpoint;
@@ -40,41 +48,133 @@ void AzurePrivateKeyFetchingClientUtils::CreateHttpRequest(
 
   http_request.path = std::make_shared<Uri>(base_uri);
 
+  // Generate wrapping key
+  auto wrappingKey = AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey();
+  EVP_PKEY* privateKey = wrappingKey.first;
+  EVP_PKEY* publicKey = wrappingKey.second;
+
+  nlohmann::json json_obj;
+  json_obj["wrappingKey"] = AzurePrivateKeyFetchingClientUtils::EvpPkeyToPem(publicKey);
+
+  // Generate attestation report
   const auto report =
       hasSnp() ? fetchSnpAttestation() : fetchFakeSnpAttestation();
   CHECK(report.has_value()) << "Failed to get attestation report";
-  nlohmann::json json_obj;
   json_obj["attestation"] = report.value();
+
   http_request.body = core::BytesBuffer(json_obj.dump());
+  return privateKey;
 }
 
 /**
  * @brief Generate a new wrapping key
  */
-EVP_PKEY* AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey() {
+std::pair<EVP_PKEY*, EVP_PKEY*>
+AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey() {
   RSA* rsa = RSA_new();
   BIGNUM* e = BN_new();
 
   BN_set_word(e, RSA_F4);
   RSA_generate_key_ex(rsa, 2048, e, NULL);
 
-  EVP_PKEY* pkey = EVP_PKEY_new();
-  if (pkey == NULL) {
+  EVP_PKEY* private_key = EVP_PKEY_new();
+  if (private_key == NULL) {
     char* error_string = ERR_error_string(ERR_get_error(), NULL);
     throw std::runtime_error(std::string("New EVP_PKEY failed: ") +
                              error_string);
   }
 
-  if (EVP_PKEY_set1_RSA(pkey, rsa) != 1) {
+  if (EVP_PKEY_set1_RSA(private_key, rsa) != 1) {
     char* error_string = ERR_error_string(ERR_get_error(), NULL);
     throw std::runtime_error(std::string("Set RSA key failed: ") +
+                             error_string);
+  }
+
+  // Create a new EVP_PKEY for the public key
+  EVP_PKEY* public_key = EVP_PKEY_new();
+  if (public_key == NULL) {
+    char* error_string = ERR_error_string(ERR_get_error(), NULL);
+    throw std::runtime_error(std::string("New EVP_PKEY (public) failed: ") +
+                             error_string);
+  }
+
+  // Get the RSA public key structure
+  const RSA* rsa_pub = EVP_PKEY_get1_RSA(private_key);
+  if (rsa_pub == NULL) {
+    char* error_string = ERR_error_string(ERR_get_error(), NULL);
+    throw std::runtime_error(std::string("Get RSA public key failed: ") +
+                             error_string);
+  }
+
+  // Duplicate the RSA public key structure
+  RSA* rsa_pub_dup = RSA_new();
+  if (rsa_pub_dup == NULL) {
+    char* error_string = ERR_error_string(ERR_get_error(), NULL);
+    throw std::runtime_error(
+        std::string("Create RSA public key duplicate failed: ") + error_string);
+  }
+
+  if (!RSA_set0_key(rsa_pub_dup, rsa_pub->n, rsa_pub->e, NULL)) {
+    char* error_string = ERR_error_string(ERR_get_error(), NULL);
+    throw std::runtime_error(
+        std::string("Set RSA public key duplicate values failed: ") +
+        error_string);
+  }
+
+  RSA_up_ref(rsa_pub_dup);
+
+  // Set the duplicated RSA public key structure to the public_key EVP_PKEY
+  if (EVP_PKEY_set1_RSA(public_key, rsa_pub_dup) != 1) {
+    char* error_string = ERR_error_string(ERR_get_error(), NULL);
+    throw std::runtime_error(std::string("Set RSA public key failed: ") +
                              error_string);
   }
 
   BN_free(e);
   RSA_free(rsa);  // Free the RSA structure if we're done with it
 
-  return pkey;
+  return std::make_pair(private_key, public_key);
+}
+
+/**
+ * @brief Convert a wrapping key in PEM
+ *
+ * @param wrappingKey RSA public key used to wrap a key.
+ */
+std::string AzurePrivateKeyFetchingClientUtils::EvpPkeyToPem(EVP_PKEY* pkey) {
+  BIO* bio = BIO_new(BIO_s_mem());
+  if (bio == NULL) {
+    char* error_string = ERR_error_string(ERR_get_error(), NULL);
+    throw std::runtime_error(std::string("Failed to create BIO: ") +
+                             error_string);
+  }
+
+  // Determine if the key is private or public
+  bool is_private = isPrivate(pkey);
+
+  // Write the key to the BIO as PEM
+  int write_result;
+  if (is_private) {
+    write_result =
+        PEM_write_bio_PrivateKey(bio, pkey, NULL, NULL, 0, NULL, NULL);
+  } else {
+    write_result = PEM_write_bio_PUBKEY(bio, pkey);
+  }
+
+  if (write_result != 1) {
+    char* error_string = ERR_error_string(ERR_get_error(), NULL);
+    BIO_free(bio);
+    throw std::runtime_error(std::string("Failed to write PEM: ") +
+                             error_string);
+  }
+
+  // Get the PEM string from the BIO
+  BUF_MEM* bio_mem;
+  BIO_get_mem_ptr(bio, &bio_mem);
+  std::string pem_str(bio_mem->data, bio_mem->length);
+
+  BIO_free(bio);
+  return pem_str;
 }
 
 /**
@@ -90,6 +190,11 @@ std::vector<unsigned char> AzurePrivateKeyFetchingClientUtils::KeyWrap(
   int key_size = EVP_PKEY_size(wrappingKey);
   std::cout << "Wrap key type: " << key_type << ", size: " << key_size
             << std::endl;
+
+  bool is_private = isPrivate(wrappingKey);
+  if (is_private) {
+    throw std::runtime_error("Use public key for KeyWrap");
+  }
 
   // Create an EVP_PKEY_CTX for the wrapping key
   EVP_PKEY_CTX* ctx = EVP_PKEY_CTX_new(wrappingKey, NULL);
@@ -162,6 +267,11 @@ std::string AzurePrivateKeyFetchingClientUtils::KeyUnwrap(
   int key_size = EVP_PKEY_size(wrappingKey);
   std::cout << "Unwrap key type: " << key_type << ", size: " << key_size
             << std::endl;
+
+  bool is_private = isPrivate(wrappingKey);
+  if (!is_private) {
+    throw std::runtime_error("Use private key for KeyUnwrap");
+  }
 
   // Create an EVP_PKEY_CTX for the wrapping key
   EVP_PKEY_CTX* ctx = EVP_PKEY_CTX_new(wrappingKey, NULL);

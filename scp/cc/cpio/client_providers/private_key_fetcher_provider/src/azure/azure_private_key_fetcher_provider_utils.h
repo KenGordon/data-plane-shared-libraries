@@ -37,14 +37,21 @@ class AzurePrivateKeyFetchingClientUtils {
    * @param private_key_fetching_request request to query private key.
    * @param http_request returned http request.
    */
-  static void CreateHttpRequest(
+  static  EVP_PKEY* CreateHttpRequest(
       const PrivateKeyFetchingRequest& private_key_fetching_request,
       core::HttpRequest& http_request);
-      
+
   /**
    * @brief Generate a new wrapping key
    */
-  static EVP_PKEY* GenerateWrappingKey();
+  static std::pair<EVP_PKEY*, EVP_PKEY*> GenerateWrappingKey();
+
+  /**
+   * @brief Convert a wrapping key in PEM
+   *
+   * @param wrappingKey RSA public key used to wrap a key.
+   */
+  static std::string EvpPkeyToPem(EVP_PKEY* wrappingKey);
 
   /**
    * @brief Wrap a key using RSA OAEP
@@ -52,8 +59,8 @@ class AzurePrivateKeyFetchingClientUtils {
    * @param wrappingKey RSA public key used to wrap a key.
    * @param key         Key in PEM format to wrap.
    */
-  static std::vector<unsigned char> KeyWrap(
-      EVP_PKEY* wrappingKey, const std::string& key);
+  static std::vector<unsigned char> KeyWrap(EVP_PKEY* wrappingKey,
+                                            const std::string& key);
 
   /**
    * @brief Unwrap a key using RSA OAEP
@@ -61,8 +68,12 @@ class AzurePrivateKeyFetchingClientUtils {
    * @param wrappingKey RSA private key used to unwrap a key.
    * @param encrypted   Wrapped key to unwrap.
    */
-  static std::string KeyUnwrap(
-      EVP_PKEY* wrappingKey, const std::vector<unsigned char>& encrypted);
+  static std::string KeyUnwrap(EVP_PKEY* wrappingKey,
+                               const std::vector<unsigned char>& encrypted);
+
+ private:
+  // Declare the isPrivate function as private
+  static bool isPrivate(EVP_PKEY* pkey);
 };
 }  // namespace google::scp::cpio::client_providers
 
