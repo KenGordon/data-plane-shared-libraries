@@ -27,6 +27,7 @@
 #include "core/interface/async_context.h"
 #include "cpio/client_providers/interface/kms_client_provider_interface.h"
 #include "public/core/interface/execution_result.h"
+#include "cpio/client_providers/private_key_fetcher_provider/src/azure/azure_private_key_fetcher_provider_utils.h"
 
 namespace google::scp::cpio::client_providers {
 
@@ -53,6 +54,9 @@ class AzureKmsClientProvider : public KmsClientProviderInterface {
           decrypt_context) noexcept override;
 
  private:
+    // Store wrapping key used in unwrapKey API call
+    EVP_PKEY* wrappingKey_ = nullptr;
+
   /**
    * @brief Callback to pass token for decryption.
    *

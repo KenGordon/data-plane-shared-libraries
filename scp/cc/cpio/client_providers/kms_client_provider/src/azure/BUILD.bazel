@@ -33,6 +33,7 @@ cc_library(
         "//scp/cc/core/utils/src:core_utils",
         "//scp/cc/cpio/client_providers/global_cpio/src:global_cpio_lib",
         "//scp/cc/cpio/client_providers/interface:cpio_client_providers_interface_lib",
+        "//scp/cc/cpio/client_providers/private_key_fetcher_provider/src/azure:azure_private_key_fetcher_provider_lib",
         "//scp/cc/public/cpio/interface:cpio_errors",
         "//scp/cc/public/cpio/interface/kms_client:type_def",
         "@com_github_googleapis_google_cloud_cpp//:kms",
