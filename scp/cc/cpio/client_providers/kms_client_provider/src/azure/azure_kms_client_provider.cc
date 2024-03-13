@@ -26,8 +26,9 @@
 #include "cpio/client_providers/global_cpio/src/global_cpio.h"
 #include "cpio/client_providers/interface/auth_token_provider_interface.h"
 #include "cpio/client_providers/interface/kms_client_provider_interface.h"
-#include "public/cpio/interface/kms_client/type_def.h"
 #include "cpio/client_providers/private_key_fetcher_provider/src/azure/azure_private_key_fetcher_provider_utils.h"
+#include "public/cpio/interface/kms_client/type_def.h"
+#include "core/utils/src/base64.h"
 
 #include "error_codes.h"
 
@@ -52,6 +53,7 @@ using google::scp::core::errors::SC_AZURE_KMS_CLIENT_PROVIDER_BAD_UNWRAPPED_KEY;
 using google::scp::core::errors::
     SC_AZURE_KMS_CLIENT_PROVIDER_CIPHER_TEXT_NOT_FOUND;
 using google::scp::core::errors::SC_AZURE_KMS_CLIENT_PROVIDER_KEY_ID_NOT_FOUND;
+using google::scp::cpio::client_providers::AzurePrivateKeyFetchingClientUtils;
 using std::all_of;
 using std::bind;
 using std::cbegin;
@@ -61,7 +63,7 @@ using std::make_shared;
 using std::pair;
 using std::shared_ptr;
 using std::placeholders::_1;
-using google::scp::cpio::client_providers::AzurePrivateKeyFetchingClientUtils;
+using google::scp::core::utils::Base64Decode;
 
 namespace google::scp::cpio::client_providers {
 
@@ -166,7 +168,8 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
 
   // Generate wrapping key
   auto wrappingKey = AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey();
-  auto publicKey = AzurePrivateKeyFetchingClientUtils::EvpPkeyToPem(wrappingKey.second);
+  auto publicKey =
+      AzurePrivateKeyFetchingClientUtils::EvpPkeyToPem(wrappingKey.second);
   wrappingKey_ = wrappingKey.first;
 
   nlohmann::json payload;
@@ -204,21 +207,30 @@ void AzureKmsClientProvider::OnDecryptCallback(
                       http_client_context.result,
                       "Failed to decrypt wrapped key using Azure KMS");
     decrypt_context.result = http_client_context.result;
-
-    // Need to decrypt the result here with std::string AzurePrivateKeyFetchingClientUtils::KeyUnwrap(
-    // EVP_PKEY* wrappingKey, const std::vector<unsigned char>& encrypted)
-
     decrypt_context.Finish();
     return;
   }
-
   std::string resp(http_client_context.response->body.bytes->begin(),
                    http_client_context.response->body.bytes->end());
-
-  // Decrypt resp from unwrapKey  
-   std::vector<unsigned char> encrypted(http_client_context.response->body.bytes->begin(),
-                                       http_client_context.response->body.bytes->end());                                       
-  std::string decrypted = AzurePrivateKeyFetchingClientUtils::KeyUnwrap(wrappingKey_, encrypted);
+  std::cout << "unwrapKey response: " << resp << std::endl;
+  nlohmann::json unwrapResp = nlohmann::json::parse(resp);
+  const std::string WRAPPED = "wrapped";
+  std::cout << "wrapped: " << unwrapResp[WRAPPED] << std::endl;
+  std::string decodedWrapped;
+  auto execution_result = Base64Decode(unwrapResp[WRAPPED], decodedWrapped);
+  std::vector<uint8_t> encrypted(decodedWrapped.begin(), decodedWrapped.end());
+  
+  // Decrypt resp from unwrapKey
+  if (!unwrapResp.contains(WRAPPED)) {
+    SCP_ERROR_CONTEXT(kAzureKmsClientProvider, decrypt_context,
+                      http_client_context.result,
+                      "unwrapKey did not provide the wrapped property");
+    decrypt_context.result = http_client_context.result;
+    decrypt_context.Finish();
+    return;
+  }
+  std::string decrypted = AzurePrivateKeyFetchingClientUtils::KeyUnwrap(
+      wrappingKey_, encrypted);
   decrypt_context.response = std::make_shared<DecryptResponse>();
 
   decrypt_context.response->set_plaintext(decrypted);
