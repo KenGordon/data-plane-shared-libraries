@@ -213,10 +213,13 @@ void AzurePrivateKeyFetcherProvider::PrivateKeyFetchingCallback(
     private_key_fetching_context.Finish();
     return;
   }
-  std::cout << "wrapped: " << privateKeyResp[WRAPPED] << std::endl;
+  std::cout << "wrapped: " << privateKeyResp[WRAPPED] << typeid(privateKeyResp[WRAPPED]).name() << std::endl;
 
 PrivateKeyFetchingResponse response;
-  auto result = PrivateKeyFetchingClientUtils::ParsePrivateKey(privateKeyResp[WRAPPED], response);
+  std::string  res = "";
+  std::vector<uint8_t> vec(res.begin(), res.end());
+  //auto result = PrivateKeyFetchingClientUtils::ParsePrivateKey(privateKeyResp[WRAPPED], response);
+  auto result = PrivateKeyFetchingClientUtils::ParsePrivateKey(core::BytesBuffer(), response);
   if (!result.Successful()) {
     SCP_ERROR_CONTEXT(
         kAzurePrivateKeyFetcherProvider, private_key_fetching_context,
@@ -248,7 +251,6 @@ PrivateKeyFetchingResponse response;
     std::string decrypted = AzurePrivateKeyFetchingClientUtils::KeyUnwrap(
         wrappingKey_, encrypted);
     private_key_fetching_context.response = std::make_shared<DecryptResponse>();
-  */
   auto result = PrivateKeyFetchingClientUtils::ParsePrivateKey(
       http_client_context.response->body, response);
   if (!result.Successful()) {
@@ -259,6 +261,7 @@ PrivateKeyFetchingResponse response;
     private_key_fetching_context.Finish();
     return;
   }
+  */
 
   private_key_fetching_context.response =
       std::make_shared<PrivateKeyFetchingResponse>(response);
