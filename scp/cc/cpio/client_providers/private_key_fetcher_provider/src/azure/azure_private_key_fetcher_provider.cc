@@ -213,13 +213,23 @@ void AzurePrivateKeyFetcherProvider::PrivateKeyFetchingCallback(
     private_key_fetching_context.Finish();
     return;
   }
-  std::cout << "wrapped: " << privateKeyResp[WRAPPED] << typeid(privateKeyResp[WRAPPED]).name() << std::endl;
+  std::cout << "wrapped: " << privateKeyResp[WRAPPED] << ": "
+            << typeid(privateKeyResp[WRAPPED]).name() << std::endl;
 
-PrivateKeyFetchingResponse response;
-  std::string  res = "";
-  std::vector<uint8_t> vec(res.begin(), res.end());
-  //auto result = PrivateKeyFetchingClientUtils::ParsePrivateKey(privateKeyResp[WRAPPED], response);
-  auto result = PrivateKeyFetchingClientUtils::ParsePrivateKey(core::BytesBuffer(), response);
+  //  std::string decodedWrapped;
+  //  auto execution_result = Base64Decode(privateKeyResp[WRAPPED],
+  //  decodedWrapped); std::cout << "base 64 decoded wrapped: " <<
+  //  decodedWrapped << std::endl;
+
+  PrivateKeyFetchingResponse response;
+  std::string res = privateKeyResp[WRAPPED];
+  // auto pk = std::make_shared<BytesBuffer>(res);
+  core::BytesBuffer pk(res);
+  // std::vector<uint8_t> vec(res.begin(), res.end());
+  // auto result =
+  // PrivateKeyFetchingClientUtils::ParsePrivateKey(privateKeyResp[WRAPPED],
+  // response);
+  auto result = PrivateKeyFetchingClientUtils::ParsePrivateKey(pk, response);
   if (!result.Successful()) {
     SCP_ERROR_CONTEXT(
         kAzurePrivateKeyFetcherProvider, private_key_fetching_context,
@@ -228,9 +238,6 @@ PrivateKeyFetchingResponse response;
     private_key_fetching_context.Finish();
     return;
   }
-
-  std::string decodedWrapped;
-  auto execution_result = Base64Decode(privateKeyResp[WRAPPED], decodedWrapped);
 
   const std::string WRAPPEDKID = "wrappedKid";
   if (!privateKeyResp.contains(WRAPPEDKID)) {
@@ -243,8 +250,9 @@ PrivateKeyFetchingResponse response;
   }
   std::cout << "wrappedKid: " << privateKeyResp[WRAPPEDKID] << std::endl;
 
-  std::vector<uint8_t> encrypted(decodedWrapped.begin(), decodedWrapped.end());
-  
+  // std::vector<uint8_t> encrypted(decodedWrapped.begin(),
+  // decodedWrapped.end());
+
   /*
 
     // Decrypt resp from PrivateKey request

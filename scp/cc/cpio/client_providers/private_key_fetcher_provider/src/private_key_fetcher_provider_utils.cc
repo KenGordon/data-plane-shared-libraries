@@ -27,8 +27,8 @@
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
 #include "core/interface/http_types.h"
+#include "core/utils/src/base64.h"
 #include "public/core/interface/execution_result.h"
-
 #include "error_codes.h"
 
 using google::scp::core::ExecutionResult;
@@ -59,8 +59,10 @@ using google::scp::core::errors::
     SC_PRIVATE_KEY_FETCHER_PROVIDER_PUBLIC_KEYSET_HANDLE_NOT_FOUND;
 using google::scp::core::errors::
     SC_PRIVATE_KEY_FETCHER_PROVIDER_RESOURCE_NAME_NOT_FOUND;
+using google::scp::core::utils::Base64Decode;
 using google::scp::cpio::client_providers::KeyData;
 using google::scp::cpio::client_providers::PrivateKeyFetchingResponse;
+using google::scp::cpio::client_providers::AzurePrivateKeyFetchingClientUtils;
 
 namespace {
 constexpr char kEncryptionKeyPrefix[] = "encryptionKeys/";
@@ -79,6 +81,7 @@ constexpr char kKeyEncryptionKeyUri[] = "keyEncryptionKeyUri";
 constexpr char kKeyMaterial[] = "keyMaterial";
 constexpr char kListKeysByTimeUri[] = ":recent";
 constexpr char kMaxAgeSecondsQueryParameter[] = "maxAgeSeconds=";
+constexpr char kEncryptedKeyset[] = "encryptedKeyset";
 }  // namespace
 
 namespace google::scp::cpio::client_providers {
@@ -97,6 +100,9 @@ ExecutionResult PrivateKeyFetchingClientUtils::ParsePrivateKey(
     PrivateKeyFetchingResponse& response) noexcept {
   auto json_response =
       nlohmann::json::parse(body.bytes->begin(), body.bytes->end());
+
+  std::cout << "decrypt private key: " << json_response << std::endl;
+
   auto json_keys = json_response.find(kEncryptionKeysLabel);
   if (json_keys == json_response.end()) {
     // For fetching encryption key by ID, will return only one key.
@@ -235,7 +241,28 @@ ExecutionResult PrivateKeyFetchingClientUtils::ParseKeyData(
     if (!result.Successful()) {
       return result;
     }
+    std::cout << "key_material in decrypt private key: " << key_material
+              << std::endl;
     key_data.key_material = std::make_shared<std::string>(key_material);
+
+    // auto json_keyset = key_data_json.value()[i];
+    auto key_data_json = json_response.find(key_data_tag);
+
+    std::string encrypted_keyset;
+    result = ParseJsonValue(nlohmann::json::parse(key_material),
+                            kEncryptedKeyset, encrypted_keyset);
+    if (!result.Successful()) {
+      return result;
+    }
+    std::cout << "encrypted_keyset in decrypt private key: " << encrypted_keyset
+              << std::endl;
+
+    std::string decoded_encrypted_keyset;
+    Base64Decode(encrypted_keyset, decoded_encrypted_keyset);
+    std::cout << "decoded_encrypted_keyset in decrypt private key: " << decoded_encrypted_keyset
+              << std::endl;
+    std::string decrypted = AzurePrivateKeyFetchingClientUtils::KeyUnwrap(
+        wrappingKey_, decoded_encrypted_keyset);
 
     if (!key_material.empty() && !kek_uri.empty()) {
       found_key_material = true;
