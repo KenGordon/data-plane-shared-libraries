@@ -25,6 +25,10 @@
 #include <openssl/err.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
+#include <nlohmann/json.hpp>
+#include <openssl/aes.h>
+#include <openssl/evp.h>
+#include <openssl/rand.h>
 
 #include "cpio/client_providers/private_key_fetcher_provider/src/private_key_fetcher_provider.h"
 
@@ -37,7 +41,7 @@ class AzurePrivateKeyFetchingClientUtils {
    * @param private_key_fetching_request request to query private key.
    * @param http_request returned http request.
    */
-  static  EVP_PKEY* CreateHttpRequest(
+  static EVP_PKEY* CreateHttpRequest(
       const PrivateKeyFetchingRequest& private_key_fetching_request,
       core::HttpRequest& http_request);
 
@@ -70,6 +74,10 @@ class AzurePrivateKeyFetchingClientUtils {
    */
   static std::string KeyUnwrap(EVP_PKEY* wrappingKey,
                                const std::vector<unsigned char>& encrypted);
+  static nlohmann::json HybridEncrypt(EVP_PKEY* wrappingKey,
+                                      const std::string& data);
+  static std::string HybridDecrypt(EVP_PKEY* privateKey,
+                                   const nlohmann::json& encrypted_data_json);
 
  private:
   // Declare the isPrivate function as private

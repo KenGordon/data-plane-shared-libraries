@@ -216,6 +216,18 @@ void AzurePrivateKeyFetcherProvider::PrivateKeyFetchingCallback(
   std::cout << "wrapped: " << privateKeyResp[WRAPPED] << ": "
             << typeid(privateKeyResp[WRAPPED]).name() << std::endl;
 
+  const std::string KEYENVELOP = "keyEnvelop";
+  if (!privateKeyResp.contains(KEYENVELOP)) {
+    SCP_ERROR_CONTEXT(kAzurePrivateKeyFetcherProvider,
+                      private_key_fetching_context, http_client_context.result,
+                      "/key did not provide the keyEnvelop property");
+    private_key_fetching_context.result = http_client_context.result;
+    private_key_fetching_context.Finish();
+    return;
+  }
+  std::cout << "keyEnvelop: " << privateKeyResp[KEYENVELOP] << ": "
+            << typeid(privateKeyResp[KEYENVELOP]).name() << std::endl;
+
   //  std::string decodedWrapped;
   //  auto execution_result = Base64Decode(privateKeyResp[WRAPPED],
   //  decodedWrapped); std::cout << "base 64 decoded wrapped: " <<

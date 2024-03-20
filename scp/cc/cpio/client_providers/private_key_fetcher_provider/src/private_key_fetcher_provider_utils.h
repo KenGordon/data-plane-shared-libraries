@@ -26,7 +26,6 @@
 #include "core/interface/http_types.h"
 #include "cpio/client_providers/interface/private_key_fetcher_provider_interface.h"
 #include "public/core/interface/execution_result.h"
-#include "cpio/client_providers/private_key_fetcher_provider/src/azure/azure_private_key_fetcher_provider_utils.h"
 
 #include "error_codes.h"
 

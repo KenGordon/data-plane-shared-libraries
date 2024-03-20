@@ -17,6 +17,9 @@
 #include "azure_private_key_fetcher_provider_utils.h"
 
 #include <memory>
+#include <string>
+#include <vector>
+
 #include "azure/attestation/src/attestation.h"
 
 using google::scp::azure::attestation::fetchFakeSnpAttestation;
@@ -40,7 +43,7 @@ bool AzurePrivateKeyFetchingClientUtils::isPrivate(EVP_PKEY* pkey) {
   return is_private;
 }
 
- EVP_PKEY* AzurePrivateKeyFetchingClientUtils::CreateHttpRequest(
+EVP_PKEY* AzurePrivateKeyFetchingClientUtils::CreateHttpRequest(
     const PrivateKeyFetchingRequest& request, HttpRequest& http_request) {
   const auto& base_uri =
       request.key_vending_endpoint->private_key_vending_service_endpoint;
@@ -54,7 +57,8 @@ bool AzurePrivateKeyFetchingClientUtils::isPrivate(EVP_PKEY* pkey) {
   EVP_PKEY* publicKey = wrappingKey.second;
 
   nlohmann::json json_obj;
-  json_obj["wrappingKey"] = AzurePrivateKeyFetchingClientUtils::EvpPkeyToPem(publicKey);
+  json_obj["wrappingKey"] =
+      AzurePrivateKeyFetchingClientUtils::EvpPkeyToPem(publicKey);
 
   // Generate attestation report
   const auto report =
