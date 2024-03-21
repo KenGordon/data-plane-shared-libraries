@@ -29,7 +29,7 @@
 #include "cpio/client_providers/private_key_fetcher_provider/src/azure/azure_private_key_fetcher_provider_utils.h"
 #include "public/cpio/interface/kms_client/type_def.h"
 #include "core/utils/src/base64.h"
-
+#include "proto/hpke.pb.h"
 #include "error_codes.h"
 
 using google::cmrt::sdk::kms_service::v1::DecryptRequest;
@@ -119,6 +119,7 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
   const auto& access_token = *get_token_context.response->session_token;
 
   const auto& ciphertext = decrypt_context.request->ciphertext();
+
   if (ciphertext.empty()) {
     auto execution_result = FailureExecutionResult(
         SC_AZURE_KMS_CLIENT_PROVIDER_CIPHER_TEXT_NOT_FOUND);
@@ -174,7 +175,7 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
 
   nlohmann::json payload;
   payload["wrapped"] = ciphertext;
-  payload["kid"] = key_id;
+  payload["wrappedKid"] = key_id;
   payload["attestation"] = nlohmann::json(report.value());
   payload["wrappingKey"] = nlohmann::json(publicKey);
 
@@ -215,20 +216,12 @@ void AzureKmsClientProvider::OnDecryptCallback(
   std::cout << "unwrapKey response: " << resp << std::endl;
   nlohmann::json unwrapResp = nlohmann::json::parse(resp);
   const std::string WRAPPED = "wrapped";
-  std::cout << "wrapped: " << unwrapResp[WRAPPED] << std::endl;
+
   std::string decodedWrapped;
   auto execution_result = Base64Decode(unwrapResp[WRAPPED], decodedWrapped);
   std::vector<uint8_t> encrypted(decodedWrapped.begin(), decodedWrapped.end());
+  std::cout << "base64 decode passed " << std::endl;
   
-  // Decrypt resp from unwrapKey
-  if (!unwrapResp.contains(WRAPPED)) {
-    SCP_ERROR_CONTEXT(kAzureKmsClientProvider, decrypt_context,
-                      http_client_context.result,
-                      "unwrapKey did not provide the wrapped property");
-    decrypt_context.result = http_client_context.result;
-    decrypt_context.Finish();
-    return;
-  }
   std::string decrypted = AzurePrivateKeyFetchingClientUtils::KeyUnwrap(
       wrappingKey_, encrypted);
   decrypt_context.response = std::make_shared<DecryptResponse>();

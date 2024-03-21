@@ -28,7 +28,7 @@
 #include "cpio/client_providers/interface/kms_client_provider_interface.h"
 #include "public/core/interface/execution_result.h"
 #include "cpio/client_providers/private_key_fetcher_provider/src/azure/azure_private_key_fetcher_provider_utils.h"
-
+#include "cpio/client_providers/private_key_fetcher_provider/src/private_key_fetcher_provider_utils.h"
 namespace google::scp::cpio::client_providers {
 
 /*! @copydoc KmsClientProviderInterface

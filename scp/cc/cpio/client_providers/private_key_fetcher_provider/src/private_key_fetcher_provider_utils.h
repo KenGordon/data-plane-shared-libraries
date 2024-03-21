@@ -26,7 +26,6 @@
 #include "core/interface/http_types.h"
 #include "cpio/client_providers/interface/private_key_fetcher_provider_interface.h"
 #include "public/core/interface/execution_result.h"
-#include "cpio/client_providers/private_key_fetcher_provider/src/azure/azure_private_key_fetcher_provider_utils.h"
 
 #include "error_codes.h"
 
@@ -83,7 +82,6 @@ class PrivateKeyFetchingClientUtils {
           core::errors::SC_PRIVATE_KEY_FETCHER_PROVIDER_JSON_TAG_NOT_FOUND);
     }
     json_value = it.value();
-    std::cout << "ParseJsonValue->json_value: " << json_value << std::endl;
     return core::SuccessExecutionResult();
   }
 

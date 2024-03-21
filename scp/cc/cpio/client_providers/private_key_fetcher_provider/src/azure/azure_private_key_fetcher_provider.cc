@@ -25,7 +25,6 @@
 #include "absl/strings/str_cat.h"
 #include "azure/attestation/src/attestation.h"
 #include "core/interface/http_client_interface.h"
-#include "core/utils/src/base64.h"
 #include "cpio/client_providers/interface/auth_token_provider_interface.h"
 #include "cpio/client_providers/interface/role_credentials_provider_interface.h"
 #include "cpio/client_providers/private_key_fetcher_provider/src/private_key_fetcher_provider_utils.h"
@@ -45,7 +44,6 @@ using google::scp::core::SuccessExecutionResult;
 using google::scp::core::common::kZeroUuid;
 using google::scp::core::errors::
     SC_AZURE_PRIVATE_KEY_FETCHER_CREDENTIALS_PROVIDER_NOT_FOUND;
-using google::scp::core::utils::Base64Decode;
 using std::bind;
 using std::placeholders::_1;
 
@@ -197,48 +195,10 @@ void AzurePrivateKeyFetcherProvider::PrivateKeyFetchingCallback(
     }
     return;
   }
-
-  std::cout << "PrivateKey fetcher response: " << http_client_context.response
-            << std::endl;
   std::string resp(http_client_context.response->body.bytes->begin(),
                    http_client_context.response->body.bytes->end());
-  std::cout << "unwrapKey response: " << resp << std::endl;
+  std::cout << "/Key response: " << resp << std::endl;
   nlohmann::json privateKeyResp = nlohmann::json::parse(resp);
-  const std::string WRAPPED = "wrapped";
-  if (!privateKeyResp.contains(WRAPPED)) {
-    SCP_ERROR_CONTEXT(kAzurePrivateKeyFetcherProvider,
-                      private_key_fetching_context, http_client_context.result,
-                      "/key did not provide the wrapped property");
-    private_key_fetching_context.result = http_client_context.result;
-    private_key_fetching_context.Finish();
-    return;
-  }
-  std::cout << "wrapped: " << privateKeyResp[WRAPPED] << ": "
-            << typeid(privateKeyResp[WRAPPED]).name() << std::endl;
-
-  //  std::string decodedWrapped;
-  //  auto execution_result = Base64Decode(privateKeyResp[WRAPPED],
-  //  decodedWrapped); std::cout << "base 64 decoded wrapped: " <<
-  //  decodedWrapped << std::endl;
-
-  PrivateKeyFetchingResponse response;
-  std::string res = privateKeyResp[WRAPPED];
-  // auto pk = std::make_shared<BytesBuffer>(res);
-  core::BytesBuffer pk(res);
-  // std::vector<uint8_t> vec(res.begin(), res.end());
-  // auto result =
-  // PrivateKeyFetchingClientUtils::ParsePrivateKey(privateKeyResp[WRAPPED],
-  // response);
-  auto result = PrivateKeyFetchingClientUtils::ParsePrivateKey(pk, response);
-  if (!result.Successful()) {
-    SCP_ERROR_CONTEXT(
-        kAzurePrivateKeyFetcherProvider, private_key_fetching_context,
-        private_key_fetching_context.result, "Failed to parse private key.");
-    private_key_fetching_context.result = result;
-    private_key_fetching_context.Finish();
-    return;
-  }
-
   const std::string WRAPPEDKID = "wrappedKid";
   if (!privateKeyResp.contains(WRAPPEDKID)) {
     SCP_ERROR_CONTEXT(kAzurePrivateKeyFetcherProvider,
@@ -250,17 +210,21 @@ void AzurePrivateKeyFetcherProvider::PrivateKeyFetchingCallback(
   }
   std::cout << "wrappedKid: " << privateKeyResp[WRAPPEDKID] << std::endl;
 
-  // std::vector<uint8_t> encrypted(decodedWrapped.begin(),
-  // decodedWrapped.end());
+  const std::string WRAPPED = "wrapped";
+  if (!privateKeyResp.contains(WRAPPED)) {
+    SCP_ERROR_CONTEXT(kAzurePrivateKeyFetcherProvider,
+                      private_key_fetching_context, http_client_context.result,
+                      "/key did not provide the wrapped property");
+    private_key_fetching_context.result = http_client_context.result;
+    private_key_fetching_context.Finish();
+    return;
+  }
 
-  /*
-
-    // Decrypt resp from PrivateKey request
-    std::string decrypted = AzurePrivateKeyFetchingClientUtils::KeyUnwrap(
-        wrappingKey_, encrypted);
-    private_key_fetching_context.response = std::make_shared<DecryptResponse>();
+  std::string wrapped = privateKeyResp[WRAPPED];
+  core::BytesBuffer buffer(wrapped);
+  PrivateKeyFetchingResponse response;
   auto result = PrivateKeyFetchingClientUtils::ParsePrivateKey(
-      http_client_context.response->body, response);
+      buffer, response);
   if (!result.Successful()) {
     SCP_ERROR_CONTEXT(
         kAzurePrivateKeyFetcherProvider, private_key_fetching_context,
@@ -269,7 +233,6 @@ void AzurePrivateKeyFetcherProvider::PrivateKeyFetchingCallback(
     private_key_fetching_context.Finish();
     return;
   }
-  */
 
   private_key_fetching_context.response =
       std::make_shared<PrivateKeyFetchingResponse>(response);
