@@ -17,6 +17,7 @@
 #include "azure_private_key_fetcher_provider_utils.h"
 
 #include <memory>
+
 #include "azure/attestation/src/attestation.h"
 
 using google::scp::azure::attestation::fetchFakeSnpAttestation;
@@ -40,7 +41,8 @@ bool AzurePrivateKeyFetchingClientUtils::isPrivate(EVP_PKEY* pkey) {
   return is_private;
 }
 
- EVP_PKEY* AzurePrivateKeyFetchingClientUtils::CreateHttpRequest(
+void
+AzurePrivateKeyFetchingClientUtils::CreateHttpRequest(
     const PrivateKeyFetchingRequest& request, HttpRequest& http_request) {
   const auto& base_uri =
       request.key_vending_endpoint->private_key_vending_service_endpoint;
@@ -48,22 +50,15 @@ bool AzurePrivateKeyFetchingClientUtils::isPrivate(EVP_PKEY* pkey) {
 
   http_request.path = std::make_shared<Uri>(base_uri);
 
-  // Generate wrapping key
-  auto wrappingKey = AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey();
-  EVP_PKEY* privateKey = wrappingKey.first;
-  EVP_PKEY* publicKey = wrappingKey.second;
-
-  nlohmann::json json_obj;
-  json_obj["wrappingKey"] = AzurePrivateKeyFetchingClientUtils::EvpPkeyToPem(publicKey);
-
   // Generate attestation report
   const auto report =
       hasSnp() ? fetchSnpAttestation() : fetchFakeSnpAttestation();
   CHECK(report.has_value()) << "Failed to get attestation report";
+
+  nlohmann::json json_obj;
   json_obj["attestation"] = report.value();
 
   http_request.body = core::BytesBuffer(json_obj.dump());
-  return privateKey;
 }
 
 /**
@@ -137,7 +132,37 @@ AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey() {
 }
 
 /**
- * @brief Convert a wrapping key in PEM
+ * @brief Convert a PEM wrapping key to pkey
+ *
+ * @param wrappingPemKey RSA PEM key used to wrap a key.
+ */
+EVP_PKEY* AzurePrivateKeyFetchingClientUtils::PemToEvpPkey(
+    std::string wrappingPemKey) {
+  BIO* bio = BIO_new_mem_buf(wrappingPemKey.c_str(), -1);
+  if (bio == NULL) {
+    char* error_string = ERR_error_string(ERR_get_error(), NULL);
+    throw std::runtime_error(std::string("Failed to create BIO: ") +
+                             error_string);
+  }
+
+  EVP_PKEY* pkey = PEM_read_bio_PrivateKey(bio, NULL, NULL, NULL);
+  if (pkey == NULL) {
+    BIO_reset(bio); 
+    pkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
+  } 
+
+  if (pkey == NULL) {
+    char* error_string = ERR_error_string(ERR_get_error(), NULL);
+    BIO_free(bio);
+    throw std::runtime_error(std::string("Failed to read PEM: ") +
+                             error_string);
+  }
+  BIO_free(bio);
+  return pkey;
+}
+
+/**
+ * @brief Convert a wrapping key to PEM
  *
  * @param wrappingKey RSA public key used to wrap a key.
  */

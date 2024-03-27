@@ -37,7 +37,7 @@ class AzurePrivateKeyFetchingClientUtils {
    * @param private_key_fetching_request request to query private key.
    * @param http_request returned http request.
    */
-  static  EVP_PKEY* CreateHttpRequest(
+  static void CreateHttpRequest(
       const PrivateKeyFetchingRequest& private_key_fetching_request,
       core::HttpRequest& http_request);
 
@@ -52,6 +52,14 @@ class AzurePrivateKeyFetchingClientUtils {
    * @param wrappingKey RSA public key used to wrap a key.
    */
   static std::string EvpPkeyToPem(EVP_PKEY* wrappingKey);
+
+  /**
+   * @brief Convert a PEM wrapping key to pkey
+   *
+   * @param wrappingPemKey RSA PEM key used to wrap a key.
+   */
+  static EVP_PKEY* PemToEvpPkey(
+      std::string wrappingPemKey);
 
   /**
    * @brief Wrap a key using RSA OAEP
