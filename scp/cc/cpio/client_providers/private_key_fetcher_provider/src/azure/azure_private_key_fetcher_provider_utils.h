@@ -54,6 +54,22 @@ class AzurePrivateKeyFetchingClientUtils {
   static std::string EvpPkeyToPem(EVP_PKEY* wrappingKey);
 
   /**
+   * @brief Convert a public PEM wrapping key to pkey
+   *
+   * @param wrappingPemKey RSA PEM key used to wrap a key.
+   */
+  static EVP_PKEY* GetPublicEvpPkey(
+      std::string wrappingPemKey);
+      
+  /**
+   * @brief Convert a private PEM wrapping key to pkey
+   *
+   * @param wrappingPemKey RSA PEM key used to wrap a key.
+   */
+  static EVP_PKEY* GetPrivateEvpPkey(
+      std::string wrappingPemKey);
+
+  /**
    * @brief Convert a PEM wrapping key to pkey
    *
    * @param wrappingPemKey RSA PEM key used to wrap a key.

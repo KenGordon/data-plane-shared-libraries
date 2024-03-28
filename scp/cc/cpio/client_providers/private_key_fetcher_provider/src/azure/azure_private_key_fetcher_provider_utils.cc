@@ -29,6 +29,71 @@ using google::scp::core::Uri;
 
 namespace google::scp::cpio::client_providers {
 
+// Define RAII memory allocation/deallocation classes
+class RsaWrapper {
+ public:
+  RsaWrapper() : rsa_(RSA_new()) {}
+
+  ~RsaWrapper() { RSA_free(rsa_); }
+
+  RSA* get() { return rsa_; }
+
+ private:
+  RSA* rsa_;
+};
+
+class BnWrapper {
+ public:
+  BnWrapper() : bn_(BN_new()) {}
+
+  ~BnWrapper() { BN_free(bn_); }
+
+  BIGNUM* get() { return bn_; }
+
+ private:
+  BIGNUM* bn_;
+};
+
+class EvpPkeyWrapper {
+ public:
+  EvpPkeyWrapper() : pkey_(EVP_PKEY_new()) {}
+
+  ~EvpPkeyWrapper() { EVP_PKEY_free(pkey_); }
+
+  EVP_PKEY* get() { return pkey_; }
+
+ private:
+  EVP_PKEY* pkey_;
+};
+
+class BIOWrapper {
+ public:
+  explicit BIOWrapper(BIO_METHOD* method) : bio_(BIO_new(method)) {}
+
+  ~BIOWrapper() { BIO_free(bio_); }
+
+  BIO* get() { return bio_; }
+
+ private:
+  BIO* bio_;
+};
+
+class EVPKeyCtxWrapper {
+public:
+    explicit EVPKeyCtxWrapper(EVP_PKEY_CTX* ctx) : ctx_(ctx) {}
+    ~EVPKeyCtxWrapper() {
+        if (ctx_) {
+            EVP_PKEY_CTX_free(ctx_);
+            ctx_ = nullptr;
+        }
+    }
+    
+    EVP_PKEY_CTX* get() const { return ctx_; }
+
+private:
+    EVP_PKEY_CTX* ctx_;
+};
+
 bool AzurePrivateKeyFetchingClientUtils::isPrivate(EVP_PKEY* pkey) {
   // Determine if the key is private or public
   int key_type = EVP_PKEY_type(pkey->type);
@@ -41,8 +106,7 @@ bool AzurePrivateKeyFetchingClientUtils::isPrivate(EVP_PKEY* pkey) {
   return is_private;
 }
 
-void
-AzurePrivateKeyFetchingClientUtils::CreateHttpRequest(
+void AzurePrivateKeyFetchingClientUtils::CreateHttpRequest(
     const PrivateKeyFetchingRequest& request, HttpRequest& http_request) {
   const auto& base_uri =
       request.key_vending_endpoint->private_key_vending_service_endpoint;
@@ -66,69 +130,95 @@ AzurePrivateKeyFetchingClientUtils::CreateHttpRequest(
  */
 std::pair<EVP_PKEY*, EVP_PKEY*>
 AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey() {
-  RSA* rsa = RSA_new();
-  BIGNUM* e = BN_new();
+  RsaWrapper rsa;
+  BnWrapper e;
 
-  BN_set_word(e, RSA_F4);
-  RSA_generate_key_ex(rsa, 4096, e, NULL);
+  BN_set_word(e.get(), RSA_F4);
+  RSA_generate_key_ex(rsa.get(), 4096, e.get(), NULL);
 
-  EVP_PKEY* private_key = EVP_PKEY_new();
-  if (private_key == NULL) {
+  EvpPkeyWrapper private_key;
+  if (EVP_PKEY_set1_RSA(private_key.get(), rsa.get()) != 1) {
     char* error_string = ERR_error_string(ERR_get_error(), NULL);
-    throw std::runtime_error(std::string("New EVP_PKEY failed: ") +
-                             error_string);
-  }
-
-  if (EVP_PKEY_set1_RSA(private_key, rsa) != 1) {
-    char* error_string = ERR_error_string(ERR_get_error(), NULL);
-    throw std::runtime_error(std::string("Set RSA key failed: ") +
+    throw std::runtime_error(std::string("Getting private EVP_PKEY failed: ") +
                              error_string);
   }
 
   // Create a new EVP_PKEY for the public key
-  EVP_PKEY* public_key = EVP_PKEY_new();
-  if (public_key == NULL) {
-    char* error_string = ERR_error_string(ERR_get_error(), NULL);
-    throw std::runtime_error(std::string("New EVP_PKEY (public) failed: ") +
-                             error_string);
-  }
-
-  // Get the RSA public key structure
-  const RSA* rsa_pub = EVP_PKEY_get1_RSA(private_key);
-  if (rsa_pub == NULL) {
-    char* error_string = ERR_error_string(ERR_get_error(), NULL);
-    throw std::runtime_error(std::string("Get RSA public key failed: ") +
-                             error_string);
-  }
-
-  // Duplicate the RSA public key structure
+  EvpPkeyWrapper public_key;
+  const RSA* rsa_pub = EVP_PKEY_get1_RSA(private_key.get());
   RSA* rsa_pub_dup = RSA_new();
-  if (rsa_pub_dup == NULL) {
-    char* error_string = ERR_error_string(ERR_get_error(), NULL);
-    throw std::runtime_error(
-        std::string("Create RSA public key duplicate failed: ") + error_string);
-  }
-
   if (!RSA_set0_key(rsa_pub_dup, rsa_pub->n, rsa_pub->e, NULL)) {
     char* error_string = ERR_error_string(ERR_get_error(), NULL);
     throw std::runtime_error(
         std::string("Set RSA public key duplicate values failed: ") +
-        error_string);
+        error_string);  // handle error
   }
-
   RSA_up_ref(rsa_pub_dup);
-
-  // Set the duplicated RSA public key structure to the public_key EVP_PKEY
-  if (EVP_PKEY_set1_RSA(public_key, rsa_pub_dup) != 1) {
+  if (EVP_PKEY_set1_RSA(public_key.get(), rsa_pub_dup) != 1) {
     char* error_string = ERR_error_string(ERR_get_error(), NULL);
     throw std::runtime_error(std::string("Set RSA public key failed: ") +
                              error_string);
   }
 
-  BN_free(e);
-  RSA_free(rsa);  // Free the RSA structure if we're done with it
+  return std::make_pair(private_key.get(), public_key.get());
+}
 
-  return std::make_pair(private_key, public_key);
+/**
+ * @brief Convert a private PEM wrapping key to pkey
+ *
+ * @param wrappingPemKey RSA PEM key used to wrap a key.
+ */
+EVP_PKEY* AzurePrivateKeyFetchingClientUtils::GetPrivateEvpPkey(
+    std::string wrappingPemKey) {
+  // Create a BIOWrapper object to manage the BIO resource
+  BIOWrapper bioWrapper(const_cast<BIO_METHOD*>(BIO_s_mem()));
+
+  BIO* bio = bioWrapper.get();
+  if (bio == NULL) {
+    char* error_string = ERR_error_string(ERR_get_error(), NULL);
+    throw std::runtime_error(std::string("Failed to create BIO: ") +
+                             error_string);
+  }
+
+  // Write PEM data to BIO
+  if (BIO_write(bio, wrappingPemKey.c_str(), wrappingPemKey.size()) <= 0) {
+    char* error_string = ERR_error_string(ERR_get_error(), NULL);
+    throw std::runtime_error(std::string("Failed to write to BIO: ") +
+                             error_string);
+  }
+
+  // Read the PEM key
+  EVP_PKEY* pkey = PEM_read_bio_PrivateKey(bio, NULL, NULL, NULL);
+  return pkey;
+}
+
+/**
+ * @brief Convert a public PEM wrapping key to pkey
+ *
+ * @param wrappingPemKey RSA PEM key used to wrap a key.
+ */
+EVP_PKEY* AzurePrivateKeyFetchingClientUtils::GetPublicEvpPkey(
+    std::string wrappingPemKey) {
+  // Create a BIOWrapper object to manage the BIO resource
+  BIOWrapper bioWrapper(const_cast<BIO_METHOD*>(BIO_s_mem()));
+
+  BIO* bio = bioWrapper.get();
+  if (bio == NULL) {
+    char* error_string = ERR_error_string(ERR_get_error(), NULL);
+    throw std::runtime_error(std::string("Failed to create BIO: ") +
+                             error_string);
+  }
+
+  // Write PEM data to BIO
+  if (BIO_write(bio, wrappingPemKey.c_str(), wrappingPemKey.size()) <= 0) {
+    char* error_string = ERR_error_string(ERR_get_error(), NULL);
+    throw std::runtime_error(std::string("Failed to write to BIO: ") +
+                             error_string);
+  }
+
+  // Read the PEM key
+  EVP_PKEY* pkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
+  return pkey;
 }
 
 /**
@@ -138,26 +228,19 @@ AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey() {
  */
 EVP_PKEY* AzurePrivateKeyFetchingClientUtils::PemToEvpPkey(
     std::string wrappingPemKey) {
-  BIO* bio = BIO_new_mem_buf(wrappingPemKey.c_str(), -1);
-  if (bio == NULL) {
-    char* error_string = ERR_error_string(ERR_get_error(), NULL);
-    throw std::runtime_error(std::string("Failed to create BIO: ") +
-                             error_string);
-  }
 
-  EVP_PKEY* pkey = PEM_read_bio_PrivateKey(bio, NULL, NULL, NULL);
+  EVP_PKEY* pkey = GetPrivateEvpPkey(wrappingPemKey);    
   if (pkey == NULL) {
-    BIO_reset(bio); 
-    pkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
-  } 
+    // Attempt to read the PEM key as a public key
+    pkey = GetPublicEvpPkey(wrappingPemKey); 
+  }
 
   if (pkey == NULL) {
     char* error_string = ERR_error_string(ERR_get_error(), NULL);
-    BIO_free(bio);
-    throw std::runtime_error(std::string("Failed to read PEM: ") +
+    throw std::runtime_error(std::string("Failed to read private and public PEM key: ") +
                              error_string);
   }
-  BIO_free(bio);
+
   return pkey;
 }
 
@@ -167,9 +250,13 @@ EVP_PKEY* AzurePrivateKeyFetchingClientUtils::PemToEvpPkey(
  * @param wrappingKey RSA public key used to wrap a key.
  */
 std::string AzurePrivateKeyFetchingClientUtils::EvpPkeyToPem(EVP_PKEY* pkey) {
-  BIO* bio = BIO_new(BIO_s_mem());
-  if (bio == NULL) {
-    char* error_string = ERR_error_string(ERR_get_error(), NULL);
+  // Create a BIOWrapper object to manage the BIO resource
+  BIOWrapper bioWrapper(const_cast<BIO_METHOD*>(BIO_s_mem()));
+
+  // Get the BIO object from the wrapper
+  BIO* bio = bioWrapper.get();
+  if (bio == nullptr) {
+    char* error_string = ERR_error_string(ERR_get_error(), nullptr);
     throw std::runtime_error(std::string("Failed to create BIO: ") +
                              error_string);
   }
@@ -180,15 +267,14 @@ std::string AzurePrivateKeyFetchingClientUtils::EvpPkeyToPem(EVP_PKEY* pkey) {
   // Write the key to the BIO as PEM
   int write_result;
   if (is_private) {
-    write_result =
-        PEM_write_bio_PrivateKey(bio, pkey, NULL, NULL, 0, NULL, NULL);
+    write_result = PEM_write_bio_PrivateKey(
+        bio, pkey, nullptr, nullptr, 0, nullptr, nullptr);
   } else {
     write_result = PEM_write_bio_PUBKEY(bio, pkey);
   }
 
   if (write_result != 1) {
-    char* error_string = ERR_error_string(ERR_get_error(), NULL);
-    BIO_free(bio);
+    char* error_string = ERR_error_string(ERR_get_error(), nullptr);
     throw std::runtime_error(std::string("Failed to write PEM: ") +
                              error_string);
   }
@@ -198,9 +284,12 @@ std::string AzurePrivateKeyFetchingClientUtils::EvpPkeyToPem(EVP_PKEY* pkey) {
   BIO_get_mem_ptr(bio, &bio_mem);
   std::string pem_str(bio_mem->data, bio_mem->length);
 
-  BIO_free(bio);
+  // No need to free the BIO explicitly, as it will be automatically
+  // cleaned up when the BIOWrapper object goes out of scope
+
   return pem_str;
 }
+
 
 /**
  * @brief Wrap a key using RSA OAEP
@@ -210,22 +299,18 @@ std::string AzurePrivateKeyFetchingClientUtils::EvpPkeyToPem(EVP_PKEY* pkey) {
  */
 std::vector<unsigned char> AzurePrivateKeyFetchingClientUtils::KeyWrap(
     EVP_PKEY* wrappingKey, const std::string& data) {
-  // Print out the wrapping key type and size
-  int key_type = EVP_PKEY_base_id(wrappingKey);
-  int key_size = EVP_PKEY_size(wrappingKey);
-  std::cout << "Wrap key type: " << key_type << ", size: " << key_size
-            << std::endl;
-
-  bool is_private = isPrivate(wrappingKey);
-  if (is_private) {
+  // Ensure that the wrapping key is public
+  if (isPrivate(wrappingKey)) {
     throw std::runtime_error("Use public key for KeyWrap");
   }
 
-  // Create an EVP_PKEY_CTX for the wrapping key
-  EVP_PKEY_CTX* ctx = EVP_PKEY_CTX_new(wrappingKey, NULL);
-  if (ctx == NULL) {
+  // Create a wrapper for the EVP_PKEY_CTX resource
+  EVPKeyCtxWrapper ctxWrapper(EVP_PKEY_CTX_new(wrappingKey, NULL));
+  if (ctxWrapper.get() == nullptr) {
     throw std::runtime_error("Failed to create EVP_PKEY_CTX");
   }
+
+  EVP_PKEY_CTX* ctx = ctxWrapper.get();
 
   // Initialize the context for encryption
   if (EVP_PKEY_encrypt_init(ctx) != 1) {
@@ -239,25 +324,19 @@ std::vector<unsigned char> AzurePrivateKeyFetchingClientUtils::KeyWrap(
 
   // Set the OAEP parameters
   const EVP_MD* md = EVP_sha256();
-  int md_size = EVP_MD_size(md);
-  std::cout << "OAEP digest: " << md_size << " bytes" << std::endl;
   if (EVP_PKEY_CTX_set_rsa_oaep_md(ctx, md) != 1) {
-    unsigned long err_code = ERR_get_error();
     char err_str[120];
+    unsigned long err_code = ERR_get_error();
     ERR_error_string_n(err_code, err_str, sizeof(err_str));
-    throw std::runtime_error("Failed to set OAEP digest: " +
-                             std::string(err_str));
+    throw std::runtime_error("Failed to set OAEP digest: " + std::string(err_str));
   }
 
   // Get the maximum encrypted data size
   size_t encrypted_len;
-  if (EVP_PKEY_encrypt(ctx, NULL, &encrypted_len,
+  if (EVP_PKEY_encrypt(ctx, nullptr, &encrypted_len,
                        reinterpret_cast<const unsigned char*>(data.data()),
                        data.size()) != 1) {
-    char* error_string = ERR_error_string(ERR_get_error(), NULL);
-    throw std::runtime_error(
-        std::string("Failed to get maximum encrypted data size: ") +
-        error_string);
+    throw std::runtime_error("Failed to get maximum encrypted data size");
   }
 
   // Allocate space for the encrypted data
@@ -267,12 +346,8 @@ std::vector<unsigned char> AzurePrivateKeyFetchingClientUtils::KeyWrap(
   if (EVP_PKEY_encrypt(ctx, encrypted.data(), &encrypted_len,
                        reinterpret_cast<const unsigned char*>(data.data()),
                        data.size()) != 1) {
-    char* error_string = ERR_error_string(ERR_get_error(), NULL);
-    throw std::runtime_error(std::string("Encryption failed: ") + error_string);
+    throw std::runtime_error("Encryption failed");
   }
-
-  // Clean up the EVP_PKEY_CTX
-  EVP_PKEY_CTX_free(ctx);
 
   // Resize the encrypted data vector
   encrypted.resize(encrypted_len);
@@ -287,22 +362,18 @@ std::vector<unsigned char> AzurePrivateKeyFetchingClientUtils::KeyWrap(
  */
 std::string AzurePrivateKeyFetchingClientUtils::KeyUnwrap(
     EVP_PKEY* wrappingKey, const std::vector<unsigned char>& encrypted) {
-  // Print out the wrapping key type and size
-  int key_type = EVP_PKEY_base_id(wrappingKey);
-  int key_size = EVP_PKEY_size(wrappingKey);
-  std::cout << "Unwrap key type: " << key_type << ", size: " << key_size
-            << std::endl;
-
-  bool is_private = isPrivate(wrappingKey);
-  if (!is_private) {
+  // Ensure that the wrapping key is private
+  if (!isPrivate(wrappingKey)) {
     throw std::runtime_error("Use private key for KeyUnwrap");
   }
 
-  // Create an EVP_PKEY_CTX for the wrapping key
-  EVP_PKEY_CTX* ctx = EVP_PKEY_CTX_new(wrappingKey, NULL);
-  if (ctx == NULL) {
+  // Create a wrapper for the EVP_PKEY_CTX resource
+  EVPKeyCtxWrapper ctxWrapper(EVP_PKEY_CTX_new(wrappingKey, NULL));
+  if (ctxWrapper.get() == nullptr) {
     throw std::runtime_error("Failed to create EVP_PKEY_CTX");
   }
+
+  EVP_PKEY_CTX* ctx = ctxWrapper.get();
 
   // Initialize the context for decryption
   if (EVP_PKEY_decrypt_init(ctx) != 1) {
@@ -316,24 +387,18 @@ std::string AzurePrivateKeyFetchingClientUtils::KeyUnwrap(
 
   // Set the OAEP parameters
   const EVP_MD* md = EVP_sha256();
-  int md_size = EVP_MD_size(md);
-  std::cout << "OAEP digest: " << md_size << " bytes" << std::endl;
   if (EVP_PKEY_CTX_set_rsa_oaep_md(ctx, md) != 1) {
-    unsigned long err_code = ERR_get_error();
     char err_str[120];
+    unsigned long err_code = ERR_get_error();
     ERR_error_string_n(err_code, err_str, sizeof(err_str));
-    throw std::runtime_error("Failed to set OAEP digest: " +
-                             std::string(err_str));
+    throw std::runtime_error("Failed to set OAEP digest: " + std::string(err_str));
   }
 
   // Get the maximum decrypted data size
   size_t decrypted_len;
-  if (EVP_PKEY_decrypt(ctx, NULL, &decrypted_len, encrypted.data(),
+  if (EVP_PKEY_decrypt(ctx, nullptr, &decrypted_len, encrypted.data(),
                        encrypted.size()) != 1) {
-    char* error_string = ERR_error_string(ERR_get_error(), NULL);
-    throw std::runtime_error(
-        std::string("Failed to get maximum decrypted data size: ") +
-        error_string);
+    throw std::runtime_error("Failed to get maximum decrypted data size");
   }
 
   // Allocate space for the decrypted data based on the maximum size
@@ -342,16 +407,13 @@ std::string AzurePrivateKeyFetchingClientUtils::KeyUnwrap(
   // Decrypt the data
   if (EVP_PKEY_decrypt(ctx, decrypted.data(), &decrypted_len, encrypted.data(),
                        encrypted.size()) != 1) {
-    char* error_string = ERR_error_string(ERR_get_error(), NULL);
-    throw std::runtime_error(std::string("Decryption failed: ") + error_string);
+    throw std::runtime_error("Decryption failed");
   }
-
-  // Clean up the EVP_PKEY_CTX
-  EVP_PKEY_CTX_free(ctx);
 
   // Resize the decrypted data vector and convert to string
   decrypted.resize(decrypted_len);
   return std::string(decrypted.begin(), decrypted.end());
 }
+
 
 }  // namespace google::scp::cpio::client_providers
