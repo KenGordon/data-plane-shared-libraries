@@ -28,8 +28,6 @@
 #include "error_codes.h"
 
 namespace google::scp::cpio::client_providers {
-    
-/// Response for fetching private key.
 /*! @copydoc PrivateKeyFetcherProviderInterface
  */
 class PrivateKeyFetcherProvider : public PrivateKeyFetcherProviderInterface {
