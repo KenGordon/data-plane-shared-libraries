@@ -58,6 +58,7 @@ using google::scp::core::errors::
 using google::scp::core::utils::Base64Decode;
 using google::scp::core::utils::Base64Encode;
 using google::scp::cpio::client_providers::AzurePrivateKeyFetchingClientUtils;
+using google::scp::cpio::client_providers::EvpPkeyWrapper;
 using std::all_of;
 using std::bind;
 using std::cbegin;
@@ -67,7 +68,6 @@ using std::make_shared;
 using std::pair;
 using std::shared_ptr;
 using std::placeholders::_1;
-using google::scp::cpio::client_providers::EvpPkeyWrapper;
 
 namespace google::scp::cpio::client_providers {
 
@@ -170,9 +170,6 @@ mEzfKqJMBggKib/+e4Eb/ENdvxeT1X2YXpZ3tjZE+bRoiDgN4FYqBzYtZ/ieRcsq
 )";
 }
 
-// Temporary store wrappingKey
-std::pair<std::unique_ptr<EvpPkeyWrapper>, std::unique_ptr<EvpPkeyWrapper>> wrappingKey_;
-
 std::string GetTestPemPrivWrapKey() {
   std::string result = std::string(kPemSeperator) + kPemBegin + kPemToken +
                        kPemKey + kPemSeperator + "\n" + kWrappingKp +
@@ -262,10 +259,12 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
 
   EVP_PKEY* publicKey;
   EVP_PKEY* privateKey;
+  std::pair<std::unique_ptr<EvpPkeyWrapper>, std::unique_ptr<EvpPkeyWrapper>>
+      wrappingKey;
   if (hasSnp()) {
     // Generate wrapping key
     try {
-      wrappingKey_ = AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey();
+      wrappingKey = AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey();
     } catch (const std::runtime_error& e) {
       std::string errorMessage = "Failed to generate wrapping key : ";
       errorMessage += e.what();
@@ -276,8 +275,8 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
                         execution_result, errorMessage);
     }
 
-    privateKey = wrappingKey_.first->get();
-    publicKey = wrappingKey_.second->get();
+    privateKey = wrappingKey.first->get();
+    publicKey = wrappingKey.second->get();
   } else {
     // Get test PEM public key
     auto publicPemKey = GetTestPemPublicWrapKey();
@@ -299,8 +298,10 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
     BIO_write(bio, privateKeyPem.c_str(), privateKeyPem.size());
     PEM_read_bio_PrivateKey(bio, &privateKey, nullptr, nullptr);
   }
-  
-  wrappingKey_ = std::make_pair(std::unique_ptr<EvpPkeyWrapper>(new EvpPkeyWrapper(privateKey)), std::unique_ptr<EvpPkeyWrapper>(new EvpPkeyWrapper(publicKey)));
+
+  wrappingKey = std::make_pair(
+      std::unique_ptr<EvpPkeyWrapper>(new EvpPkeyWrapper(privateKey)),
+      std::unique_ptr<EvpPkeyWrapper>(new EvpPkeyWrapper(publicKey)));
   nlohmann::json payload;
   payload[kWrapped] = ciphertext;
   payload[kWrappedKid] = key_id;
@@ -315,8 +316,8 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
        absl::StrCat(kBearerTokenPrefix, access_token)});
 
   http_context.callback = bind(&AzureKmsClientProvider::OnDecryptCallback, this,
-                               decrypt_context, _1);
-
+                               std::move(wrappingKey), std::ref(decrypt_context), _1);
+                               
   auto execution_result = http_client_->PerformRequest(http_context);
   if (!execution_result.Successful()) {
     SCP_ERROR_CONTEXT(kAzureKmsClientProvider, decrypt_context,
@@ -330,6 +331,8 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
 }
 
 void AzureKmsClientProvider::OnDecryptCallback(
+    std::pair<std::unique_ptr<EvpPkeyWrapper>, std::unique_ptr<EvpPkeyWrapper>>
+        wrappingKey,
     AsyncContext<DecryptRequest, DecryptResponse>& decrypt_context,
     AsyncContext<HttpRequest, HttpResponse>& http_client_context) noexcept {
   if (!http_client_context.result.Successful()) {
@@ -367,7 +370,7 @@ void AzureKmsClientProvider::OnDecryptCallback(
   std::vector<uint8_t> encrypted(decodedWrapped.begin(), decodedWrapped.end());
 
   std::string decrypted = AzurePrivateKeyFetchingClientUtils::KeyUnwrap(
-      wrappingKey_.first->get(), encrypted);
+      wrappingKey.first->get(), encrypted);
   decrypt_context.response = std::make_shared<DecryptResponse>();
 
   decrypt_context.response->set_plaintext(decrypted);
