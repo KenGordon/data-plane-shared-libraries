@@ -170,6 +170,9 @@ mEzfKqJMBggKib/+e4Eb/ENdvxeT1X2YXpZ3tjZE+bRoiDgN4FYqBzYtZ/ieRcsq
 )";
 }
 
+// Temporary store wrappingKey
+std::pair<std::unique_ptr<EvpPkeyWrapper>, std::unique_ptr<EvpPkeyWrapper>> wrappingKey_;
+
 std::string GetTestPemPrivWrapKey() {
   std::string result = std::string(kPemSeperator) + kPemBegin + kPemToken +
                        kPemKey + kPemSeperator + "\n" + kWrappingKp +
@@ -259,12 +262,11 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
 
   EVP_PKEY* publicKey;
   EVP_PKEY* privateKey;
-  std::pair<std::unique_ptr<EvpPkeyWrapper>, std::unique_ptr<EvpPkeyWrapper>>
-      wrappingKey;
+
   if (hasSnp()) {
     // Generate wrapping key
     try {
-      wrappingKey = AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey();
+      wrappingKey_ = AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey();
     } catch (const std::runtime_error& e) {
       std::string errorMessage = "Failed to generate wrapping key : ";
       errorMessage += e.what();
@@ -275,8 +277,8 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
                         execution_result, errorMessage);
     }
 
-    privateKey = wrappingKey.first->get();
-    publicKey = wrappingKey.second->get();
+    privateKey = wrappingKey_.first->get();
+    publicKey = wrappingKey_.second->get();
   } else {
     // Get test PEM public key
     auto publicPemKey = GetTestPemPublicWrapKey();
@@ -299,7 +301,7 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
     PEM_read_bio_PrivateKey(bio, &privateKey, nullptr, nullptr);
   }
 
-  wrappingKey = std::make_pair(
+  wrappingKey_ = std::make_pair(
       std::unique_ptr<EvpPkeyWrapper>(new EvpPkeyWrapper(privateKey)),
       std::unique_ptr<EvpPkeyWrapper>(new EvpPkeyWrapper(publicKey)));
   nlohmann::json payload;
@@ -316,7 +318,7 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
        absl::StrCat(kBearerTokenPrefix, access_token)});
 
   http_context.callback = bind(&AzureKmsClientProvider::OnDecryptCallback, this,
-                               std::move(wrappingKey), std::ref(decrypt_context), _1);
+                               decrypt_context, _1);
                                
   auto execution_result = http_client_->PerformRequest(http_context);
   if (!execution_result.Successful()) {
@@ -331,8 +333,6 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
 }
 
 void AzureKmsClientProvider::OnDecryptCallback(
-    std::pair<std::unique_ptr<EvpPkeyWrapper>, std::unique_ptr<EvpPkeyWrapper>>
-        wrappingKey,
     AsyncContext<DecryptRequest, DecryptResponse>& decrypt_context,
     AsyncContext<HttpRequest, HttpResponse>& http_client_context) noexcept {
   if (!http_client_context.result.Successful()) {
@@ -370,7 +370,7 @@ void AzureKmsClientProvider::OnDecryptCallback(
   std::vector<uint8_t> encrypted(decodedWrapped.begin(), decodedWrapped.end());
 
   std::string decrypted = AzurePrivateKeyFetchingClientUtils::KeyUnwrap(
-      wrappingKey.first->get(), encrypted);
+      wrappingKey_.first->get(), encrypted);
   decrypt_context.response = std::make_shared<DecryptResponse>();
 
   decrypt_context.response->set_plaintext(decrypted);
