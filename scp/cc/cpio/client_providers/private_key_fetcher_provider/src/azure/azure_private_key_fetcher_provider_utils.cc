@@ -79,19 +79,20 @@ class BIOWrapper {
 };
 
 class EVPKeyCtxWrapper {
-public:
-    explicit EVPKeyCtxWrapper(EVP_PKEY_CTX* ctx) : ctx_(ctx) {}
-    ~EVPKeyCtxWrapper() {
-        if (ctx_) {
-            EVP_PKEY_CTX_free(ctx_);
-            ctx_ = nullptr;
-        }
-    }
-    
-    EVP_PKEY_CTX* get() const { return ctx_; }
+ public:
+  explicit EVPKeyCtxWrapper(EVP_PKEY_CTX* ctx) : ctx_(ctx) {}
 
-private:
-    EVP_PKEY_CTX* ctx_;
+  ~EVPKeyCtxWrapper() {
+    if (ctx_) {
+      EVP_PKEY_CTX_free(ctx_);
+      ctx_ = nullptr;
+    }
+  }
+
+  EVP_PKEY_CTX* get() const { return ctx_; }
+
+ private:
+  EVP_PKEY_CTX* ctx_;
 };
 
 bool AzurePrivateKeyFetchingClientUtils::isPrivate(EVP_PKEY* pkey) {
@@ -144,17 +145,17 @@ AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey() {
   }
 
   // Create a new EVP_PKEY for the public key
-  EvpPkeyWrapper public_key;
   const RSA* rsa_pub = EVP_PKEY_get1_RSA(private_key.get());
-  RSA* rsa_pub_dup = RSA_new();
-  if (!RSA_set0_key(rsa_pub_dup, rsa_pub->n, rsa_pub->e, NULL)) {
+  RsaWrapper rsa_pub_dup;
+  if (!RSA_set0_key(rsa_pub_dup.get(), rsa_pub->n, rsa_pub->e, NULL)) {
     char* error_string = ERR_error_string(ERR_get_error(), NULL);
     throw std::runtime_error(
         std::string("Set RSA public key duplicate values failed: ") +
-        error_string);  // handle error
+        error_string);  
   }
-  RSA_up_ref(rsa_pub_dup);
-  if (EVP_PKEY_set1_RSA(public_key.get(), rsa_pub_dup) != 1) {
+  RSA_up_ref(rsa_pub_dup.get());
+  EvpPkeyWrapper public_key;
+  if (EVP_PKEY_set1_RSA(public_key.get(), rsa_pub_dup.get()) != 1) {
     char* error_string = ERR_error_string(ERR_get_error(), NULL);
     throw std::runtime_error(std::string("Set RSA public key failed: ") +
                              error_string);
@@ -228,17 +229,17 @@ EVP_PKEY* AzurePrivateKeyFetchingClientUtils::GetPublicEvpPkey(
  */
 EVP_PKEY* AzurePrivateKeyFetchingClientUtils::PemToEvpPkey(
     std::string wrappingPemKey) {
-
-  EVP_PKEY* pkey = GetPrivateEvpPkey(wrappingPemKey);    
+  EVP_PKEY* pkey = GetPrivateEvpPkey(wrappingPemKey);
   if (pkey == NULL) {
     // Attempt to read the PEM key as a public key
-    pkey = GetPublicEvpPkey(wrappingPemKey); 
+    pkey = GetPublicEvpPkey(wrappingPemKey);
   }
 
   if (pkey == NULL) {
     char* error_string = ERR_error_string(ERR_get_error(), NULL);
-    throw std::runtime_error(std::string("Failed to read private and public PEM key: ") +
-                             error_string);
+    throw std::runtime_error(
+        std::string("Failed to read private and public PEM key: ") +
+        error_string);
   }
 
   return pkey;
@@ -267,8 +268,8 @@ std::string AzurePrivateKeyFetchingClientUtils::EvpPkeyToPem(EVP_PKEY* pkey) {
   // Write the key to the BIO as PEM
   int write_result;
   if (is_private) {
-    write_result = PEM_write_bio_PrivateKey(
-        bio, pkey, nullptr, nullptr, 0, nullptr, nullptr);
+    write_result = PEM_write_bio_PrivateKey(bio, pkey, nullptr, nullptr, 0,
+                                            nullptr, nullptr);
   } else {
     write_result = PEM_write_bio_PUBKEY(bio, pkey);
   }
@@ -289,7 +290,6 @@ std::string AzurePrivateKeyFetchingClientUtils::EvpPkeyToPem(EVP_PKEY* pkey) {
 
   return pem_str;
 }
-
 
 /**
  * @brief Wrap a key using RSA OAEP
@@ -328,7 +328,8 @@ std::vector<unsigned char> AzurePrivateKeyFetchingClientUtils::KeyWrap(
     char err_str[120];
     unsigned long err_code = ERR_get_error();
     ERR_error_string_n(err_code, err_str, sizeof(err_str));
-    throw std::runtime_error("Failed to set OAEP digest: " + std::string(err_str));
+    throw std::runtime_error("Failed to set OAEP digest: " +
+                             std::string(err_str));
   }
 
   // Get the maximum encrypted data size
@@ -391,7 +392,8 @@ std::string AzurePrivateKeyFetchingClientUtils::KeyUnwrap(
     char err_str[120];
     unsigned long err_code = ERR_get_error();
     ERR_error_string_n(err_code, err_str, sizeof(err_str));
-    throw std::runtime_error("Failed to set OAEP digest: " + std::string(err_str));
+    throw std::runtime_error("Failed to set OAEP digest: " +
+                             std::string(err_str));
   }
 
   // Get the maximum decrypted data size
@@ -414,6 +416,5 @@ std::string AzurePrivateKeyFetchingClientUtils::KeyUnwrap(
   decrypted.resize(decrypted_len);
   return std::string(decrypted.begin(), decrypted.end());
 }
-
 
 }  // namespace google::scp::cpio::client_providers

@@ -52,6 +52,9 @@ constexpr char kAzurePrivateKeyFetcherProvider[] =
     "AzurePrivateKeyFetcherProvider";
 constexpr char kAuthorizationHeaderKey[] = "Authorization";
 constexpr char kBearerTokenPrefix[] = "Bearer ";
+constexpr char kWrappedKid[] = "wrappedKid";
+constexpr char kWrapped[] = "wrapped";
+
 }  // namespace
 
 namespace google::scp::cpio::client_providers {
@@ -197,10 +200,23 @@ void AzurePrivateKeyFetcherProvider::PrivateKeyFetchingCallback(
   }
   std::string resp(http_client_context.response->body.bytes->begin(),
                    http_client_context.response->body.bytes->end());
-  std::cout << "/Key response: " << resp << std::endl;
-  nlohmann::json privateKeyResp = nlohmann::json::parse(resp);
-  const std::string WRAPPEDKID = "wrappedKid";
-  if (!privateKeyResp.contains(WRAPPEDKID)) {
+
+  nlohmann::json privateKeyResp;
+    try {
+    privateKeyResp =  nlohmann::json::parse(resp);
+  } catch (const nlohmann::json::parse_error& e) {
+    std::string errorMessage =
+          "Received http response could not be parsed into a JSON: ";
+      errorMessage += e.what();
+      
+    SCP_ERROR_CONTEXT(
+        kAzurePrivateKeyFetcherProvider, private_key_fetching_context, http_client_context.result,
+        errorMessage);
+        private_key_fetching_context.result = http_client_context.result;
+        private_key_fetching_context.Finish();
+    return;
+  }
+  if (!privateKeyResp.contains(kWrappedKid)) {
     SCP_ERROR_CONTEXT(kAzurePrivateKeyFetcherProvider,
                       private_key_fetching_context, http_client_context.result,
                       "/key did not provide the wrappedKid property");
@@ -208,10 +224,8 @@ void AzurePrivateKeyFetcherProvider::PrivateKeyFetchingCallback(
     private_key_fetching_context.Finish();
     return;
   }
-  std::cout << "wrappedKid: " << privateKeyResp[WRAPPEDKID] << std::endl;
 
-  const std::string WRAPPED = "wrapped";
-  if (!privateKeyResp.contains(WRAPPED)) {
+  if (!privateKeyResp.contains(kWrapped)) {
     SCP_ERROR_CONTEXT(kAzurePrivateKeyFetcherProvider,
                       private_key_fetching_context, http_client_context.result,
                       "/key did not provide the wrapped property");
@@ -220,7 +234,7 @@ void AzurePrivateKeyFetcherProvider::PrivateKeyFetchingCallback(
     return;
   }
 
-  std::string wrapped = privateKeyResp[WRAPPED];
+  std::string wrapped = privateKeyResp[kWrapped];
   core::BytesBuffer buffer(wrapped);
   PrivateKeyFetchingResponse response;
   auto result = PrivateKeyFetchingClientUtils::ParsePrivateKey(
