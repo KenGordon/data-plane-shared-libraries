@@ -29,72 +29,6 @@ using google::scp::core::Uri;
 
 namespace google::scp::cpio::client_providers {
 
-// Define RAII memory allocation/deallocation classes
-class RsaWrapper {
- public:
-  RsaWrapper() : rsa_(RSA_new()) {}
-
-  ~RsaWrapper() { RSA_free(rsa_); }
-
-  RSA* get() { return rsa_; }
-
- private:
-  RSA* rsa_;
-};
-
-class BnWrapper {
- public:
-  BnWrapper() : bn_(BN_new()) {}
-
-  ~BnWrapper() { BN_free(bn_); }
-
-  BIGNUM* get() { return bn_; }
-
- private:
-  BIGNUM* bn_;
-};
-
-class EvpPkeyWrapper {
- public:
-  EvpPkeyWrapper() : pkey_(EVP_PKEY_new()) {}
-
-  ~EvpPkeyWrapper() { EVP_PKEY_free(pkey_); }
-
-  EVP_PKEY* get() { return pkey_; }
-
- private:
-  EVP_PKEY* pkey_;
-};
-
-class BIOWrapper {
- public:
-  explicit BIOWrapper(BIO_METHOD* method) : bio_(BIO_new(method)) {}
-
-  ~BIOWrapper() { BIO_free(bio_); }
-
-  BIO* get() { return bio_; }
-
- private:
-  BIO* bio_;
-};
-
-class EVPKeyCtxWrapper {
- public:
-  explicit EVPKeyCtxWrapper(EVP_PKEY_CTX* ctx) : ctx_(ctx) {}
-
-  ~EVPKeyCtxWrapper() {
-    if (ctx_) {
-      EVP_PKEY_CTX_free(ctx_);
-      ctx_ = nullptr;
-    }
-  }
-
-  EVP_PKEY_CTX* get() const { return ctx_; }
-
- private:
-  EVP_PKEY_CTX* ctx_;
-};
-
 bool AzurePrivateKeyFetchingClientUtils::isPrivate(EVP_PKEY* pkey) {
   // Determine if the key is private or public
   int key_type = EVP_PKEY_type(pkey->type);
@@ -121,7 +55,7 @@ void AzurePrivateKeyFetchingClientUtils::CreateHttpRequest(
   CHECK(report.has_value()) << "Failed to get attestation report";
 
   nlohmann::json json_obj;
-  json_obj["attestation"] = report.value();
+  json_obj[kAttestation] = report.value();
 
   http_request.body = core::BytesBuffer(json_obj.dump());
 }
@@ -129,7 +63,7 @@ void AzurePrivateKeyFetchingClientUtils::CreateHttpRequest(
 /**
  * @brief Generate a new wrapping key
  */
-std::pair<EVP_PKEY*, EVP_PKEY*>
+std::pair<std::unique_ptr<EvpPkeyWrapper>, std::unique_ptr<EvpPkeyWrapper>>
 AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey() {
   RsaWrapper rsa;
   BnWrapper e;
@@ -137,15 +71,15 @@ AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey() {
   BN_set_word(e.get(), RSA_F4);
   RSA_generate_key_ex(rsa.get(), 4096, e.get(), NULL);
 
-  EvpPkeyWrapper private_key;
-  if (EVP_PKEY_set1_RSA(private_key.get(), rsa.get()) != 1) {
+  std::unique_ptr<EvpPkeyWrapper> private_key = std::make_unique<EvpPkeyWrapper>();
+  if (EVP_PKEY_set1_RSA(private_key->get(), rsa.get()) != 1) {
     char* error_string = ERR_error_string(ERR_get_error(), NULL);
     throw std::runtime_error(std::string("Getting private EVP_PKEY failed: ") +
                              error_string);
   }
 
   // Create a new EVP_PKEY for the public key
-  const RSA* rsa_pub = EVP_PKEY_get1_RSA(private_key.get());
+  const RSA* rsa_pub = EVP_PKEY_get1_RSA(private_key->get());
   RsaWrapper rsa_pub_dup;
   if (!RSA_set0_key(rsa_pub_dup.get(), rsa_pub->n, rsa_pub->e, NULL)) {
     char* error_string = ERR_error_string(ERR_get_error(), NULL);
@@ -154,14 +88,14 @@ AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey() {
         error_string);  
   }
   RSA_up_ref(rsa_pub_dup.get());
-  EvpPkeyWrapper public_key;
-  if (EVP_PKEY_set1_RSA(public_key.get(), rsa_pub_dup.get()) != 1) {
+  std::unique_ptr<EvpPkeyWrapper> public_key = std::make_unique<EvpPkeyWrapper>();
+  if (EVP_PKEY_set1_RSA(public_key->get(), rsa_pub_dup.get()) != 1) {
     char* error_string = ERR_error_string(ERR_get_error(), NULL);
     throw std::runtime_error(std::string("Set RSA public key failed: ") +
                              error_string);
   }
 
-  return std::make_pair(private_key.get(), public_key.get());
+  return std::make_pair(std::move(private_key), std::move(public_key));
 }
 
 /**

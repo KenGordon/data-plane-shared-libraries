@@ -55,7 +55,7 @@ class AzureKmsClientProvider : public KmsClientProviderInterface {
 
  private:
     // Store wrapping key used in unwrapKey API call
-    std::pair<EVP_PKEY *, EVP_PKEY *>  wrappingKey_ =  {nullptr, nullptr};
+    //std::pair<std::unique_ptr<EvpPkeyWrapper>, std::unique_ptr<EvpPkeyWrapper>>  wrappingKey_ =  {nullptr, nullptr};
 
   /**
    * @brief Callback to pass token for decryption.

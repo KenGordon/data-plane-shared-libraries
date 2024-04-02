@@ -52,8 +52,6 @@ constexpr char kAzurePrivateKeyFetcherProvider[] =
     "AzurePrivateKeyFetcherProvider";
 constexpr char kAuthorizationHeaderKey[] = "Authorization";
 constexpr char kBearerTokenPrefix[] = "Bearer ";
-constexpr char kWrappedKid[] = "wrappedKid";
-constexpr char kWrapped[] = "wrapped";
 
 }  // namespace
 

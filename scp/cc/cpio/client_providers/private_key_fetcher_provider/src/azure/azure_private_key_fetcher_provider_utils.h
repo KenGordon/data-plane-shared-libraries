@@ -29,6 +29,81 @@
 #include "cpio/client_providers/private_key_fetcher_provider/src/private_key_fetcher_provider.h"
 
 namespace google::scp::cpio::client_providers {
+
+// Define properties of API calls
+constexpr char kWrappedKid[] = "wrappedKid";
+constexpr char kWrapped[] = "wrapped";
+constexpr char kWrappingKey[] = "wrappingKey";
+constexpr char kAttestation[] = "attestation";
+
+// Define RAII memory allocation/deallocation classes
+class RsaWrapper {
+ public:
+  RsaWrapper() : rsa_(RSA_new()) {}
+
+  ~RsaWrapper() { RSA_free(rsa_); }
+
+  RSA* get() { return rsa_; }
+
+ private:
+  RSA* rsa_;
+};
+
+class BnWrapper {
+ public:
+  BnWrapper() : bn_(BN_new()) {}
+
+  ~BnWrapper() { BN_free(bn_); }
+
+  BIGNUM* get() { return bn_; }
+
+ private:
+  BIGNUM* bn_;
+};
+
+class EvpPkeyWrapper {
+ public:
+  EvpPkeyWrapper() : pkey_(EVP_PKEY_new()) {}
+  EvpPkeyWrapper(EVP_PKEY *pkey) : pkey_(pkey) {}
+
+  ~EvpPkeyWrapper() { EVP_PKEY_free(pkey_); }
+
+  EVP_PKEY* get() { return pkey_; }
+
+ private:
+  EVP_PKEY* pkey_;
+};
+
+class BIOWrapper {
+ public:
+  explicit BIOWrapper(BIO_METHOD* method) : bio_(BIO_new(method)) {}
+
+  ~BIOWrapper() { BIO_free(bio_); }
+
+  BIO* get() { return bio_; }
+
+ private:
+  BIO* bio_;
+};
+
+class EVPKeyCtxWrapper {
+ public:
+  explicit EVPKeyCtxWrapper(EVP_PKEY_CTX* ctx) : ctx_(ctx) {}
+
+  ~EVPKeyCtxWrapper() {
+    if (ctx_) {
+      EVP_PKEY_CTX_free(ctx_);
+      ctx_ = nullptr;
+    }
+  }
+
+  EVP_PKEY_CTX* get() const { return ctx_; }
+
+ private:
+  EVP_PKEY_CTX* ctx_;
+};
+
+
 class AzurePrivateKeyFetchingClientUtils {
  public:
   /**
@@ -44,7 +119,7 @@ class AzurePrivateKeyFetchingClientUtils {
   /**
    * @brief Generate a new wrapping key
    */
-  static std::pair<EVP_PKEY*, EVP_PKEY*> GenerateWrappingKey();
+  static std::pair<std::unique_ptr<EvpPkeyWrapper>, std::unique_ptr<EvpPkeyWrapper>> GenerateWrappingKey();
 
   /**
    * @brief Convert a wrapping key in PEM
