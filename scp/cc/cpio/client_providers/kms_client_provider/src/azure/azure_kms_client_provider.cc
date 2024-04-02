@@ -87,6 +87,7 @@ ExecutionResult AzureKmsClientProvider::Stop() noexcept {
 ExecutionResult AzureKmsClientProvider::Decrypt(
     core::AsyncContext<DecryptRequest, DecryptResponse>&
         decrypt_context) noexcept {
+  std::cout << "TEST: Decrypt() start\n";
   auto get_credentials_request = std::make_shared<GetSessionTokenRequest>();
   AsyncContext<GetSessionTokenRequest, GetSessionTokenResponse>
       get_token_context(
@@ -103,6 +104,7 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
     core::AsyncContext<DecryptRequest, DecryptResponse>& decrypt_context,
     core::AsyncContext<GetSessionTokenRequest, GetSessionTokenResponse>&
         get_token_context) noexcept {
+  std::cout << "TEST: GetSessionCredentialsCallbackToDecrypt() start\n";
   if (!get_token_context.result.Successful()) {
     SCP_ERROR_CONTEXT(kAzureKmsClientProvider, decrypt_context,
                       get_token_context.result,
@@ -148,10 +150,13 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
   if (unwrap_url_.empty()) {
     const char* value_from_env = std::getenv(kAzureKmsUnwrapUrlEnvVar);
     if (value_from_env) {
+      std::cout << "TEST: Using env var: " << value_from_env << "\n";
       unwrap_url_ = value_from_env;
     } else {
+      std::cout << "TEST: Using default" << std::endl;
       unwrap_url_ = kDefaultKmsUnwrapPath;
     }
+    std::cout << "TEST: unwrap_url_: " << unwrap_url_ << "\n";
   }
 
   http_context.request->path = std::make_shared<Uri>(unwrap_url_);

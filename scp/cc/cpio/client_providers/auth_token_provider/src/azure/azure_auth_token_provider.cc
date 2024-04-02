@@ -73,9 +73,9 @@ const auto& GetRequiredJWTComponents() {
   using iterator_type = decltype(std::cbegin(components));
   static std::pair<iterator_type, iterator_type> iterator_pair = []() {
     components[0] = kJsonAccessTokenKey;
-    components[1] = kJsonTokenExpiryKey;
-    components[2] = kJsonTokenExtendedExpiryKey;
-    components[3] = kJsonTokenTypeKey;
+    components[1] = kJsonAccessTokenKey;
+    components[2] = kJsonAccessTokenKey;
+    components[3] = kJsonAccessTokenKey;
     return std::make_pair(std::cbegin(components), std::cend(components));
   }();
   return iterator_pair;
@@ -161,6 +161,18 @@ void AzureAuthTokenProvider::OnGetSessionTokenCallback(
   }
 
   json json_response;
+  // http_client_context.content_length()
+  // http_client_context.response->body.ToString()
+  // std::string body;
+  // if (http_client_context.request->body.length > 0) {
+  //   body = {http_client_context.response->body.bytes->begin(),
+  //           http_client_context.response->body.bytes->end()};
+  //   std::cout << "TEST: body" << body << std::endl;
+  // } else 
+  // {
+  //   std::cout << "TEST: body is empty" << std::endl;
+  // }
+  std::cout << "TEST: body" << http_client_context.response->body.ToString() << std::endl;
   try {
     json_response =
         json::parse(http_client_context.response->body.bytes->begin(),
@@ -193,9 +205,12 @@ void AzureAuthTokenProvider::OnGetSessionTokenCallback(
 
   get_token_context.response = std::make_shared<GetSessionTokenResponse>();
 
-  uint64_t expiry_seconds = json_response[kJsonTokenExpiryKey].get<uint64_t>();
+  std::cout << "kJsonTokenExpiryKey start\n";
+  std::string expiry_seconds = json_response[kJsonTokenExpiryKey].get<std::string>();
   get_token_context.response->token_lifetime_in_seconds =
-      std::chrono::seconds(expiry_seconds);
+      std::chrono::seconds(std::stoi(expiry_seconds));
+  std::cout << "kJsonTokenExpiryKey end\n";
+  std::cout << "TEST: BUILD 1\n";
   auto access_token = json_response[kJsonAccessTokenKey].get<std::string>();
   get_token_context.response->session_token =
       std::make_shared<std::string>(std::move(access_token));

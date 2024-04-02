@@ -47,4 +47,7 @@ cc_binary(
     deps = [
         "attestation",
     ],
+    features = ["fully_static_link"],
+    linkopts = ["-static"],
+    linkstatic = True,
 )

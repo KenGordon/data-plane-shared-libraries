@@ -39,7 +39,9 @@ class AzureKmsClientProvider : public KmsClientProviderInterface {
       const std::shared_ptr<AuthTokenProviderInterface>& auth_token_provider)
       : http_client_(http_client),
         auth_token_provider_(auth_token_provider),
-        unwrap_url_() {}
+        unwrap_url_() {
+            std::cout << "TEST: AzureKmsClientProvider() start\n";
+        }
 
   core::ExecutionResult Init() noexcept override;
 
