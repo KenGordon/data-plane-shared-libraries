@@ -63,7 +63,7 @@ void AzurePrivateKeyFetchingClientUtils::CreateHttpRequest(
 /**
  * @brief Generate a new wrapping key
  */
-std::pair<std::unique_ptr<EvpPkeyWrapper>, std::unique_ptr<EvpPkeyWrapper>>
+std::pair<std::shared_ptr<EvpPkeyWrapper>, std::shared_ptr<EvpPkeyWrapper>>
 AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey() {
   RsaWrapper rsa;
   BnWrapper e;
@@ -71,7 +71,7 @@ AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey() {
   BN_set_word(e.get(), RSA_F4);
   RSA_generate_key_ex(rsa.get(), 4096, e.get(), NULL);
 
-  std::unique_ptr<EvpPkeyWrapper> private_key = std::make_unique<EvpPkeyWrapper>();
+  std::shared_ptr<EvpPkeyWrapper> private_key = std::shared_ptr<EvpPkeyWrapper>();
   if (EVP_PKEY_set1_RSA(private_key->get(), rsa.get()) != 1) {
     char* error_string = ERR_error_string(ERR_get_error(), NULL);
     throw std::runtime_error(std::string("Getting private EVP_PKEY failed: ") +
@@ -88,14 +88,14 @@ AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey() {
         error_string);  
   }
   RSA_up_ref(rsa_pub_dup.get());
-  std::unique_ptr<EvpPkeyWrapper> public_key = std::make_unique<EvpPkeyWrapper>();
+  std::shared_ptr<EvpPkeyWrapper> public_key = std::shared_ptr<EvpPkeyWrapper>();
   if (EVP_PKEY_set1_RSA(public_key->get(), rsa_pub_dup.get()) != 1) {
     char* error_string = ERR_error_string(ERR_get_error(), NULL);
     throw std::runtime_error(std::string("Set RSA public key failed: ") +
                              error_string);
   }
 
-  return std::make_pair(std::move(private_key), std::move(public_key));
+  return std::make_pair(private_key, public_key);
 }
 
 /**

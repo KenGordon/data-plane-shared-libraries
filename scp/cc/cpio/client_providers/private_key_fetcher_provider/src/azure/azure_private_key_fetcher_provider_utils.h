@@ -119,7 +119,7 @@ class AzurePrivateKeyFetchingClientUtils {
   /**
    * @brief Generate a new wrapping key
    */
-  static std::pair<std::unique_ptr<EvpPkeyWrapper>, std::unique_ptr<EvpPkeyWrapper>> GenerateWrappingKey();
+  static std::pair<std::shared_ptr<EvpPkeyWrapper>, std::shared_ptr<EvpPkeyWrapper>> GenerateWrappingKey();
 
   /**
    * @brief Convert a wrapping key in PEM

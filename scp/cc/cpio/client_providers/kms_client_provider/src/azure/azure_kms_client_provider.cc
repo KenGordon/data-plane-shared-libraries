@@ -170,9 +170,6 @@ mEzfKqJMBggKib/+e4Eb/ENdvxeT1X2YXpZ3tjZE+bRoiDgN4FYqBzYtZ/ieRcsq
 )";
 }
 
-// Temporary store wrappingKey
-std::pair<std::unique_ptr<EvpPkeyWrapper>, std::unique_ptr<EvpPkeyWrapper>> wrappingKey_;
-
 std::string GetTestPemPrivWrapKey() {
   std::string result = std::string(kPemSeperator) + kPemBegin + kPemToken +
                        kPemKey + kPemSeperator + "\n" + kWrappingKp +
@@ -263,10 +260,12 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
   EVP_PKEY* publicKey;
   EVP_PKEY* privateKey;
 
+  // Temporary store wrappingKey
+  std::pair<std::shared_ptr<EvpPkeyWrapper>, std::shared_ptr<EvpPkeyWrapper>> wrappingKeyPair;
   if (hasSnp()) {
     // Generate wrapping key
     try {
-      wrappingKey_ = AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey();
+      wrappingKeyPair = AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey();
     } catch (const std::runtime_error& e) {
       std::string errorMessage = "Failed to generate wrapping key : ";
       errorMessage += e.what();
@@ -275,10 +274,13 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
 
       SCP_ERROR_CONTEXT(kAzureKmsClientProvider, decrypt_context,
                         execution_result, errorMessage);
+      decrypt_context.result = execution_result;
+      decrypt_context.Finish();
+      return;
     }
 
-    privateKey = wrappingKey_.first->get();
-    publicKey = wrappingKey_.second->get();
+    privateKey = wrappingKeyPair.first->get();
+    publicKey = wrappingKeyPair.second->get();
   } else {
     // Get test PEM public key
     auto publicPemKey = GetTestPemPublicWrapKey();
@@ -299,11 +301,12 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
 
     BIO_write(bio, privateKeyPem.c_str(), privateKeyPem.size());
     PEM_read_bio_PrivateKey(bio, &privateKey, nullptr, nullptr);
+    wrappingKeyPair = std::make_pair(
+      std::make_shared<EvpPkeyWrapper>(privateKey),
+      std::make_shared<EvpPkeyWrapper>(publicKey));
   }
 
-  wrappingKey_ = std::make_pair(
-      std::unique_ptr<EvpPkeyWrapper>(new EvpPkeyWrapper(privateKey)),
-      std::unique_ptr<EvpPkeyWrapper>(new EvpPkeyWrapper(publicKey)));
+  
   nlohmann::json payload;
   payload[kWrapped] = ciphertext;
   payload[kWrappedKid] = key_id;
@@ -317,8 +320,10 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
       {std::string(kAuthorizationHeaderKey),
        absl::StrCat(kBearerTokenPrefix, access_token)});
 
+  // auto p = std::make_unique<EvpPkeyWrapper>(new EvpPkeyWrapper(privateKey));
+
   http_context.callback = bind(&AzureKmsClientProvider::OnDecryptCallback, this,
-                               decrypt_context, _1);
+                               decrypt_context, wrappingKeyPair.first, _1);
                                
   auto execution_result = http_client_->PerformRequest(http_context);
   if (!execution_result.Successful()) {
@@ -334,6 +339,7 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
 
 void AzureKmsClientProvider::OnDecryptCallback(
     AsyncContext<DecryptRequest, DecryptResponse>& decrypt_context,
+    std::shared_ptr<EvpPkeyWrapper> ephemeral_private_key,
     AsyncContext<HttpRequest, HttpResponse>& http_client_context) noexcept {
   if (!http_client_context.result.Successful()) {
     SCP_ERROR_CONTEXT(kAzureKmsClientProvider, decrypt_context,
@@ -370,7 +376,7 @@ void AzureKmsClientProvider::OnDecryptCallback(
   std::vector<uint8_t> encrypted(decodedWrapped.begin(), decodedWrapped.end());
 
   std::string decrypted = AzurePrivateKeyFetchingClientUtils::KeyUnwrap(
-      wrappingKey_.first->get(), encrypted);
+      ephemeral_private_key->get(), encrypted);
   decrypt_context.response = std::make_shared<DecryptResponse>();
 
   decrypt_context.response->set_plaintext(decrypted);
