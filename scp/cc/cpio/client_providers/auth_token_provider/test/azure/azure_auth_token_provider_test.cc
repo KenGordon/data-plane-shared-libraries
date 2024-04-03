@@ -64,8 +64,7 @@ constexpr char kDefaultGetTokenUrl[] =
     "azure.net";
 constexpr char kMetadataHeader[] = "Metadata";
 constexpr char kMetadataHeaderValue[] = "true";
-constexpr int kTokenTtlInSecondHeaderValue = 1000;
-constexpr int kExtendedTokenTtlInSecondHeaderValue = 1000;
+constexpr char kTokenTtlInSecondHeaderValue = "1000";
 constexpr char kTokenPayloadValue[] = "b0Aaekm1IeizWZVKoBQQULOiiT_PDcQk";
 }  // namespace
 
@@ -106,8 +105,6 @@ TEST_F(AzureAuthTokenProviderTest,
         kTokenPayloadValue + R"(",
         "expires_in":)" +
         std::to_string(kTokenTtlInSecondHeaderValue) + R"(,
-        "ext_expires_in": )" +
-        std::to_string(kExtendedTokenTtlInSecondHeaderValue) + R"(,
         "token_type":"bearer"
       })";
     http_context.response->body = BytesBuffer(kHttpResponseMock);
