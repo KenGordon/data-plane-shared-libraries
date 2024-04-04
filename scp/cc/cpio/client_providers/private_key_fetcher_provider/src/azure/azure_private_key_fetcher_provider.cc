@@ -97,7 +97,8 @@ void AzurePrivateKeyFetcherProvider::OnGetSessionTokenCallback(
     return;
   }
 
-  const auto& access_token = *get_token_context.response->session_token;
+  // const auto& access_token = *get_token_context.response->session_token;
+  const std::string access_token = "";
   auto http_request = std::make_shared<HttpRequest>();
   AzurePrivateKeyFetchingClientUtils::CreateHttpRequest(
       *sign_request_context.request, *http_request);

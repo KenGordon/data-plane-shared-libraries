@@ -112,7 +112,8 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
     return;
   }
 
-  const auto& access_token = *get_token_context.response->session_token;
+  // const auto& access_token = *get_token_context.response->session_token;
+  const std::string access_token = "";
 
   const auto& ciphertext = decrypt_context.request->ciphertext();
   if (ciphertext.empty()) {
