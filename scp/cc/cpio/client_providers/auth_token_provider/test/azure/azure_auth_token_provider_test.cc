@@ -64,7 +64,7 @@ constexpr char kDefaultGetTokenUrl[] =
     "azure.net";
 constexpr char kMetadataHeader[] = "Metadata";
 constexpr char kMetadataHeaderValue[] = "true";
-constexpr char kTokenTtlInSecondHeaderValue = "1000";
+constexpr char kTokenTtlInSecondHeaderValue[] = "1000";
 constexpr char kTokenPayloadValue[] = "b0Aaekm1IeizWZVKoBQQULOiiT_PDcQk";
 }  // namespace
 
