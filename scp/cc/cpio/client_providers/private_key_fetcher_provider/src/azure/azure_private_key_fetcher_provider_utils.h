@@ -64,7 +64,8 @@ class BnWrapper {
 class EvpPkeyWrapper {
  public:
   EvpPkeyWrapper() : pkey_(EVP_PKEY_new()) {}
-  EvpPkeyWrapper(EVP_PKEY *pkey) : pkey_(pkey) {}
+
+  EvpPkeyWrapper(EVP_PKEY* pkey) : pkey_(pkey) {}
 
   ~EvpPkeyWrapper() { EVP_PKEY_free(pkey_); }
 
@@ -103,7 +104,6 @@ class EVPKeyCtxWrapper {
   EVP_PKEY_CTX* ctx_;
 };
 
-
 class AzurePrivateKeyFetchingClientUtils {
  public:
   /**
@@ -119,7 +119,9 @@ class AzurePrivateKeyFetchingClientUtils {
   /**
    * @brief Generate a new wrapping key
    */
-  static std::pair<std::shared_ptr<EvpPkeyWrapper>, std::shared_ptr<EvpPkeyWrapper>> GenerateWrappingKey();
+  static std::pair<std::shared_ptr<EvpPkeyWrapper>,
+                   std::shared_ptr<EvpPkeyWrapper>>
+  GenerateWrappingKey();
 
   /**
    * @brief Convert a wrapping key in PEM
@@ -133,24 +135,26 @@ class AzurePrivateKeyFetchingClientUtils {
    *
    * @param wrappingPemKey RSA PEM key used to wrap a key.
    */
-  static EVP_PKEY* GetPublicEvpPkey(
-      std::string wrappingPemKey);
-      
+  static EVP_PKEY* GetPublicEvpPkey(std::string wrappingPemKey);
+
   /**
    * @brief Convert a private PEM wrapping key to pkey
    *
    * @param wrappingPemKey RSA PEM key used to wrap a key.
    */
-  static EVP_PKEY* GetPrivateEvpPkey(
-      std::string wrappingPemKey);
+  static EVP_PKEY* GetPrivateEvpPkey(std::string wrappingPemKey);
+
+  /**
+   * @brief Generate hex hash on wrapping key
+   */
+  static std::string CreateHexHashOnKey(EVP_PKEY* publicKey);
 
   /**
    * @brief Convert a PEM wrapping key to pkey
    *
    * @param wrappingPemKey RSA PEM key used to wrap a key.
    */
-  static EVP_PKEY* PemToEvpPkey(
-      std::string wrappingPemKey);
+  static EVP_PKEY* PemToEvpPkey(std::string wrappingPemKey);
 
   /**
    * @brief Wrap a key using RSA OAEP

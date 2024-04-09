@@ -60,6 +60,38 @@ void AzurePrivateKeyFetchingClientUtils::CreateHttpRequest(
   http_request.body = core::BytesBuffer(json_obj.dump());
 }
 
+
+/**
+ * @brief Generate hex hash on wrapping key
+ */
+std::string AzurePrivateKeyFetchingClientUtils::CreateHexHashOnKey(EVP_PKEY* publicKey) {
+    // Create a BIO to hold the public key in PEM format
+    BIOWrapper bioWrapper(const_cast<BIO_METHOD*>(BIO_s_mem()));
+    PEM_write_bio_PUBKEY(bioWrapper.get(), publicKey);
+
+    // Read the PEM key into a string
+    char* pem_key;
+    long pem_key_length = BIO_get_mem_data(bioWrapper.get(), &pem_key);
+    std::string pem_key_str(pem_key, pem_key_length);
+
+    // Create a SHA-2 hash of the PEM key string
+    unsigned char hash[EVP_MAX_MD_SIZE];
+    unsigned int hash_length;
+    if (EVP_Digest(pem_key_str.c_str(), pem_key_str.size(), hash, &hash_length, EVP_sha256(), NULL) != 1) {
+        char* error_string = ERR_error_string(ERR_get_error(), NULL);
+        throw std::runtime_error(std::string("Creating hash failed: ") + error_string);
+    }
+
+    // Convert the hash to a hexadecimal string
+    std::stringstream ss;
+    for (unsigned int i = 0; i < hash_length; i++) {
+        ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(hash[i]);
+    }
+
+    // Return the hexadecimal string
+    return ss.str();
+}
+
 /**
  * @brief Generate a new wrapping key
  */

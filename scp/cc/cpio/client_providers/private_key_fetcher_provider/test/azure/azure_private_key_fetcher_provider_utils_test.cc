@@ -46,4 +46,17 @@ TEST(AzurePrivateKeyFetchingClientUtilsTest, CreateHttpRequest) {
   EXPECT_EQ(*http_request.path, std::string(kPrivateKeyBaseUri));
 }
 
+TEST(AzurePrivateKeyFetchingClientUtilsTest, GenerateWrappingKey) {
+  auto wrappingKey = AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey();
+
+  ASSERT_NE(wrappingKey.first, nullptr);
+  ASSERT_NE(wrappingKey.second, nullptr);
+}
+
+TEST(AzurePrivateKeyFetchingClientUtilsTest, GenerateWrappingKeyHash) {
+  auto wrappingKey = AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey();
+  auto hexHash = AzurePrivateKeyFetchingClientUtils::CreateHexHashOnKey(wrappingKey.second->get());
+  ASSERT_EQ(hexHash.size(), 64);
+}
+
 }  // namespace google::scp::cpio::client_providers::test

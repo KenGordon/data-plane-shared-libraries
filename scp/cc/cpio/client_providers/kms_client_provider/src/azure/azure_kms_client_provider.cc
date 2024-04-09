@@ -252,16 +252,12 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
   http_context.request->path = std::make_shared<Uri>(unwrap_url_);
   http_context.request->method = HttpMethod::POST;
 
-  // Get Attestation Report
-  const auto report =
-      hasSnp() ? fetchSnpAttestation() : fetchFakeSnpAttestation();
-  CHECK(report.has_value()) << "Failed to get attestation report";
-
   EVP_PKEY* publicKey;
   EVP_PKEY* privateKey;
 
   // Temporary store wrappingKey
   std::pair<std::shared_ptr<EvpPkeyWrapper>, std::shared_ptr<EvpPkeyWrapper>> wrappingKeyPair;
+  std::string hexHashOnWrappingKey = "";
   if (hasSnp()) {
     // Generate wrapping key
     try {
@@ -281,6 +277,9 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
 
     privateKey = wrappingKeyPair.first->get();
     publicKey = wrappingKeyPair.second->get();
+
+    // Calculate hash on publicKey
+    hexHashOnWrappingKey = AzurePrivateKeyFetchingClientUtils::CreateHexHashOnKey(publicKey);
   } else {
     // Get test PEM public key
     auto publicPemKey = GetTestPemPublicWrapKey();
@@ -305,6 +304,12 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
       std::make_shared<EvpPkeyWrapper>(privateKey),
       std::make_shared<EvpPkeyWrapper>(publicKey));
   }
+
+
+  // Get Attestation Report
+  const auto report =
+      hasSnp() ? fetchSnpAttestation(hexHashOnWrappingKey) : fetchFakeSnpAttestation();
+  CHECK(report.has_value()) << "Failed to get attestation report";
 
   
   nlohmann::json payload;
