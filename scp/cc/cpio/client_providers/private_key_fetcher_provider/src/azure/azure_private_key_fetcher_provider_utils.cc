@@ -49,55 +49,14 @@ void AzurePrivateKeyFetchingClientUtils::CreateHttpRequest(
 
   http_request.path = std::make_shared<Uri>(base_uri);
 
-  // Generate wrapping key with hash
-  std::pair<std::shared_ptr<EvpPkeyWrapper>, std::shared_ptr<EvpPkeyWrapper>> wrappingKeyPair;
-  std::string hexHashOnWrappingKey = "";
-  EVP_PKEY* publicKey;
-  EVP_PKEY* privateKey;
-
-  if (hasSnp()) {
-    // Generate wrapping key
-    wrappingKeyPair = AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey();
-
-    privateKey = wrappingKeyPair.first->get();
-    publicKey = wrappingKeyPair.second->get();
-
-    // Calculate hash on publicKey
-    hexHashOnWrappingKey = AzurePrivateKeyFetchingClientUtils::CreateHexHashOnKey(publicKey);
-  } else {
-    // Get test PEM public key
-    auto publicPemKey = GetTestPemPublicWrapKey();
-    publicKey = AzurePrivateKeyFetchingClientUtils::PemToEvpPkey(publicPemKey);
-
-    // Get test PEM private key and convert it to EVP_PKEY*
-    auto privateKeyPem = GetTestPemPrivWrapKey();
-    privateKey = nullptr;
-    BIOWrapper bioWrapper(const_cast<BIO_METHOD*>(BIO_s_mem()));
-
-    // Get the BIO object from the wrapper
-    BIO* bio = bioWrapper.get();
-    if (bio == nullptr) {
-      char* error_string = ERR_error_string(ERR_get_error(), nullptr);
-      throw std::runtime_error(std::string("Failed to create BIO: ") +
-                               error_string);
-    }
-
-    BIO_write(bio, privateKeyPem.c_str(), privateKeyPem.size());
-    PEM_read_bio_PrivateKey(bio, &privateKey, nullptr, nullptr);
-    wrappingKeyPair = std::make_pair(
-      std::make_shared<EvpPkeyWrapper>(privateKey),
-      std::make_shared<EvpPkeyWrapper>(publicKey));
-  }
 
   // Get Attestation Report
-  std::cout << "Wrapping key hex: " << hexHashOnWrappingKey << std::endl;
   const auto report =
-      hasSnp() ? fetchSnpAttestation(hexHashOnWrappingKey) : fetchFakeSnpAttestation();
+      hasSnp() ? fetchSnpAttestation("") : fetchFakeSnpAttestation();
   CHECK(report.has_value()) << "Failed to get attestation report";
 
   nlohmann::json json_obj;
   json_obj[kAttestation] = report.value();
-  json_obj[kWrappingKey] = AzurePrivateKeyFetchingClientUtils::EvpPkeyToPem(publicKey);
 
 
   http_request.body = core::BytesBuffer(json_obj.dump());
