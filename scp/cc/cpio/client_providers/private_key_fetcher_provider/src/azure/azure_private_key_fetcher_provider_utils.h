@@ -29,6 +29,7 @@
 #include "cpio/client_providers/private_key_fetcher_provider/src/private_key_fetcher_provider.h"
 
 namespace google::scp::cpio::client_providers {
+#define MAX_OPENSSL_ERROR_STRING_LEN 256
 
 // Define properties of API calls
 constexpr char kWrappedKid[] = "wrappedKid";
