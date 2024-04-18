@@ -51,12 +51,22 @@ TEST(AzurePrivateKeyFetchingClientUtilsTest, GenerateWrappingKey) {
 
   ASSERT_NE(wrappingKey.first, nullptr);
   ASSERT_NE(wrappingKey.second, nullptr);
+  ASSERT(startsWith(AzurePrivateKeyFetchingClientUtils::EvpPkeyToPem(
+             kWrappingKey.first)),
+         "-----BEGIN PRIVATE KEY-----");
+  ASSERT(startsWith(AzurePrivateKeyFetchingClientUtils::EvpPkeyToPem(
+             kWrappingKey.second)),
+         "-----BEGIN PUBLIC KEY-----");
 }
 
 TEST(AzurePrivateKeyFetchingClientUtilsTest, GenerateWrappingKeyHash) {
   auto wrappingKey = AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey();
-  auto hexHash = AzurePrivateKeyFetchingClientUtils::CreateHexHashOnKey(wrappingKey.second->get());
+  auto hexHash = AzurePrivateKeyFetchingClientUtils::CreateHexHashOnKey(
+      wrappingKey.second->get());
+  std::cout << "##################HASH: " << hexHash << std::endl;
   ASSERT_EQ(hexHash.size(), 64);
+  ASSERT_EQ(hexHash,
+            "36b03dab8e8751b26d9b33fa2fa1296f823a238ef3dd604f758a4aff5b2b41d0");
 }
 
 }  // namespace google::scp::cpio::client_providers::test
