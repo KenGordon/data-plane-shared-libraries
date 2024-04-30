@@ -213,6 +213,8 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
     }
 
     BIO_write(bio, privateKeyPem.c_str(), privateKeyPem.size());
+    CHECK(privateKeyPem.find("-----BEGIN PRIVATE KEY-----") == 0) << "Failed to get private PEM key";
+
     PEM_read_bio_PrivateKey(bio, &privateKey, nullptr, nullptr);
     wrappingKeyPair = std::make_pair(
       std::make_shared<EvpPkeyWrapper>(privateKey),

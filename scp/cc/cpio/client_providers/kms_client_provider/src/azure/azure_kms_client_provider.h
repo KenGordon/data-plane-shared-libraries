@@ -53,10 +53,7 @@ class AzureKmsClientProvider : public KmsClientProviderInterface {
                          cmrt::sdk::kms_service::v1::DecryptResponse>&
           decrypt_context) noexcept override;
 
- private:
-    // Store wrapping key used in unwrapKey API call
-    //std::pair<std::unique_ptr<EvpPkeyWrapper>, std::unique_ptr<EvpPkeyWrapper>>  wrappingKey_ =  {nullptr, nullptr};
-
+    
   /**
    * @brief Callback to pass token for decryption.
    *
