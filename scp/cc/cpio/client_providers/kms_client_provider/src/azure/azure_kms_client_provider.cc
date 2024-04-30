@@ -196,7 +196,7 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
     hexHashOnWrappingKey = AzurePrivateKeyFetchingClientUtils::CreateHexHashOnKey(publicKey);
   } else {
     // Get test PEM public key
-    auto publicPemKey = GetTestPemPublicWrapKey();
+    auto publicPemKey = google::scp::cpio::client_providers::GetTestPemPublicWrapKey();
     publicKey = AzurePrivateKeyFetchingClientUtils::PemToEvpPkey(publicPemKey);
 
     // Get test PEM private key and convert it to EVP_PKEY*

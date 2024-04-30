@@ -51,18 +51,22 @@ TEST(AzurePrivateKeyFetchingClientUtilsTest, GenerateWrappingKey) {
 
   ASSERT_NE(wrappingKey.first, nullptr);
   ASSERT_NE(wrappingKey.second, nullptr);
-  ASSERT(startsWith(AzurePrivateKeyFetchingClientUtils::EvpPkeyToPem(
-             kWrappingKey.first)),
-         "-----BEGIN PRIVATE KEY-----");
-  ASSERT(startsWith(AzurePrivateKeyFetchingClientUtils::EvpPkeyToPem(
-             kWrappingKey.second)),
-         "-----BEGIN PUBLIC KEY-----");
+
+  std::string pem = AzurePrivateKeyFetchingClientUtils::EvpPkeyToPem(
+      wrappingKey.first->get());
+  ASSERT_TRUE(pem.find("-----BEGIN PRIVATE KEY-----") == 0);
+
+  pem = AzurePrivateKeyFetchingClientUtils::EvpPkeyToPem(
+      wrappingKey.second->get());
+  ASSERT_TRUE(pem.find("-----BEGIN PUBLIC KEY-----") == 0);
 }
 
 TEST(AzurePrivateKeyFetchingClientUtilsTest, GenerateWrappingKeyHash) {
-  auto wrappingKey = AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey();
+  auto publicPemKey = google::scp::cpio::client_providers::GetTestPemPublicWrapKey();
+  auto publicKey = AzurePrivateKeyFetchingClientUtils::PemToEvpPkey(publicPemKey);
+
   auto hexHash = AzurePrivateKeyFetchingClientUtils::CreateHexHashOnKey(
-      wrappingKey.second->get());
+      publicKey);
   std::cout << "##################HASH: " << hexHash << std::endl;
   ASSERT_EQ(hexHash.size(), 64);
   ASSERT_EQ(hexHash,
