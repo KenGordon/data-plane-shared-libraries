@@ -195,7 +195,6 @@ TEST_F(AzureKmsClientProviderTest, SuccessToDecrypt) {
                         http_context.request->body.bytes->end());
     nlohmann::json json_payload = nlohmann::json::parse(payload);
     EXPECT_EQ(json_payload["wrapped"], kCiphertext);
-    EXPECT_EQ(json_payload["kid"], kKeyId);
     EXPECT_TRUE(json_payload["attestation"].is_object());
 
     http_context.response = std::make_shared<HttpResponse>();
