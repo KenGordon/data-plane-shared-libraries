@@ -116,6 +116,7 @@ void AzurePrivateKeyFetcherProvider::OnGetSessionTokenCallback(
 ExecutionResult AzurePrivateKeyFetcherProvider::FetchPrivateKey(
     AsyncContext<PrivateKeyFetchingRequest, PrivateKeyFetchingResponse>&
         private_key_fetching_context) noexcept {
+std::cout << "Entering FetchPrivateKey: " <<  *(private_key_fetching_context.request->key_id)  <<std::endl;
   AsyncContext<PrivateKeyFetchingRequest, HttpRequest>
       sign_http_request_context(
           private_key_fetching_context.request,
@@ -131,6 +132,7 @@ void AzurePrivateKeyFetcherProvider::SignHttpRequestCallback(
         private_key_fetching_context,
     AsyncContext<PrivateKeyFetchingRequest, HttpRequest>&
         sign_http_request_context) noexcept {
+std::cout << "Entering SignHttpRequestCallback: " <<  *(private_key_fetching_context.request->key_id)  <<std::endl;
   auto execution_result = sign_http_request_context.result;
   if (!execution_result.Successful()) {
     SCP_ERROR_CONTEXT(kAzurePrivateKeyFetcherProvider,
@@ -140,7 +142,7 @@ void AzurePrivateKeyFetcherProvider::SignHttpRequestCallback(
     private_key_fetching_context.Finish();
     return;
   }
-
+std::cout << "sign is fine" << std::endl;
   AsyncContext<HttpRequest, HttpResponse> http_client_context(
       std::move(sign_http_request_context.response),
       bind(&AzurePrivateKeyFetcherProvider::PrivateKeyFetchingCallback, this,
@@ -155,6 +157,7 @@ void AzurePrivateKeyFetcherProvider::SignHttpRequestCallback(
         private_key_fetching_context.request->key_vending_endpoint
             ->private_key_vending_service_endpoint.c_str());
     private_key_fetching_context.result = execution_result;
+
     private_key_fetching_context.Finish();
   }
 }
@@ -163,6 +166,8 @@ void AzurePrivateKeyFetcherProvider::PrivateKeyFetchingCallback(
     AsyncContext<PrivateKeyFetchingRequest, PrivateKeyFetchingResponse>&
         private_key_fetching_context,
     AsyncContext<HttpRequest, HttpResponse>& http_client_context) noexcept {
+std::cout << "Entering PrivateKeyFetchingCallback: " <<  *(private_key_fetching_context.request->key_id)  <<std::endl;
+
   private_key_fetching_context.result = http_client_context.result;
   if (!http_client_context.result.Successful()) {
     SCP_ERROR_CONTEXT(
@@ -198,6 +203,8 @@ void AzurePrivateKeyFetcherProvider::PrivateKeyFetchingCallback(
   }
   std::string resp(http_client_context.response->body.bytes->begin(),
                    http_client_context.response->body.bytes->end());
+std::cout << "response: " <<  resp  <<std::endl;
+
 
   nlohmann::json privateKeyResp;
     try {

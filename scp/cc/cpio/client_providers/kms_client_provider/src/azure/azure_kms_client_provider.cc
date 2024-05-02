@@ -226,7 +226,6 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
 
 
   // Get Attestation Report
-  std::cout << "Wrapping key hex: " << hexHashOnWrappingKey << std::endl;
   const auto report =
       hasSnp() ? fetchSnpAttestation(hexHashOnWrappingKey) : fetchFakeSnpAttestation();
   CHECK(report.has_value()) << "Failed to get attestation report";
@@ -238,7 +237,6 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
   payload[kAttestation] = nlohmann::json(report.value());
   payload[kWrappingKey] =
       AzurePrivateKeyFetchingClientUtils::EvpPkeyToPem(publicKey);
-
   http_context.request->body = core::BytesBuffer(nlohmann::to_string(payload));
   http_context.request->headers = std::make_shared<core::HttpHeaders>();
   http_context.request->headers->insert(
@@ -249,7 +247,8 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
 
   http_context.callback = bind(&AzureKmsClientProvider::OnDecryptCallback, this,
                                decrypt_context, wrappingKeyPair.first, _1);
-                               
+
+
   auto execution_result = http_client_->PerformRequest(http_context);
   if (!execution_result.Successful()) {
     SCP_ERROR_CONTEXT(kAzureKmsClientProvider, decrypt_context,
