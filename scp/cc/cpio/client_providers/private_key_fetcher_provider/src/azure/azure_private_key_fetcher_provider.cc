@@ -116,7 +116,6 @@ void AzurePrivateKeyFetcherProvider::OnGetSessionTokenCallback(
 ExecutionResult AzurePrivateKeyFetcherProvider::FetchPrivateKey(
     AsyncContext<PrivateKeyFetchingRequest, PrivateKeyFetchingResponse>&
         private_key_fetching_context) noexcept {
-std::cout << "Entering FetchPrivateKey: " <<  *(private_key_fetching_context.request->key_id)  <<std::endl;
   AsyncContext<PrivateKeyFetchingRequest, HttpRequest>
       sign_http_request_context(
           private_key_fetching_context.request,
@@ -132,7 +131,6 @@ void AzurePrivateKeyFetcherProvider::SignHttpRequestCallback(
         private_key_fetching_context,
     AsyncContext<PrivateKeyFetchingRequest, HttpRequest>&
         sign_http_request_context) noexcept {
-std::cout << "Entering SignHttpRequestCallback: " <<  *(private_key_fetching_context.request->key_id)  <<std::endl;
   auto execution_result = sign_http_request_context.result;
   if (!execution_result.Successful()) {
     SCP_ERROR_CONTEXT(kAzurePrivateKeyFetcherProvider,
@@ -142,7 +140,6 @@ std::cout << "Entering SignHttpRequestCallback: " <<  *(private_key_fetching_con
     private_key_fetching_context.Finish();
     return;
   }
-std::cout << "sign is fine" << std::endl;
   AsyncContext<HttpRequest, HttpResponse> http_client_context(
       std::move(sign_http_request_context.response),
       bind(&AzurePrivateKeyFetcherProvider::PrivateKeyFetchingCallback, this,
@@ -166,8 +163,6 @@ void AzurePrivateKeyFetcherProvider::PrivateKeyFetchingCallback(
     AsyncContext<PrivateKeyFetchingRequest, PrivateKeyFetchingResponse>&
         private_key_fetching_context,
     AsyncContext<HttpRequest, HttpResponse>& http_client_context) noexcept {
-std::cout << "Entering PrivateKeyFetchingCallback: " <<  *(private_key_fetching_context.request->key_id)  <<std::endl;
-
   private_key_fetching_context.result = http_client_context.result;
   if (!http_client_context.result.Successful()) {
     SCP_ERROR_CONTEXT(
@@ -203,22 +198,19 @@ std::cout << "Entering PrivateKeyFetchingCallback: " <<  *(private_key_fetching_
   }
   std::string resp(http_client_context.response->body.bytes->begin(),
                    http_client_context.response->body.bytes->end());
-std::cout << "response: " <<  resp  <<std::endl;
-
 
   nlohmann::json privateKeyResp;
-    try {
-    privateKeyResp =  nlohmann::json::parse(resp);
+  try {
+    privateKeyResp = nlohmann::json::parse(resp);
   } catch (const nlohmann::json::parse_error& e) {
     std::string errorMessage =
-          "Received http response could not be parsed into a JSON: ";
-      errorMessage += e.what();
-      
-    SCP_ERROR_CONTEXT(
-        kAzurePrivateKeyFetcherProvider, private_key_fetching_context, http_client_context.result,
-        errorMessage);
-        private_key_fetching_context.result = http_client_context.result;
-        private_key_fetching_context.Finish();
+        "Received http response could not be parsed into a JSON: ";
+    errorMessage += e.what();
+    SCP_ERROR_CONTEXT(kAzurePrivateKeyFetcherProvider,
+                      private_key_fetching_context, http_client_context.result,
+                      errorMessage);
+    private_key_fetching_context.result = http_client_context.result;
+    private_key_fetching_context.Finish();
     return;
   }
   if (!privateKeyResp.contains(kWrappedKid)) {
@@ -242,8 +234,8 @@ std::cout << "response: " <<  resp  <<std::endl;
   std::string wrapped = privateKeyResp[kWrapped];
   core::BytesBuffer buffer(wrapped);
   PrivateKeyFetchingResponse response;
-  auto result = PrivateKeyFetchingClientUtils::ParsePrivateKey(
-      buffer, response);
+  auto result =
+      PrivateKeyFetchingClientUtils::ParsePrivateKey(buffer, response);
   if (!result.Successful()) {
     SCP_ERROR_CONTEXT(
         kAzurePrivateKeyFetcherProvider, private_key_fetching_context,
