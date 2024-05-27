@@ -34,6 +34,7 @@
 #include "src/public/core/interface/execution_result.h"
 #include "src/public/cpio/interface/public_key_client/type_def.h"
 #include "src/public/cpio/proto/public_key_service/v1/public_key_service.pb.h"
+#include "src/util/status_macro/status_macros.h"
 
 #include "error_codes.h"
 #include "public_key_client_utils.h"
@@ -55,36 +56,12 @@ using google::scp::core::Uri;
 using google::scp::core::common::kZeroUuid;
 using google::scp::core::errors::
     SC_PUBLIC_KEY_CLIENT_PROVIDER_ALL_URIS_REQUEST_PERFORM_FAILED;
-using google::scp::core::errors::
-    SC_PUBLIC_KEY_CLIENT_PROVIDER_HTTP_CLIENT_REQUIRED;
-using google::scp::core::errors::
-    SC_PUBLIC_KEY_CLIENT_PROVIDER_INVALID_CONFIG_OPTIONS;
 
 namespace {
 constexpr std::string_view kPublicKeyClientProvider = "PublicKeyClientProvider";
 }
 
 namespace google::scp::cpio::client_providers {
-
-ExecutionResult PublicKeyClientProvider::Init() noexcept {
-  if (!public_key_client_options_.endpoints.size()) {
-    auto execution_result = FailureExecutionResult(
-        SC_PUBLIC_KEY_CLIENT_PROVIDER_INVALID_CONFIG_OPTIONS);
-    SCP_ERROR(kPublicKeyClientProvider, kZeroUuid, execution_result,
-              "Failed to init PublicKeyClientProvider.");
-    return execution_result;
-  }
-
-  if (!http_client_) {
-    auto execution_result = FailureExecutionResult(
-        SC_PUBLIC_KEY_CLIENT_PROVIDER_HTTP_CLIENT_REQUIRED);
-    SCP_ERROR(kPublicKeyClientProvider, kZeroUuid, execution_result,
-              "Failed to init PublicKeyClientProvider.");
-    return execution_result;
-  }
-
-  return SuccessExecutionResult();
-}
 
 void PublicKeyClientProvider::OnListPublicKeys(
     AsyncContext<Any, Any> any_context) noexcept {
@@ -96,18 +73,12 @@ void PublicKeyClientProvider::OnListPublicKeys(
                                                  ListPublicKeysResponse>,
                        any_context),
       any_context);
-  context.result = ListPublicKeys(context);
+  context.result = ListPublicKeys(context).ok()
+                       ? SuccessExecutionResult()
+                       : FailureExecutionResult(SC_UNKNOWN);
 }
 
-ExecutionResult PublicKeyClientProvider::Run() noexcept {
-  return SuccessExecutionResult();
-}
-
-ExecutionResult PublicKeyClientProvider::Stop() noexcept {
-  return SuccessExecutionResult();
-}
-
-ExecutionResult PublicKeyClientProvider::ListPublicKeys(
+absl::Status PublicKeyClientProvider::ListPublicKeys(
     AsyncContext<ListPublicKeysRequest, ListPublicKeysResponse>&
         public_key_fetching_context) noexcept {
   // Use got_success_result and unfinished_counter to track whether get success
@@ -117,8 +88,8 @@ ExecutionResult PublicKeyClientProvider::ListPublicKeys(
   auto unfinished_counter = std::make_shared<std::atomic<size_t>>(
       public_key_client_options_.endpoints.size());
 
-  ExecutionResult result = FailureExecutionResult(
-      SC_PUBLIC_KEY_CLIENT_PROVIDER_ALL_URIS_REQUEST_PERFORM_FAILED);
+  absl::Status error = absl::InternalError(
+      "Public key client failed to perform request for config endpoints.");
   for (auto uri : public_key_client_options_.endpoints) {
     auto shared_uri = std::make_shared<Uri>(uri);
 
@@ -137,7 +108,7 @@ ExecutionResult PublicKeyClientProvider::ListPublicKeys(
     if (execution_result.Successful()) {
       // If there is one URI PerformRequest() success, ListPublicKeys will
       // return success.
-      result = SuccessExecutionResult();
+      error = absl::OkStatus();
     } else {
       SCP_ERROR_CONTEXT(kPublicKeyClientProvider, public_key_fetching_context,
                         execution_result,
@@ -146,14 +117,14 @@ ExecutionResult PublicKeyClientProvider::ListPublicKeys(
     }
   }
 
-  if (!result.Successful()) {
+  if (!error.ok()) {
     SCP_ERROR_CONTEXT(kPublicKeyClientProvider, public_key_fetching_context,
                       public_key_fetching_context.result,
                       "Failed to perform request with config endpoints.");
-    public_key_fetching_context.Finish(result);
+    public_key_fetching_context.Finish();
   }
 
-  return result;
+  return error;
 }
 
 void ExecutionResultCheckingHelper(
@@ -213,9 +184,10 @@ void PublicKeyClientProvider::OnPerformRequestCallback(
   }
 }
 
-std::unique_ptr<PublicKeyClientProviderInterface>
-PublicKeyClientProviderFactory::Create(PublicKeyClientOptions options,
-                                       HttpClientInterface* http_client) {
+absl::Nonnull<std::unique_ptr<PublicKeyClientProviderInterface>>
+PublicKeyClientProviderFactory::Create(
+    PublicKeyClientOptions options,
+    absl::Nonnull<HttpClientInterface*> http_client) {
   return std::make_unique<PublicKeyClientProvider>(std::move(options),
                                                    http_client);
 }

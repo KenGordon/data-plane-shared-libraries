@@ -25,6 +25,7 @@
 #include "src/core/async_executor/async_executor.h"
 #include "src/core/curl_client/error_codes.h"
 #include "src/core/curl_client/http1_curl_wrapper.h"
+#include "src/public/core/interface/execution_result.h"
 #include "src/public/core/test_execution_result_matchers.h"
 
 using testing::AtLeast;
@@ -58,37 +59,25 @@ class MockCurlWrapper : public NiceMock<Http1CurlWrapper> {
               (const HttpRequest&));
 };
 
+constexpr uint64_t kThreadCount = 4;
+constexpr uint64_t kQueueCap = 10;
+
 class Http1CurlClientTest : public ::testing::Test {
  protected:
   Http1CurlClientTest()
-      : cpu_async_executor_(/*thread_count=*/4,
-                            /*queue_cap=*/10),
-        io_async_executor_(/*thread_count=*/4,
-                           /*queue_cap=*/10),
+      : cpu_async_executor_(kThreadCount, kQueueCap),
+        io_async_executor_(kThreadCount, kQueueCap),
         wrapper_(std::make_shared<MockCurlWrapper>()) {
     auto provider = std::make_unique<MockCurlWrapperProvider>();
     provider_ = provider.get();
+    constexpr uint64_t delay_duration_ms = 1UL;
+    constexpr size_t maximum_allowed_retry_count = 10;
     subject_.emplace(
         &cpu_async_executor_, &io_async_executor_, std::move(provider),
         common::RetryStrategyOptions(common::RetryStrategyType::Exponential,
-                                     /*time_duration_ms=*/1UL,
-                                     /*total_retries=*/10));
-    CHECK(cpu_async_executor_.Init().Successful())
-        << "cpu_async_executor_ initialization unsuccessful";
-    CHECK(io_async_executor_.Init().Successful())
-        << "io_async_executor_ initialization unsuccessful";
-    CHECK(cpu_async_executor_.Run().Successful())
-        << "cpu_async_executor_ run unsuccessful";
-    CHECK(io_async_executor_.Run().Successful())
-        << "io_async_executor_ run unsuccessful";
+                                     delay_duration_ms,
+                                     maximum_allowed_retry_count));
     ON_CALL(*provider_, MakeWrapper).WillByDefault(Return(wrapper_));
-  }
-
-  ~Http1CurlClientTest() {
-    CHECK(io_async_executor_.Stop().Successful())
-        << "io_async_executor_ stop unsuccessful";
-    CHECK(cpu_async_executor_.Stop().Successful())
-        << "cpu_async_executor_ stop unsuccessful";
   }
 
   AsyncExecutor cpu_async_executor_, io_async_executor_;

@@ -40,7 +40,6 @@ using google::cmrt::sdk::blob_storage_service::v1::PutBlobStreamResponse;
 using google::scp::core::AsyncContext;
 using google::scp::core::ConsumerStreamingContext;
 using google::scp::core::ProducerStreamingContext;
-using google::scp::core::SuccessExecutionResult;
 using google::scp::core::test::IsSuccessful;
 using google::scp::cpio::mock::MockBlobStorageClientWithOverrides;
 using testing::Return;
@@ -50,7 +49,7 @@ namespace google::scp::cpio::test {
 class BlobStorageClientTest : public ::testing::Test {
  protected:
   BlobStorageClientTest() {
-    CHECK(client_.Init().Successful()) << "client_ initialization unsuccessful";
+    CHECK(client_.Init().ok()) << "client_ initialization unsuccessful";
   }
 
   MockBlobStorageClientWithOverrides client_;
@@ -59,43 +58,43 @@ class BlobStorageClientTest : public ::testing::Test {
 TEST_F(BlobStorageClientTest, GetBlobSuccess) {
   AsyncContext<GetBlobRequest, GetBlobResponse> context;
   EXPECT_CALL(client_.GetBlobStorageClientProvider(), GetBlob)
-      .WillOnce(Return(SuccessExecutionResult()));
-  EXPECT_THAT(client_.GetBlob(context), IsSuccessful());
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_TRUE(client_.GetBlob(context).ok());
 }
 
 TEST_F(BlobStorageClientTest, ListBlobsMetadataSuccess) {
   AsyncContext<ListBlobsMetadataRequest, ListBlobsMetadataResponse> context;
   EXPECT_CALL(client_.GetBlobStorageClientProvider(), ListBlobsMetadata)
-      .WillOnce(Return(SuccessExecutionResult()));
-  EXPECT_THAT(client_.ListBlobsMetadata(context), IsSuccessful());
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_TRUE(client_.ListBlobsMetadata(context).ok());
 }
 
 TEST_F(BlobStorageClientTest, PutBlobSuccess) {
   AsyncContext<PutBlobRequest, PutBlobResponse> context;
   EXPECT_CALL(client_.GetBlobStorageClientProvider(), PutBlob)
-      .WillOnce(Return(SuccessExecutionResult()));
-  EXPECT_THAT(client_.PutBlob(context), IsSuccessful());
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_TRUE(client_.PutBlob(context).ok());
 }
 
 TEST_F(BlobStorageClientTest, DeleteBlobSuccess) {
   AsyncContext<DeleteBlobRequest, DeleteBlobResponse> context;
   EXPECT_CALL(client_.GetBlobStorageClientProvider(), DeleteBlob)
-      .WillOnce(Return(SuccessExecutionResult()));
-  EXPECT_THAT(client_.DeleteBlob(context), IsSuccessful());
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_TRUE(client_.DeleteBlob(context).ok());
 }
 
 TEST_F(BlobStorageClientTest, GetBlobStreamSuccess) {
   ConsumerStreamingContext<GetBlobStreamRequest, GetBlobStreamResponse> context;
   EXPECT_CALL(client_.GetBlobStorageClientProvider(), GetBlobStream)
-      .WillOnce(Return(SuccessExecutionResult()));
-  EXPECT_THAT(client_.GetBlobStream(context), IsSuccessful());
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_TRUE(client_.GetBlobStream(context).ok());
 }
 
 TEST_F(BlobStorageClientTest, PutBlobStreamSuccess) {
   ProducerStreamingContext<PutBlobStreamRequest, PutBlobStreamResponse> context;
   EXPECT_CALL(client_.GetBlobStorageClientProvider(), PutBlobStream)
-      .WillOnce(Return(SuccessExecutionResult()));
-  EXPECT_THAT(client_.PutBlobStream(context), IsSuccessful());
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_TRUE(client_.PutBlobStream(context).ok());
 }
 
 }  // namespace google::scp::cpio::test

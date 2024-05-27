@@ -46,12 +46,15 @@ constexpr size_t kBufferSize = 1 * 1024 * 1024 /* 1Mib */;
   init_params.set_require_code_preload_for_execution(false);
   init_params.set_native_js_function_comms_fd(-1);
   init_params.mutable_native_js_function_names()->Clear();
+  init_params.mutable_rpc_method_names()->Clear();
   init_params.set_server_address("");
   init_params.set_js_engine_initial_heap_size_mb(0);
   init_params.set_js_engine_maximum_heap_size_mb(0);
   init_params.set_js_engine_max_wasm_memory_number_of_pages(0);
   init_params.set_request_and_response_data_buffer_fd(fd);
   init_params.set_request_and_response_data_buffer_size_bytes(kBufferSize);
+  init_params.set_skip_v8_cleanup(true);
+  init_params.mutable_v8_flags()->Clear();
   return init_params;
 }
 

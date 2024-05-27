@@ -26,45 +26,38 @@
 #include <google/protobuf/util/json_util.h>
 
 #include "absl/synchronization/notification.h"
+#include "src/roma/config/config.h"
 #include "src/roma/interface/roma.h"
 #include "src/roma/roma_service/roma_service.h"
-
-using google::scp::roma::sandbox::roma_service::RomaService;
+#include "src/roma/roma_service/romav8_proto_utils.h"
 
 namespace google::scp::roma::romav8::app_api {
-
-using TEncoded = std::string;
-
-template <typename T>
-absl::StatusOr<TEncoded> Encode(const T& obj) {
-  static_assert(std::is_base_of<google::protobuf::MessageLite, T>::value,
-                "T must be derived from google::protobuf::MessageLite");
-  if (std::string s; obj.SerializeToString(&s)) {
-    return s;
-  }
-  return absl::UnknownError("unable to serialize protobuf object");
-}
-
-template <typename T>
-absl::Status Decode(const TEncoded& encoded, T& decoded) {
-  static_assert(std::is_base_of<google::protobuf::MessageLite, T>::value,
-                "T must be derived from google::protobuf::MessageLite");
-  if (T obj; obj.ParseFromString(encoded)) {
-    decoded.CheckTypeAndMergeFrom(obj);
-    return absl::OkStatus();
-  }
-  return absl::UnknownError("unable to parse protobuf object");
-}
-
-template <typename T = google::scp::roma::DefaultMetadata>
+template <typename TMetadata = google::scp::roma::DefaultMetadata>
 class RomaV8AppService {
  public:
-  using RomaService = google::scp::roma::sandbox::roma_service::RomaService<T>;
+  using RomaService =
+      google::scp::roma::sandbox::roma_service::RomaService<TMetadata>;
+  using Config = google::scp::roma::Config<TMetadata>;
 
-  RomaV8AppService(RomaService& roma_service, std::string_view code_id)
-      : roma_service_(&roma_service), code_id_(code_id) {}
+  explicit RomaV8AppService(Config config, std::string_view code_id)
+      : roma_service_(std::make_unique<RomaService>(std::move(config))),
+        code_id_(code_id) {}
 
-  virtual ~RomaV8AppService() = default;
+  // RomaV8AppService is movable.
+  RomaV8AppService(RomaV8AppService&&) = default;
+  RomaV8AppService& operator=(RomaV8AppService&&) = default;
+
+  // RomaV8AppService is not copyable.
+  RomaV8AppService(const RomaV8AppService&) = delete;
+  RomaV8AppService& operator=(const RomaV8AppService&) = delete;
+
+  virtual ~RomaV8AppService() {
+    if (roma_service_) {
+      roma_service_->Stop().IgnoreError();
+    }
+  }
+
+  RomaService* GetRomaService() { return roma_service_.get(); }
 
   /*
    * Args:
@@ -98,31 +91,39 @@ class RomaV8AppService {
     LOG(INFO) << "code id: " << code_id_;
     LOG(INFO) << "code version: " << code_version_;
     LOG(INFO) << "handler fn: " << handler_fn_name;
-    InvocationStrRequest<T> execution_obj = {
+
+    PS_ASSIGN_OR_RETURN(std::string encoded_request,
+                        google::scp::roma::romav8::Encode(request));
+
+    InvocationStrRequest<TMetadata> execution_obj = {
         .id = code_id_,
         .version_string = std::string(code_version_),
         .handler_name = std::string(handler_fn_name),
-        .input = {*Encode(request)},
+        .input = {encoded_request},
         .treat_input_as_byte_str = true,
     };
     auto execute_cb = [&response,
                        &notification](absl::StatusOr<ResponseObject> resp) {
-      if (resp.ok()) {
-        if (auto decode = Decode(resp->resp, response); !decode.ok()) {
-          LOG(ERROR) << "error decoding response. response: " << resp->resp;
-        }
-      } else {
+      if (!resp.ok()) {
         LOG(ERROR) << "Error in Roma Execute()";
+      } else if (absl::Status decode =
+                     google::scp::roma::romav8::Decode(resp->resp, response);
+                 !decode.ok()) {
+        LOG(ERROR) << "error decoding response. response: " << resp->resp;
       }
       notification.Notify();
     };
     return roma_service_->Execute(
-        std::make_unique<InvocationStrRequest<T>>(std::move(execution_obj)),
+        std::make_unique<InvocationStrRequest<TMetadata>>(
+            std::move(execution_obj)),
         std::move(execute_cb));
   }
 
+ protected:
+  absl::Status Init() { return roma_service_->Init(); }
+
  private:
-  RomaService* roma_service_;
+  std::unique_ptr<RomaService> roma_service_;
 
   std::string code_id_;
   std::string code_version_;

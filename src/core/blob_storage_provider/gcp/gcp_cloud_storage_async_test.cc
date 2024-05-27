@@ -38,27 +38,15 @@ namespace google::scp::core::test {
 namespace {
 
 using google::cloud::Options;
-using google::cloud::Status;
-using google::cloud::StatusOr;
 using google::cloud::storage::BucketLifecycle;
 using google::cloud::storage::BucketMetadata;
 using google::cloud::storage::Client;
-using google::cloud::storage::DisableCrc32cChecksum;
-using google::cloud::storage::DisableMD5Hash;
 using google::cloud::storage::LifecycleRule;
-using google::cloud::storage::MaxResults;
-using google::cloud::storage::MD5HashValue;
-using google::cloud::storage::ObjectMetadata;
-using google::cloud::storage::ObjectReadStream;
 using google::cloud::storage::Prefix;
 using google::cloud::storage::ProjectIdOption;
 using google::cloud::storage::StartOffset;
 using google::cloud::storage::internal::EmptyResponse;
 using google::cloud::storage::internal::HttpResponse;
-using google::cloud::storage::internal::InsertObjectMediaRequest;
-using google::cloud::storage::internal::ListObjectsResponse;
-using google::cloud::storage::internal::ObjectReadSource;
-using google::cloud::storage::internal::ReadSourceResult;
 using google::scp::core::AsyncExecutor;
 using google::scp::core::DeleteBlobRequest;
 using google::scp::core::DeleteBlobResponse;
@@ -81,7 +69,6 @@ using testing::IsNull;
 using testing::NotNull;
 using testing::Pointee;
 using testing::Pointwise;
-using CloudStatusCode = google::cloud::StatusCode;
 
 constexpr std::string_view kProject = "admcloud-coordinator1";
 constexpr std::string_view kBucketName = "test-bucket";
@@ -150,12 +137,6 @@ class GcpCloudStorageClientAsyncTests : public testing::Test {
             std::make_shared<AsyncExecutor>(kThreadCount, kQueueSize)),
         config_provider_(std::make_shared<MockConfigProvider>()) {
     config_provider_->Set(std::string(kGcpProjectId), std::string(kProject));
-
-    async_executor_->Init();
-    async_executor_->Run();
-    io_async_executor_->Init();
-    io_async_executor_->Run();
-
     GcpCloudStorageProvider provider(async_executor_, io_async_executor_,
                                      config_provider_, AsyncPriority::Normal,
                                      AsyncPriority::Normal);
@@ -167,11 +148,7 @@ class GcpCloudStorageClientAsyncTests : public testing::Test {
     InsertDefaultBlob();
   }
 
-  ~GcpCloudStorageClientAsyncTests() {
-    ClearBucket();
-    async_executor_->Stop();
-    io_async_executor_->Stop();
-  }
+  ~GcpCloudStorageClientAsyncTests() { ClearBucket(); }
 
   std::shared_ptr<AsyncExecutor> async_executor_, io_async_executor_;
   std::shared_ptr<MockConfigProvider> config_provider_;

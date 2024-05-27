@@ -20,6 +20,7 @@
 #include <memory>
 #include <string>
 
+#include "absl/base/nullability.h"
 #include "src/core/interface/async_context.h"
 #include "src/core/interface/service_interface.h"
 #include "src/cpio/client_providers/interface/role_credentials_provider_interface.h"
@@ -33,7 +34,7 @@ namespace google::scp::cpio::client_providers {
 /**
  * @brief Interface responsible for fetching KMS Aead.
  */
-class KmsClientProviderInterface : public core::ServiceInterface {
+class KmsClientProviderInterface {
  public:
   virtual ~KmsClientProviderInterface() = default;
   /**
@@ -42,7 +43,7 @@ class KmsClientProviderInterface : public core::ServiceInterface {
    * @param decrypt_context decrypt_context of the operation.
    * @return core::ExecutionResult execution result.
    */
-  virtual core::ExecutionResult Decrypt(
+  virtual absl::Status Decrypt(
       core::AsyncContext<cmrt::sdk::kms_service::v1::DecryptRequest,
                          cmrt::sdk::kms_service::v1::DecryptResponse>&
           decrypt_context) noexcept = 0;
@@ -56,10 +57,10 @@ class KmsClientProviderFactory {
    * @return std::unique_ptr<KmsClientProviderInterface> created
    * KmsClientProvider.
    */
-  static std::unique_ptr<KmsClientProviderInterface> Create(
-      KmsClientOptions options,
-      RoleCredentialsProviderInterface* role_credentials_provider,
-      core::AsyncExecutorInterface* io_async_executor) noexcept;
+  static absl::Nonnull<std::unique_ptr<KmsClientProviderInterface>> Create(
+      absl::Nonnull<RoleCredentialsProviderInterface*>
+          role_credentials_provider,
+      absl::Nonnull<core::AsyncExecutorInterface*> io_async_executor) noexcept;
 };
 }  // namespace google::scp::cpio::client_providers
 

@@ -18,10 +18,12 @@
 #define PUBLIC_CPIO_ADAPTERS_METRIC_CLIENT_METRIC_CLIENT_H_
 
 #include <memory>
+#include <utility>
 
+#include "absl/base/nullability.h"
+#include "absl/status/status.h"
 #include "src/cpio/client_providers/interface/cpio_provider_interface.h"
 #include "src/cpio/client_providers/interface/metric_client_provider_interface.h"
-#include "src/public/core/interface/execution_result.h"
 #include "src/public/cpio/interface/metric_client/metric_client_interface.h"
 #include "src/public/cpio/proto/metric_service/v1/metric_service.pb.h"
 
@@ -30,31 +32,29 @@ namespace google::scp::cpio {
  */
 class MetricClient : public MetricClientInterface {
  public:
-  explicit MetricClient(const std::shared_ptr<MetricClientOptions>& options)
-      : options_(options) {}
+  explicit MetricClient(
+      absl::Nonnull<
+          std::unique_ptr<client_providers::MetricClientProviderInterface>>
+          metric_client_provider)
+      : metric_client_provider_(std::move(metric_client_provider)) {}
 
   virtual ~MetricClient() = default;
 
-  core::ExecutionResult Init() noexcept override;
+  absl::Status Init() noexcept override;
 
-  core::ExecutionResult Run() noexcept override;
+  absl::Status Run() noexcept override;
 
-  core::ExecutionResult Stop() noexcept override;
+  absl::Status Stop() noexcept override;
 
-  core::ExecutionResult PutMetrics(
+  absl::Status PutMetrics(
       core::AsyncContext<
           google::cmrt::sdk::metric_service::v1::PutMetricsRequest,
           google::cmrt::sdk::metric_service::v1::PutMetricsResponse>
           context) noexcept override;
 
  protected:
-  std::unique_ptr<MetricClientInterface> metric_client_provider_;
-
- private:
-  virtual core::ExecutionResult CreateMetricClientProvider() noexcept;
-
-  std::shared_ptr<MetricClientOptions> options_;
-  client_providers::CpioProviderInterface* cpio_;
+  std::unique_ptr<client_providers::MetricClientProviderInterface>
+      metric_client_provider_;
 };
 }  // namespace google::scp::cpio
 

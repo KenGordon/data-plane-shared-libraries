@@ -20,6 +20,7 @@
 #include <memory>
 #include <utility>
 
+#include "absl/base/nullability.h"
 #include "src/core/interface/async_executor_interface.h"
 #include "src/core/interface/http_client_interface.h"
 #include "src/cpio/client_providers/interface/auth_token_provider_interface.h"
@@ -31,13 +32,8 @@ namespace google::scp::cpio::client_providers {
  */
 class GcpAuthTokenProvider : public AuthTokenProviderInterface {
  public:
-  explicit GcpAuthTokenProvider(core::HttpClientInterface* http_client);
-
-  core::ExecutionResult Init() noexcept override;
-
-  core::ExecutionResult Run() noexcept override;
-
-  core::ExecutionResult Stop() noexcept override;
+  explicit GcpAuthTokenProvider(
+      absl::Nonnull<core::HttpClientInterface*> http_client);
 
   core::ExecutionResult GetSessionToken(
       core::AsyncContext<GetSessionTokenRequest, GetSessionTokenResponse>&

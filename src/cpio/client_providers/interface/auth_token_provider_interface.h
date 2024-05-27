@@ -20,6 +20,7 @@
 #include <memory>
 #include <string>
 
+#include "absl/base/nullability.h"
 #include "src/core/interface/async_context.h"
 #include "src/core/interface/http_client_interface.h"
 #include "src/core/interface/service_interface.h"
@@ -53,10 +54,9 @@ struct GetSessionTokenForTargetAudienceRequest {
  * token. For more information, see
  * https://developers.google.com/identity/protocols/oauth2
  */
-class AuthTokenProviderInterface : public core::ServiceInterface {
+class AuthTokenProviderInterface {
  public:
   virtual ~AuthTokenProviderInterface() = default;
-
   /**
    * @brief Gets a session token from instance metadata service.
    *
@@ -87,8 +87,8 @@ class AuthTokenProviderFactory {
    * @return std::shared_ptr<AuthTokenProviderInterface> created
    * AuthTokenProvider.
    */
-  static std::unique_ptr<AuthTokenProviderInterface> Create(
-      core::HttpClientInterface* http1_client);
+  static absl::Nonnull<std::unique_ptr<AuthTokenProviderInterface>> Create(
+      absl::Nonnull<core::HttpClientInterface*> http1_client);
 };
 }  // namespace google::scp::cpio::client_providers
 

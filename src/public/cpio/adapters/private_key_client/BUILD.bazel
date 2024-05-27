@@ -39,7 +39,6 @@ cc_test(
         "//src/core/test/utils",
         "//src/cpio/client_providers/private_key_client_provider",
         "//src/public/core:test_execution_result_matchers",
-        "//src/public/cpio/core:lib_cpio_mock",
         "//src/public/cpio/interface:cpio_errors",
         "//src/public/cpio/interface:type_def",
         "//src/public/cpio/interface/private_key_client",
@@ -58,5 +57,6 @@ cc_library(
         "//src/core/async_executor/mock:core_async_executor_mock",
         "//src/cpio/client_providers/private_key_client_provider/mock:private_key_client_provider_mock",
         "//src/public/cpio/interface/private_key_client",
+        "@com_google_absl//absl/status",
     ],
 )

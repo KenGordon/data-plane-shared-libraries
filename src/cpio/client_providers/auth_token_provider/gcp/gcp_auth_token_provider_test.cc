@@ -27,6 +27,7 @@
 #include "absl/synchronization/notification.h"
 #include "src/core/curl_client/mock/mock_curl_client.h"
 #include "src/cpio/client_providers/auth_token_provider/gcp/error_codes.h"
+#include "src/public/core/interface/execution_result.h"
 #include "src/public/core/test_execution_result_matchers.h"
 
 using google::scp::core::AsyncContext;
@@ -208,14 +209,6 @@ INSTANTIATE_TEST_SUITE_P(BadTokens, GcpAuthTokenProviderTest,
                               "access_token": "INVALID-JSON",
                               "expires_in": 3599
                             })""" /*missing field*/));
-
-TEST_F(GcpAuthTokenProviderTest, NullHttpClientProvider) {
-  auto auth_token_provider = std::make_shared<GcpAuthTokenProvider>(nullptr);
-
-  EXPECT_THAT(auth_token_provider->Init(),
-              ResultIs(FailureExecutionResult(
-                  SC_GCP_INSTANCE_AUTHORIZER_PROVIDER_INITIALIZATION_FAILED)));
-}
 
 TEST_F(GcpAuthTokenProviderTest, FetchTokenForTargetAudienceSuccessfully) {
   EXPECT_CALL(http_client_, PerformRequest).WillOnce([](auto& http_context) {

@@ -41,8 +41,34 @@ TEST_F(ConsentedLogTest, LogConsented) {
   EXPECT_THAT(LogWithCapturedStderr(
                   [this]() { PS_VLOG(kMaxV, *test_instance_) << kLogContent; }),
               IsEmpty());
-  EXPECT_THAT(ReadSs(),
+  std::string log_str = ReadSs();
+  EXPECT_THAT(log_str,
               ContainsRegex(absl::StrCat("\\(id: 1234\\)[ \t]+", kLogContent)));
+
+  EXPECT_THAT(log_str, ContainsRegex("severity_text[ \t:]+INFO"));
+}
+
+TEST_F(ConsentedLogTest, LogSeverityWarn) {
+  test_instance_ = std::make_unique<ContextImpl>(
+      absl::btree_map<std::string, std::string>{}, matched_token_);
+  SetServerTokenForTestOnly(kServerToken);
+
+  EXPECT_THAT(LogWithCapturedStderr([this]() {
+                PS_LOG(WARNING, *test_instance_) << kLogContent;
+              }),
+              IsEmpty());
+  EXPECT_THAT(ReadSs(), ContainsRegex("severity_text[ \t:]+WARN"));
+}
+
+TEST_F(ConsentedLogTest, LogSeverityError) {
+  test_instance_ = std::make_unique<ContextImpl>(
+      absl::btree_map<std::string, std::string>{}, matched_token_);
+  SetServerTokenForTestOnly(kServerToken);
+
+  EXPECT_THAT(LogWithCapturedStderr(
+                  [this]() { PS_LOG(ERROR, *test_instance_) << kLogContent; }),
+              IsEmpty());
+  EXPECT_THAT(ReadSs(), ContainsRegex("severity_text[ \t:]+ERROR"));
 }
 
 TEST_F(DebugResponseTest, NotLoggedInProd) {
@@ -163,6 +189,45 @@ TEST_F(ConsentedLogTest, Update) {
   EXPECT_TRUE(test_instance_->is_consented());
   test_instance_->Update({}, mismatched_token_);
   EXPECT_FALSE(test_instance_->is_consented());
+}
+
+TEST_F(ConsentedLogTest, LogWithDynamicSeverities) {
+  test_instance_ = std::make_unique<ContextImpl>(
+      absl::btree_map<std::string, std::string>{}, matched_token_);
+  SetServerTokenForTestOnly(kServerToken);
+
+  EXPECT_THAT(LogWithCapturedStderr([this]() {
+                LogWithPSLog(absl::LogSeverity::kError, *test_instance_,
+                             kLogContent);
+              }),
+              IsEmpty());
+  EXPECT_THAT(GetSs().str(), ContainsRegex("severity_text[ \t:]+ERROR"));
+  EXPECT_THAT(LogWithCapturedStderr([this]() {
+                LogWithPSLog(absl::LogSeverity::kFatal, *test_instance_,
+                             kLogContent);
+              }),
+              IsEmpty());
+  EXPECT_THAT(GetSs().str(), ContainsRegex("severity_text[ \t:]+ERROR"));
+  EXPECT_THAT(LogWithCapturedStderr([this]() {
+                LogWithPSLog(absl::LogSeverity::kInfo, *test_instance_,
+                             kLogContent);
+              }),
+              IsEmpty());
+  EXPECT_THAT(GetSs().str(), ContainsRegex("severity_text[ \t:]+INFO"));
+  EXPECT_THAT(LogWithCapturedStderr([this]() {
+                LogWithPSLog(absl::LogSeverity::kWarning, *test_instance_,
+                             kLogContent);
+              }),
+              IsEmpty());
+  EXPECT_THAT(GetSs().str(), ContainsRegex("severity_text[ \t:]+WARN"));
+}
+
+TEST_F(SafePathLogTest, LogMessage) {
+  test_instance_ = CreateTestInstance();
+  EXPECT_THAT(LogWithCapturedStderr(
+                  [this]() { PS_VLOG(kMaxV, *test_instance_) << kLogContent; }),
+              IsEmpty());
+  EXPECT_THAT(ReadSs(), ContainsRegex(kLogContent));
 }
 
 }  // namespace

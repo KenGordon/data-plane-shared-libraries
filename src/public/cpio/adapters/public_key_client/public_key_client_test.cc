@@ -46,12 +46,12 @@ using testing::Return;
 namespace google::scp::cpio::test {
 class PublicKeyClientTest : public ::testing::Test {
  protected:
-  PublicKeyClientTest() : client_(std::make_shared<PublicKeyClientOptions>()) {
-    EXPECT_THAT(client_.Init(), IsSuccessful());
-    EXPECT_THAT(client_.Run(), IsSuccessful());
+  PublicKeyClientTest() {
+    EXPECT_TRUE(client_.Init().ok());
+    EXPECT_TRUE(client_.Run().ok());
   }
 
-  ~PublicKeyClientTest() { EXPECT_THAT(client_.Stop(), IsSuccessful()); }
+  ~PublicKeyClientTest() { EXPECT_TRUE(client_.Stop().ok()); }
 
   MockPublicKeyClientWithOverrides client_;
 };
@@ -62,17 +62,18 @@ TEST_F(PublicKeyClientTest, ListPublicKeysSuccess) {
                         context) {
         context.response = std::make_shared<ListPublicKeysResponse>();
         context.Finish(SuccessExecutionResult());
-        return SuccessExecutionResult();
+        return absl::OkStatus();
       });
 
   absl::Notification finished;
-  EXPECT_THAT(client_.ListPublicKeys(ListPublicKeysRequest(),
-                                     [&](const ExecutionResult result,
-                                         ListPublicKeysResponse response) {
-                                       EXPECT_THAT(result, IsSuccessful());
-                                       finished.Notify();
-                                     }),
-              IsSuccessful());
+  EXPECT_TRUE(client_
+                  .ListPublicKeys(ListPublicKeysRequest(),
+                                  [&](const ExecutionResult result,
+                                      ListPublicKeysResponse response) {
+                                    EXPECT_THAT(result, IsSuccessful());
+                                    finished.Notify();
+                                  })
+                  .ok());
   finished.WaitForNotification();
 }
 
@@ -81,24 +82,21 @@ TEST_F(PublicKeyClientTest, ListPublicKeysFailure) {
       .WillOnce([=](AsyncContext<ListPublicKeysRequest, ListPublicKeysResponse>&
                         context) {
         context.Finish(FailureExecutionResult(SC_UNKNOWN));
-        return FailureExecutionResult(SC_UNKNOWN);
+        return absl::UnknownError("");
       });
 
   absl::Notification finished;
-  EXPECT_THAT(
-      client_.ListPublicKeys(
-          ListPublicKeysRequest(),
-          [&](const ExecutionResult result, ListPublicKeysResponse response) {
-            EXPECT_THAT(result, ResultIs(FailureExecutionResult(SC_UNKNOWN)));
-            finished.Notify();
-          }),
-      ResultIs(FailureExecutionResult(SC_UNKNOWN)));
+  EXPECT_FALSE(
+      client_
+          .ListPublicKeys(ListPublicKeysRequest(),
+                          [&](const ExecutionResult result,
+                              ListPublicKeysResponse response) {
+                            EXPECT_THAT(
+                                result,
+                                ResultIs(FailureExecutionResult(SC_UNKNOWN)));
+                            finished.Notify();
+                          })
+          .ok());
   finished.WaitForNotification();
-}
-
-TEST_F(PublicKeyClientTest, FailureToCreatePublicKeyClientProvider) {
-  auto failure = FailureExecutionResult(SC_UNKNOWN);
-  client_.create_public_key_client_provider_result = failure;
-  EXPECT_EQ(client_.Init(), failure);
 }
 }  // namespace google::scp::cpio::test

@@ -36,6 +36,7 @@
 #include "absl/log/log.h"
 #include "src/core/common/time_provider/time_provider.h"
 #include "src/cpio/client_providers/global_cpio/global_cpio.h"
+#include "src/cpio/client_providers/interface/cpio_provider_interface.h"
 #include "src/public/core/interface/errors.h"
 #include "src/public/core/interface/execution_result.h"
 #include "src/public/cpio/interface/cpio.h"
@@ -52,6 +53,7 @@ using google::scp::core::AsyncContext;
 using google::scp::core::HttpRequest;
 using google::scp::core::HttpResponse;
 using google::scp::core::errors::GetErrorMessage;
+using google::scp::cpio::client_providers::CpioProviderInterface;
 using google::scp::cpio::client_providers::GlobalCpio;
 using google::scp::cpio::validator::proto::TestCase;
 using google::scp::cpio::validator::proto::ValidatorConfig;
@@ -129,20 +131,8 @@ google::scp::core::ExecutionResult MakeRequest(
 }
 
 void RunHttpValidator(
-    std::string_view name,
+    CpioProviderInterface& cpio, std::string_view name,
     const google::scp::cpio::validator::proto::HttpConfig& http_config) {
-  google::scp::core::HttpClientInterface* http_client;
-  if (auto result = GlobalCpio::GetGlobalCpio().GetHttp1Client();
-      !result.ok()) {
-    std::cout << "[ FAILURE ] " << name << " Unable to get Http Client."
-              << std::endl;
-    return;
-  } else {
-    http_client = *result;
-  }
-
-  http_client->Init();
-  http_client->Run();
   absl::flat_hash_map<std::string, google::scp::core::HttpMethod>
       http_method_map = {{"GET", google::scp::core::HttpMethod::GET},
                          {"POST", google::scp::core::HttpMethod::POST},
@@ -154,7 +144,8 @@ void RunHttpValidator(
               << " is invalid." << std::endl;
   }
 
-  if (!MakeRequest(*http_client, http_method_map[http_config.request_method()],
+  if (!MakeRequest(cpio.GetHttp1Client(),
+                   http_method_map[http_config.request_method()],
                    http_config.request_url(), http_config.request_headers())
            .Successful()) {
     std::cout << "[ FAILURE ] " << name
@@ -165,8 +156,6 @@ void RunHttpValidator(
     std::cout << "[ SUCCESS ] " << name << " Connected to request URL."
               << std::endl;
   }
-
-  http_client->Stop();
 }
 
 int main(int argc, char* argv[]) {
@@ -207,6 +196,7 @@ int main(int argc, char* argv[]) {
     std::cout << GetValidatorFailedToRunMsg() << std::endl;
     return -1;
   }
+  CpioProviderInterface& cpio = GlobalCpio::GetGlobalCpio();
 
   // Run test cases for DNS and HTTP Proxy first.
   for (auto test_case : validator_config.test_cases()) {
@@ -215,7 +205,7 @@ int main(int argc, char* argv[]) {
         RunDnsLookupValidator(test_case.name(), test_case.dns_config());
         break;
       case TestCase::ClientConfigCase::kHttpConfig:
-        RunHttpValidator(test_case.name(), test_case.http_config());
+        RunHttpValidator(cpio, test_case.name(), test_case.http_config());
         break;
       default:
         break;
@@ -225,6 +215,9 @@ int main(int argc, char* argv[]) {
   // Run test cases for CPIO components.
   for (auto test_case : validator_config.test_cases()) {
     switch (test_case.client_config_case()) {
+      case TestCase::ClientConfigCase::kDnsConfig:
+      case TestCase::ClientConfigCase::kHttpConfig:
+        break;
       case TestCase::ClientConfigCase::kGetTagsByResourceNameConfig:
         google::scp::cpio::validator::RunGetTagsByResourceNameValidator(
             test_case.name(), test_case.get_tags_by_resource_name_config());
@@ -247,15 +240,15 @@ int main(int argc, char* argv[]) {
         break;
       case TestCase::ClientConfigCase::kEnqueueMessageConfig:
         google::scp::cpio::validator::RunEnqueueMessageValidator(
-            test_case.name(), test_case.enqueue_message_config());
+            cpio, test_case.name(), test_case.enqueue_message_config());
         break;
       case TestCase::ClientConfigCase::kGetTopMessageConfig:
         google::scp::cpio::validator::RunGetTopMessageValidator(
-            test_case.name());
+            cpio, test_case.name());
         break;
       case TestCase::ClientConfigCase::kFetchPrivateKeyConfig:
         google::scp::cpio::validator::RunFetchPrivateKeyValidator(
-            test_case.name(), test_case.fetch_private_key_config());
+            cpio, test_case.name(), test_case.fetch_private_key_config());
         break;
       default:
         std::cout << "[ FAILURE ] UNEXPECTED INPUT" << std::endl;
@@ -265,5 +258,13 @@ int main(int argc, char* argv[]) {
   std::cout << "Ran all validation tests. For individual statuses, "
                "see above."
             << std::endl;
+  if (google::scp::core::ExecutionResult result =
+          google::scp::cpio::Cpio::ShutdownCpio(cpio_options);
+      !result.Successful()) {
+    std::cout << "[ FAILURE ] Unable to shutdown CPIO: "
+              << GetErrorMessage(result.status_code) << std::endl;
+    std::cout << GetValidatorFailedToRunMsg() << std::endl;
+    return -1;
+  }
   return 0;
 }

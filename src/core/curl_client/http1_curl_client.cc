@@ -18,6 +18,8 @@
 #include <string_view>
 #include <utility>
 
+#include "src/public/core/interface/execution_result.h"
+
 #include "http1_curl_wrapper.h"
 
 using google::scp::core::common::RetryStrategy;
@@ -38,18 +40,6 @@ Http1CurlClient::Http1CurlClient(
       cpu_async_executor_(cpu_async_executor),
       operation_dispatcher_(io_async_executor,
                             RetryStrategy(retry_strategy_options)) {}
-
-ExecutionResult Http1CurlClient::Init() noexcept {
-  return SuccessExecutionResult();
-}
-
-ExecutionResult Http1CurlClient::Run() noexcept {
-  return SuccessExecutionResult();
-}
-
-ExecutionResult Http1CurlClient::Stop() noexcept {
-  return SuccessExecutionResult();
-}
 
 ExecutionResult Http1CurlClient::PerformRequest(
     AsyncContext<HttpRequest, HttpResponse>& http_context) noexcept {

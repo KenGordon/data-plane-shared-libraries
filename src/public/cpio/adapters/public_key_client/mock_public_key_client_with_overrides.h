@@ -24,23 +24,12 @@
 #include "src/public/core/interface/execution_result.h"
 
 namespace google::scp::cpio::mock {
-class MockPublicKeyClientWithOverrides : public PublicKeyClient {
+class MockPublicKeyClientWithOverrides final : public PublicKeyClient {
  public:
-  MockPublicKeyClientWithOverrides(
-      const std::shared_ptr<PublicKeyClientOptions>& options)
-      : PublicKeyClient(options) {}
-
-  core::ExecutionResult create_public_key_client_provider_result =
-      core::SuccessExecutionResult();
-
-  core::ExecutionResult CreatePublicKeyClientProvider() noexcept override {
-    if (create_public_key_client_provider_result.Successful()) {
-      public_key_client_provider_ = std::make_unique<
-          client_providers::mock::MockPublicKeyClientProvider>();
-      return create_public_key_client_provider_result;
-    }
-    return create_public_key_client_provider_result;
-  }
+  MockPublicKeyClientWithOverrides()
+      : PublicKeyClient(
+            std::make_unique<
+                client_providers::mock::MockPublicKeyClientProvider>()) {}
 
   client_providers::mock::MockPublicKeyClientProvider&
   GetPublicKeyClientProvider() {

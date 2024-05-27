@@ -22,6 +22,7 @@
 #include <string>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "src/core/interface/http_client_interface.h"
 #include "src/core/interface/service_interface.h"
 #include "src/cpio/client_providers/interface/auth_token_provider_interface.h"
@@ -32,7 +33,7 @@ namespace google::scp::cpio::client_providers {
 /**
  * @brief Interface responsible for fetching instance data.
  */
-class InstanceClientProviderInterface : public core::ServiceInterface {
+class InstanceClientProviderInterface {
  public:
   virtual ~InstanceClientProviderInterface() = default;
 
@@ -40,9 +41,9 @@ class InstanceClientProviderInterface : public core::ServiceInterface {
    * @brief Get the Current Instance Resource Name object
    *
    * @param context context of the operation.
-   * @return core::ExecutionResult result of the operation.
+   * @return absl::Status result of the operation.
    */
-  virtual core::ExecutionResult GetCurrentInstanceResourceName(
+  virtual absl::Status GetCurrentInstanceResourceName(
       core::AsyncContext<cmrt::sdk::instance_service::v1::
                              GetCurrentInstanceResourceNameRequest,
                          cmrt::sdk::instance_service::v1::
@@ -53,18 +54,18 @@ class InstanceClientProviderInterface : public core::ServiceInterface {
    * @brief Get the Current Instance Resource  object synchronously.
    *
    * @param resource_name[out] the resource name of current instance.
-   * @return core::ExecutionResult
+   * @return absl::Status
    */
-  virtual core::ExecutionResult GetCurrentInstanceResourceNameSync(
+  virtual absl::Status GetCurrentInstanceResourceNameSync(
       std::string& resource_name) noexcept = 0;
 
   /**
    * @brief Get the Tags By Resource Name object
    *
    * @param context context of the operation.
-   * @return core::ExecutionResult result of the operation.
+   * @return absl::Status result of the operation.
    */
-  virtual core::ExecutionResult GetTagsByResourceName(
+  virtual absl::Status GetTagsByResourceName(
       core::AsyncContext<
           cmrt::sdk::instance_service::v1::GetTagsByResourceNameRequest,
           cmrt::sdk::instance_service::v1::GetTagsByResourceNameResponse>&
@@ -74,9 +75,9 @@ class InstanceClientProviderInterface : public core::ServiceInterface {
    * @brief Get the Instance Details By Resource Name object
    *
    * @param context context of the operation.
-   * @return core::ExecutionResult result of the operation.
+   * @return absl::Status result of the operation.
    */
-  virtual core::ExecutionResult GetInstanceDetailsByResourceName(
+  virtual absl::Status GetInstanceDetailsByResourceName(
       core::AsyncContext<cmrt::sdk::instance_service::v1::
                              GetInstanceDetailsByResourceNameRequest,
                          cmrt::sdk::instance_service::v1::
@@ -87,9 +88,9 @@ class InstanceClientProviderInterface : public core::ServiceInterface {
    * @brief List Instances By Environment
    *
    * @param context context of the operation.
-   * @return core::ExecutionResult result of the operation.
+   * @return absl::Status result of the operation.
    */
-  virtual core::ExecutionResult ListInstanceDetailsByEnvironment(
+  virtual absl::Status ListInstanceDetailsByEnvironment(
       core::AsyncContext<cmrt::sdk::instance_service::v1::
                              ListInstanceDetailsByEnvironmentRequest,
                          cmrt::sdk::instance_service::v1::
@@ -101,9 +102,9 @@ class InstanceClientProviderInterface : public core::ServiceInterface {
    *
    * @param resource_name the given resource name
    * @param instance_details the details of the given instance.
-   * @return core::ExecutionResult
+   * @return absl::Status
    */
-  virtual core::ExecutionResult GetInstanceDetailsByResourceNameSync(
+  virtual absl::Status GetInstanceDetailsByResourceNameSync(
       std::string_view resource_name,
       cmrt::sdk::instance_service::v1::InstanceDetails&
           instance_details) noexcept = 0;
@@ -117,12 +118,12 @@ class InstanceClientProviderFactory {
    * @param http_client instance of http_client.
    * @return std::unique_ptr<InstanceClientProviderInterface>
    */
-  static std::unique_ptr<InstanceClientProviderInterface> Create(
-      AuthTokenProviderInterface* auth_token_provider,
-      core::HttpClientInterface* http1_client,
-      core::HttpClientInterface* http2_client,
-      core::AsyncExecutorInterface* async_executor,
-      core::AsyncExecutorInterface* io_async_executor);
+  static absl::Nonnull<std::unique_ptr<InstanceClientProviderInterface>> Create(
+      absl::Nonnull<AuthTokenProviderInterface*> auth_token_provider,
+      absl::Nonnull<core::HttpClientInterface*> http1_client,
+      absl::Nonnull<core::HttpClientInterface*> http2_client,
+      absl::Nonnull<core::AsyncExecutorInterface*> async_executor,
+      absl::Nonnull<core::AsyncExecutorInterface*> io_async_executor);
 };
 }  // namespace google::scp::cpio::client_providers
 

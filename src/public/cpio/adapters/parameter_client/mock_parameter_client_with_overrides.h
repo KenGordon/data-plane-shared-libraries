@@ -19,27 +19,20 @@
 
 #include <memory>
 
+#include "absl/status/status.h"
 #include "src/cpio/client_providers/parameter_client_provider/mock/mock_parameter_client_provider.h"
 #include "src/public/cpio/adapters/parameter_client/parameter_client.h"
 
 namespace google::scp::cpio::mock {
 class MockParameterClientWithOverrides : public ParameterClient {
  public:
-  MockParameterClientWithOverrides(
-      const std::shared_ptr<ParameterClientOptions>& options)
-      : ParameterClient(options) {}
-
-  core::ExecutionResult create_parameter_client_provider_result =
-      core::SuccessExecutionResult();
-
-  core::ExecutionResult CreateParameterClientProvider() noexcept override {
-    if (create_parameter_client_provider_result.Successful()) {
-      parameter_client_provider_ = std::make_unique<
-          client_providers::mock::MockParameterClientProvider>();
-      return create_parameter_client_provider_result;
-    }
-    return create_parameter_client_provider_result;
+  MockParameterClientWithOverrides()
+      : ParameterClient(ParameterClientOptions()) {
+    parameter_client_provider_ =
+        std::make_unique<client_providers::mock::MockParameterClientProvider>();
   }
+
+  absl::Status Init() noexcept override { return absl::OkStatus(); }
 
   client_providers::mock::MockParameterClientProvider&
   GetParameterClientProvider() {

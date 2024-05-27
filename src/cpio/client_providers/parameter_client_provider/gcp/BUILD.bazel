@@ -18,34 +18,35 @@ package(default_visibility = ["//src:scp_internal_pkg"])
 
 cc_library(
     name = "gcp_parameter_client_provider",
-    srcs = [
-        ":gcp_parameter_client_provider_srcs",
-    ],
+    srcs = ["gcp_parameter_client_provider.cc"],
+    hdrs = ["gcp_parameter_client_provider.h"],
     deps = [
-        "//src/cpio/client_providers/global_cpio",
-        "//src/cpio/client_providers/global_cpio/cpio_provider",
+        ":error_codes",
         "//src/cpio/client_providers/instance_client_provider/gcp:gcp_instance_client_provider",
         "//src/cpio/client_providers/interface:cpio_client_providers_interface",
         "//src/cpio/client_providers/interface:type_def",
         "//src/cpio/common/gcp:gcp_utils",
         "//src/public/cpio/interface:cpio_errors",
         "//src/public/cpio/proto/parameter_service/v1:parameter_service_cc_proto",
+        "//src/util/status_macro:status_macros",
         "@com_github_googleapis_google_cloud_cpp//:secretmanager",
+        "@com_google_absl//absl/base:nullability",
     ],
 )
 
-exports_files([
-    "gcp_parameter_client_provider.h",
-    "gcp_parameter_client_provider.cc",
-    "error_codes.h",
-])
-
-filegroup(
-    name = "gcp_parameter_client_provider_srcs",
-    srcs = [
-        ":error_codes.h",
-        ":gcp_parameter_client_provider.cc",
-        ":gcp_parameter_client_provider.h",
+cc_library(
+    name = "error_codes",
+    hdrs = ["error_codes.h"],
+    deps = [
+        "//src/cpio/client_providers/instance_client_provider/gcp:gcp_instance_client_provider",
+        "//src/cpio/client_providers/interface:cpio_client_providers_interface",
+        "//src/cpio/client_providers/interface:type_def",
+        "//src/cpio/common/gcp:gcp_utils",
+        "//src/public/cpio/interface:cpio_errors",
+        "//src/public/cpio/proto/parameter_service/v1:parameter_service_cc_proto",
+        "//src/util/status_macro:status_macros",
+        "@com_github_googleapis_google_cloud_cpp//:secretmanager",
+        "@com_google_absl//absl/base:nullability",
     ],
 )
 
@@ -54,6 +55,7 @@ cc_test(
     size = "small",
     srcs = ["gcp_parameter_client_provider_test.cc"],
     deps = [
+        ":error_codes",
         "//src/core/async_executor/mock:core_async_executor_mock",
         "//src/core/interface",
         "//src/core/interface:async_context",
@@ -61,7 +63,6 @@ cc_test(
         "//src/cpio/client_providers/parameter_client_provider/mock/gcp:gcp_parameter_client_provider_mock",
         "//src/cpio/common/gcp:gcp_utils",
         "//src/public/core:test_execution_result_matchers",
-        "//src/public/cpio/test/global_cpio:test_lib_cpio",
         "@com_github_googleapis_google_cloud_cpp//:secretmanager_mocks",
         "@com_google_absl//absl/synchronization",
         "@com_google_googletest//:gtest_main",

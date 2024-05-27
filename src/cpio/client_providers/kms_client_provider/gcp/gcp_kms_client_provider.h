@@ -19,15 +19,15 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <tink/aead.h>
 
 #include "src/core/interface/async_context.h"
 #include "src/cpio/client_providers/interface/kms_client_provider_interface.h"
+#include "src/cpio/client_providers/kms_client_provider/gcp/error_codes.h"
+#include "src/cpio/client_providers/kms_client_provider/gcp/gcp_kms_aead.h"
 #include "src/public/core/interface/execution_result.h"
-
-#include "error_codes.h"
-#include "gcp_kms_aead.h"
 
 namespace google::scp::cpio::client_providers {
 class GcpKmsAeadProvider;
@@ -37,23 +37,17 @@ class GcpKmsAeadProvider;
 class GcpKmsClientProvider : public KmsClientProviderInterface {
  public:
   explicit GcpKmsClientProvider(
-      const std::shared_ptr<GcpKmsAeadProvider>& aead_provider =
-          std::make_shared<GcpKmsAeadProvider>())
-      : aead_provider_(aead_provider) {}
+      absl::Nonnull<std::unique_ptr<GcpKmsAeadProvider>> aead_provider =
+          std::make_unique<GcpKmsAeadProvider>())
+      : aead_provider_(std::move(aead_provider)) {}
 
-  core::ExecutionResult Init() noexcept override;
-
-  core::ExecutionResult Run() noexcept override;
-
-  core::ExecutionResult Stop() noexcept override;
-
-  core::ExecutionResult Decrypt(
+  absl::Status Decrypt(
       core::AsyncContext<cmrt::sdk::kms_service::v1::DecryptRequest,
                          cmrt::sdk::kms_service::v1::DecryptResponse>&
           decrypt_context) noexcept override;
 
  private:
-  std::shared_ptr<GcpKmsAeadProvider> aead_provider_;
+  std::unique_ptr<GcpKmsAeadProvider> aead_provider_;
 };
 
 /// Provides GcpKmsAead.

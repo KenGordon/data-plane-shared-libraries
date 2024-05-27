@@ -23,6 +23,7 @@
 
 #include <google/pubsub/v1/pubsub.grpc.pb.h>
 
+#include "absl/base/nullability.h"
 #include "src/core/interface/async_context.h"
 #include "src/core/interface/async_executor_interface.h"
 #include "src/cpio/client_providers/interface/instance_client_provider_interface.h"
@@ -82,10 +83,10 @@ class GcpQueueClientProvider : public QueueClientProviderInterface {
 
   explicit GcpQueueClientProvider(
       QueueClientOptions queue_client_options,
-      InstanceClientProviderInterface* instance_client_provider,
-      core::AsyncExecutorInterface* cpu_async_executor,
-      core::AsyncExecutorInterface* io_async_executor,
-      std::shared_ptr<GcpPubSubStubFactory> pubsub_stub_factory =
+      absl::Nonnull<InstanceClientProviderInterface*> instance_client_provider,
+      absl::Nonnull<core::AsyncExecutorInterface*> cpu_async_executor,
+      absl::Nonnull<core::AsyncExecutorInterface*> io_async_executor,
+      absl::Nonnull<std::shared_ptr<GcpPubSubStubFactory>> pubsub_stub_factory =
           std::make_shared<GcpPubSubStubFactory>())
       : queue_name_(std::move(queue_client_options.queue_name)),
         project_id_(std::move(queue_client_options.project_id)),
@@ -94,29 +95,25 @@ class GcpQueueClientProvider : public QueueClientProviderInterface {
         io_async_executor_(io_async_executor),
         pubsub_stub_factory_(std::move(pubsub_stub_factory)) {}
 
-  core::ExecutionResult Init() noexcept override;
+  absl::Status Init() noexcept;
 
-  core::ExecutionResult Run() noexcept override;
-
-  core::ExecutionResult Stop() noexcept override;
-
-  core::ExecutionResult EnqueueMessage(
+  absl::Status EnqueueMessage(
       core::AsyncContext<cmrt::sdk::queue_service::v1::EnqueueMessageRequest,
                          cmrt::sdk::queue_service::v1::EnqueueMessageResponse>&
           enqueue_message_context) noexcept override;
 
-  core::ExecutionResult GetTopMessage(
+  absl::Status GetTopMessage(
       core::AsyncContext<cmrt::sdk::queue_service::v1::GetTopMessageRequest,
                          cmrt::sdk::queue_service::v1::GetTopMessageResponse>&
           get_top_message_context) noexcept override;
 
-  core::ExecutionResult UpdateMessageVisibilityTimeout(
+  absl::Status UpdateMessageVisibilityTimeout(
       core::AsyncContext<
           cmrt::sdk::queue_service::v1::UpdateMessageVisibilityTimeoutRequest,
           cmrt::sdk::queue_service::v1::UpdateMessageVisibilityTimeoutResponse>&
           update_message_visibility_timeout_context) noexcept override;
 
-  core::ExecutionResult DeleteMessage(
+  absl::Status DeleteMessage(
       core::AsyncContext<cmrt::sdk::queue_service::v1::DeleteMessageRequest,
                          cmrt::sdk::queue_service::v1::DeleteMessageResponse>&
           delete_message_context) noexcept override;
@@ -169,15 +166,15 @@ class GcpQueueClientProvider : public QueueClientProviderInterface {
   /// The configuration for queue client.
   std::string queue_name_;
 
+  /// Project ID of current instance.
+  std::string project_id_;
+
   /// The instance client provider.
   InstanceClientProviderInterface* instance_client_provider_;
 
   /// The instance of the async executor.
   core::AsyncExecutorInterface* cpu_async_executor_;
   core::AsyncExecutorInterface* io_async_executor_;
-
-  /// Project ID of current instance.
-  std::string project_id_;
 
   /// Topic name of current instance. Format is
   /// projects/{project_id}/topics/{topic_name}.

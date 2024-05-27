@@ -25,6 +25,7 @@
 
 #include <aws/ssm/SSMClient.h>
 
+#include "absl/base/nullability.h"
 #include "google/protobuf/any.pb.h"
 #include "src/core/interface/async_context.h"
 #include "src/cpio/client_providers/interface/cpio_provider_interface.h"
@@ -51,22 +52,18 @@ class AwsParameterClientProvider : public ParameterClientProviderInterface {
    */
   AwsParameterClientProvider(
       ParameterClientOptions options,
-      InstanceClientProviderInterface* instance_client_provider,
-      core::AsyncExecutorInterface* io_async_executor,
-      std::shared_ptr<SSMClientFactory> ssm_client_factory =
+      absl::Nonnull<InstanceClientProviderInterface*> instance_client_provider,
+      absl::Nonnull<core::AsyncExecutorInterface*> io_async_executor,
+      absl::Nonnull<std::shared_ptr<SSMClientFactory>> ssm_client_factory =
           std::make_shared<SSMClientFactory>())
       : instance_client_provider_(instance_client_provider),
         io_async_executor_(io_async_executor),
         ssm_client_factory_(ssm_client_factory),
         region_code_(std::move(options).region) {}
 
-  core::ExecutionResult Init() noexcept override;
+  absl::Status Init() noexcept;
 
-  core::ExecutionResult Run() noexcept override;
-
-  core::ExecutionResult Stop() noexcept override;
-
-  core::ExecutionResult GetParameter(
+  absl::Status GetParameter(
       core::AsyncContext<
           cmrt::sdk::parameter_service::v1::GetParameterRequest,
           cmrt::sdk::parameter_service::v1::GetParameterResponse>&

@@ -18,6 +18,8 @@
 
 #include <memory>
 
+#include "src/public/core/interface/execution_result.h"
+
 using google::scp::core::common::kZeroUuid;
 using google::scp::core::common::RetryStrategy;
 using google::scp::core::common::RetryStrategyType;
@@ -34,14 +36,6 @@ HttpClient::HttpClient(AsyncExecutorInterface* async_executor,
           options.http2_read_timeout_in_sec)),
       operation_dispatcher_(async_executor,
                             RetryStrategy(options.retry_strategy_options)) {}
-
-ExecutionResult HttpClient::Init() noexcept {
-  return http_connection_pool_->Init();
-}
-
-ExecutionResult HttpClient::Run() noexcept {
-  return http_connection_pool_->Run();
-}
 
 ExecutionResult HttpClient::Stop() noexcept {
   return http_connection_pool_->Stop();

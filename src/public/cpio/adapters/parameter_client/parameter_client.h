@@ -18,11 +18,11 @@
 #define PUBLIC_CPIO_ADAPTERS_PARAMETER_CLIENT_PARAMETER_CLIENT_H_
 
 #include <memory>
-#include <string>
+#include <utility>
 
+#include "absl/status/status.h"
 #include "src/cpio/client_providers/interface/cpio_provider_interface.h"
 #include "src/cpio/client_providers/interface/parameter_client_provider_interface.h"
-#include "src/public/core/interface/execution_result.h"
 #include "src/public/cpio/interface/parameter_client/parameter_client_interface.h"
 #include "src/public/cpio/proto/parameter_service/v1/parameter_service.pb.h"
 
@@ -31,30 +31,28 @@ namespace google::scp::cpio {
  */
 class ParameterClient : public ParameterClientInterface {
  public:
-  explicit ParameterClient(
-      const std::shared_ptr<ParameterClientOptions>& options)
-      : options_(options) {}
+  explicit ParameterClient(ParameterClientOptions options)
+      : options_(std::move(options)) {}
 
   virtual ~ParameterClient() = default;
 
-  core::ExecutionResult Init() noexcept override;
+  absl::Status Init() noexcept override;
 
-  core::ExecutionResult Run() noexcept override;
+  absl::Status Run() noexcept override;
 
-  core::ExecutionResult Stop() noexcept override;
+  absl::Status Stop() noexcept override;
 
-  core::ExecutionResult GetParameter(
+  absl::Status GetParameter(
       cmrt::sdk::parameter_service::v1::GetParameterRequest request,
       Callback<cmrt::sdk::parameter_service::v1::GetParameterResponse>
           callback) noexcept override;
 
  protected:
-  virtual core::ExecutionResult CreateParameterClientProvider() noexcept;
   std::unique_ptr<client_providers::ParameterClientProviderInterface>
       parameter_client_provider_;
 
  private:
-  std::shared_ptr<ParameterClientOptions> options_;
+  ParameterClientOptions options_;
   client_providers::CpioProviderInterface* cpio_;
 };
 }  // namespace google::scp::cpio

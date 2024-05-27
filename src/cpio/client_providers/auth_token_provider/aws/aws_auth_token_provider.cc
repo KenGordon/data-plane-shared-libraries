@@ -22,8 +22,10 @@
 #include <string_view>
 #include <utility>
 
+#include "absl/base/nullability.h"
 #include "absl/functional/bind_front.h"
 #include "src/core/common/uuid/uuid.h"
+#include "src/public/core/interface/execution_result.h"
 
 using google::scp::core::AsyncContext;
 using google::scp::core::ExecutionResult;
@@ -54,28 +56,9 @@ constexpr int kTokenTtlInSecondHeaderValue = 21600;
 }  // namespace
 
 namespace google::scp::cpio::client_providers {
-AwsAuthTokenProvider::AwsAuthTokenProvider(HttpClientInterface* http_client)
+AwsAuthTokenProvider::AwsAuthTokenProvider(
+    absl::Nonnull<HttpClientInterface*> http_client)
     : http_client_(http_client) {}
-
-ExecutionResult AwsAuthTokenProvider::Init() noexcept {
-  if (!http_client_) {
-    auto execution_result = FailureExecutionResult(
-        SC_AWS_INSTANCE_AUTHORIZER_PROVIDER_INITIALIZATION_FAILED);
-    SCP_ERROR(kAwsAuthTokenProvider, kZeroUuid, execution_result,
-              "Http client cannot be nullptr.");
-    return execution_result;
-  }
-
-  return SuccessExecutionResult();
-};
-
-ExecutionResult AwsAuthTokenProvider::Run() noexcept {
-  return SuccessExecutionResult();
-}
-
-ExecutionResult AwsAuthTokenProvider::Stop() noexcept {
-  return SuccessExecutionResult();
-}
 
 ExecutionResult AwsAuthTokenProvider::GetSessionToken(
     AsyncContext<GetSessionTokenRequest, GetSessionTokenResponse>&
@@ -134,8 +117,9 @@ ExecutionResult AwsAuthTokenProvider::GetSessionTokenForTargetAudience(
   return FailureExecutionResult(SC_UNKNOWN);
 }
 
-std::unique_ptr<AuthTokenProviderInterface> AuthTokenProviderFactory::Create(
-    core::HttpClientInterface* http1_client) {
+absl::Nonnull<std::unique_ptr<AuthTokenProviderInterface>>
+AuthTokenProviderFactory::Create(
+    absl::Nonnull<core::HttpClientInterface*> http1_client) {
   return std::make_unique<AwsAuthTokenProvider>(http1_client);
 }
 }  // namespace google::scp::cpio::client_providers

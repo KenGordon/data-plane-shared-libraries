@@ -50,56 +50,44 @@ constexpr std::string_view kHttpConnection = "HttpConnection";
 }  // namespace
 
 namespace google::scp::core {
-ExecutionResult HttpConnectionPool::Init() noexcept {
-  return SuccessExecutionResult();
-}
-
-ExecutionResult HttpConnectionPool::Run() noexcept {
-  is_running_ = true;
-  return SuccessExecutionResult();
-}
 
 ExecutionResult HttpConnectionPool::Stop() noexcept {
-  is_running_ = false;
   std::vector<std::string> keys;
-  auto execution_result = connections_.Keys(keys);
-  if (!execution_result.Successful()) {
+  if (auto execution_result = connections_.Keys(keys);
+      !execution_result.Successful()) {
     return execution_result;
   }
-
   for (const auto& key : keys) {
     std::shared_ptr<HttpConnectionPoolEntry> entry;
-    execution_result = connections_.Find(key, entry);
-    if (!execution_result.Successful()) {
+    if (auto execution_result = connections_.Find(key, entry);
+        !execution_result.Successful()) {
       return execution_result;
     }
-
-    for (auto connection : entry->http_connections) {
-      execution_result = connection->Stop();
-      if (!execution_result.Successful()) {
+    for (auto& connection : entry->http_connections) {
+      if (auto execution_result = connection->Stop();
+          !execution_result.Successful()) {
         return execution_result;
       }
     }
+    if (auto execution_result = connections_.Erase(key);
+        !execution_result.Successful()) {
+      return execution_result;
+    }
   }
-
   return SuccessExecutionResult();
 }
 
 std::shared_ptr<HttpConnection> HttpConnectionPool::CreateHttpConnection(
     std::string host, std::string service, bool is_https,
     TimeDuration http2_read_timeout_in_sec) {
-  return std::make_shared<HttpConnection>(async_executor_, host, service,
-                                          is_https, http2_read_timeout_in_sec_);
+  return std::make_shared<HttpConnection>(async_executor_, std::move(host),
+                                          std::move(service), is_https,
+                                          http2_read_timeout_in_sec_);
 }
 
 ExecutionResult HttpConnectionPool::GetConnection(
     const std::shared_ptr<Uri>& uri,
     std::shared_ptr<HttpConnection>& connection) noexcept {
-  if (!is_running_) {
-    return FailureExecutionResult(
-        errors::SC_HTTP2_CLIENT_CONNECTION_POOL_IS_NOT_AVAILABLE);
-  }
-
   error_code ec;
   std::string scheme;
   std::string host;
@@ -189,24 +177,21 @@ ExecutionResult HttpConnectionPool::GetConnection(
       }
     }
   }
-
   return SuccessExecutionResult();
 }
 
 void HttpConnectionPool::RecycleConnection(
     std::shared_ptr<HttpConnection>& connection) noexcept {
   absl::MutexLock lock(&connection_lock_);
-
   if (!connection->IsDropped()) {
     return;
   }
-
   connection->Stop();
   connection->Reset();
   connection->Init();
   connection->Run();
-
   SCP_DEBUG(kHttpConnection, common::kZeroUuid,
             "Successfully recycled connection %p", connection.get());
 }
+
 }  // namespace google::scp::core

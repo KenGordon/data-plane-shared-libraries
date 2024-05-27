@@ -48,14 +48,14 @@ One context will be created for one request, used to log metric. It will use
 request is not decrypted.
 
 To log metric call one of the `Log***<definition>(value)`, definition is a
-definition that is in `L`.
+definition that is in `definition_list`.
 
 Examples:
 LogUpDownCounter<kSafeCounter>(1);
 LogUpDownCounter<kSafePartitionedCounter>({{"buyer_1", 1}, {"buyer_2", 1}});
 
-To initialize, `L` is the list of Definition* that can be logged. `U` is the
-thread-safe metric_router implementing following 2 templated methods:
+To initialize, `definition_list` is the list of Definition* that can be logged.
+`U` is the thread-safe metric_router implementing following 2 templated methods:
   template <typename T, Privacy privacy, Instrument instrument>
   absl::Status LogSafe(const Definition<T, privacy, instrument>& definition,
                        T value,
@@ -65,8 +65,8 @@ thread-safe metric_router implementing following 2 templated methods:
                          T value,
                          std::string_view partition);
 */
-template <const absl::Span<const DefinitionName* const>& L, typename U,
-          bool safe_metric_only = false>
+template <const absl::Span<const DefinitionName* const>& definition_list,
+          typename U, bool safe_metric_only = false>
 class Context {
  public:
   // Constructed here only, `is_debug`=true will log everything as safe.
@@ -224,6 +224,7 @@ class Context {
       T value, std::string_view partition = "",
       std::enable_if_t<std::is_arithmetic_v<T>>* = nullptr) {
     CheckDefinition<definition, T>();
+    PS_RETURN_IF_ERROR(CheckDefinedMetricConfig(definition));
     // TODO(b/291336238): Uncomment this static check when marking initiated
     // requests unsafe. static_assert(definition.type_privacy ==
     // Privacy::kImpacting);
@@ -282,6 +283,10 @@ class Context {
             definition.name_, " can only log once for a request."));
       }
     }
+    return absl::OkStatus();
+  }
+
+  absl::Status CheckDefinedMetricConfig(const DefinitionName& definition) {
     return metric_router_->metric_config()
         .GetMetricConfig(definition.name_)
         .status();
@@ -296,7 +301,7 @@ class Context {
     static_assert(
         std::is_same_v<DefinitionType, Definition<T, definition.type_privacy,
                                                   definition.type_instrument>>);
-    static_assert(IsInList(definition, L));
+    static_assert(IsInList(definition, definition_list));
     if constexpr (safe_metric_only) {
       static_assert(definition.type_privacy == Privacy::kNonImpacting);
     }
@@ -307,6 +312,7 @@ class Context {
                          std::enable_if_t<std::is_arithmetic_v<T>>* = nullptr) {
     CheckDefinition<definition, T>();
     PS_RETURN_IF_ERROR(AssertLoggable(definition));
+    PS_RETURN_IF_ERROR(CheckDefinedMetricConfig(definition));
     static_assert(definition.type_instrument !=
                   Instrument::kPartitionedCounter);
     return LogMetricInternal(value, definition, "");
@@ -318,6 +324,7 @@ class Context {
   absl::Status LogMetric(const absl::flat_hash_map<std::string, T>& value) {
     CheckDefinition<definition, T>();
     PS_RETURN_IF_ERROR(AssertLoggable(definition));
+    PS_RETURN_IF_ERROR(CheckDefinedMetricConfig(definition));
     static_assert(definition.type_instrument ==
                   Instrument::kPartitionedCounter);
     for (auto& [partition, numeric] :
@@ -372,6 +379,7 @@ class Context {
     using Result = std::invoke_result_t<T>;
     CheckDefinition<definition, Result>();
     PS_RETURN_IF_ERROR(AssertLoggable(definition));
+    PS_RETURN_IF_ERROR(CheckDefinedMetricConfig(definition));
     return LogMetricDeferredInternal<Result>(
         [callback = std::move(
              callback)]() mutable -> absl::flat_hash_map<std::string, Result> {
@@ -393,6 +401,7 @@ class Context {
                        std::remove_cv_t<Result>>);
     CheckDefinition<definition, typename Result::mapped_type>();
     PS_RETURN_IF_ERROR(AssertLoggable(definition));
+    PS_RETURN_IF_ERROR(CheckDefinedMetricConfig(definition));
     static_assert(definition.type_instrument ==
                   Instrument::kPartitionedCounter);
     return LogMetricDeferredInternal<typename Result::mapped_type>(

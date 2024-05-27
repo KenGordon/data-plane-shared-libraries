@@ -14,6 +14,7 @@
 
 #include "src/telemetry/flag/telemetry_flag.h"
 
+#include "absl/random/random.h"
 #include "absl/strings/str_cat.h"
 #include "google/protobuf/text_format.h"
 
@@ -63,6 +64,10 @@ BuildDependentConfig::BuildDependentConfig(TelemetryConfig config)
     server_config_.set_dp_export_interval_ms(
         server_config_.metric_export_interval_ms());
   }
+  absl::BitGen bitgen;
+  server_config_.set_dp_export_interval_ms(
+      server_config_.dp_export_interval_ms() * absl::Uniform(bitgen, 1, 1.1));
+
   for (const MetricConfig& m : server_config_.metric()) {
     metric_config_.emplace(m.name(), m);
   }
@@ -141,6 +146,16 @@ absl::Span<const std::string_view> BuildDependentConfig::GetPartition(
     return definition.public_partitions_;
   }
   return it->second;
+}
+
+int BuildDependentConfig::GetMaxPartitionsContributed(
+    const metrics::internal::Partitioned& definition,
+    absl::string_view name) const {
+  absl::StatusOr<MetricConfig> metric_config = GetMetricConfig(name);
+  if (metric_config.ok() && metric_config->has_max_partitions_contributed()) {
+    return metric_config->max_partitions_contributed();
+  }
+  return definition.max_partitions_contributed_;
 }
 
 }  // namespace privacy_sandbox::server_common::telemetry

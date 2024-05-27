@@ -24,6 +24,7 @@
 #include "absl/synchronization/notification.h"
 #include "src/core/curl_client/mock/mock_curl_client.h"
 #include "src/cpio/client_providers/auth_token_provider/aws/error_codes.h"
+#include "src/public/core/interface/execution_result.h"
 #include "src/public/core/test_execution_result_matchers.h"
 
 using google::scp::core::AsyncContext;
@@ -124,13 +125,4 @@ TEST_F(AwsAuthTokenProviderTest, GetSessionTokenFailsIfHttpRequestFails) {
 
   finished.WaitForNotification();
 }
-
-TEST_F(AwsAuthTokenProviderTest, NullHttpClientProvider) {
-  auto auth_token_provider = std::make_shared<AwsAuthTokenProvider>(nullptr);
-
-  EXPECT_THAT(auth_token_provider->Init(),
-              ResultIs(FailureExecutionResult(
-                  SC_AWS_INSTANCE_AUTHORIZER_PROVIDER_INITIALIZATION_FAILED)));
-}
-
 }  // namespace google::scp::cpio::client_providers::test

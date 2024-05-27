@@ -21,6 +21,7 @@
 #include <memory>
 
 #include "absl/functional/any_invocable.h"
+#include "src/public/core/interface/execution_result.h"
 
 #include "service_interface.h"
 #include "type_def.h"
@@ -106,7 +107,7 @@ using TaskCancellationLambda = std::function<bool()>;
  * number of threads that are used across the application and is capable of
  * scheduling tasks with different priorities.
  */
-class AsyncExecutorInterface : public ServiceInterface {
+class AsyncExecutorInterface {
  public:
   virtual ~AsyncExecutorInterface() = default;
 

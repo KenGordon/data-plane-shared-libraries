@@ -17,28 +17,14 @@
 #ifndef PUBLIC_CPIO_ADAPTERS_INSTANCE_CLIENT_MOCK_INSTANCE_CLIENT_WITH_OVERRIDES_H_
 #define PUBLIC_CPIO_ADAPTERS_INSTANCE_CLIENT_MOCK_INSTANCE_CLIENT_WITH_OVERRIDES_H_
 
-#include <memory>
-
 #include "src/cpio/client_providers/instance_client_provider/mock/mock_instance_client_provider.h"
 #include "src/public/cpio/adapters/instance_client/instance_client.h"
 
 namespace google::scp::cpio::mock {
-class MockInstanceClientWithOverrides : public InstanceClient {
+class MockInstanceClientWithOverrides final : public InstanceClient {
  public:
-  MockInstanceClientWithOverrides(
-      const std::shared_ptr<InstanceClientOptions>& options)
-      : InstanceClient(options) {}
-
-  core::ExecutionResult create_instance_client_provider_result =
-      core::SuccessExecutionResult();
-
-  core::ExecutionResult CreateInstanceClientProvider() noexcept override {
-    if (create_instance_client_provider_result.Successful()) {
-      instance_client_provider_ = &mock_instance_client_provider_;
-      return create_instance_client_provider_result;
-    }
-    return create_instance_client_provider_result;
-  }
+  MockInstanceClientWithOverrides()
+      : InstanceClient(&mock_instance_client_provider_) {}
 
   client_providers::mock::MockInstanceClientProvider&
   GetInstanceClientProvider() {

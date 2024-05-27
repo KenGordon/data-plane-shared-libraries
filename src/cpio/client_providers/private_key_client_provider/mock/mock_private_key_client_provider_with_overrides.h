@@ -37,19 +37,19 @@ class MockPrivateKeyClientProviderWithOverrides
   explicit MockPrivateKeyClientProviderWithOverrides(
       PrivateKeyClientOptions private_key_client_options)
       : PrivateKeyClientProvider(
-            std::move(private_key_client_options), &mock_http_client_,
+            std::move(private_key_client_options),
             std::make_unique<MockPrivateKeyFetcherProvider>(),
             std::make_unique<MockKmsClientProvider>()) {}
 
-  std::function<core::ExecutionResult(
+  std::function<absl::Status(
       core::AsyncContext<
           cmrt::sdk::private_key_service::v1::ListPrivateKeysRequest,
           cmrt::sdk::private_key_service::v1::ListPrivateKeysResponse>&)>
       list_private_keys_by_ids_mock;
 
-  core::ExecutionResult list_private_keys_by_ids_result_mock;
+  absl::Status list_private_keys_by_ids_result_mock = absl::UnknownError("");
 
-  core::ExecutionResult ListPrivateKeys(
+  absl::Status ListPrivateKeys(
       core::AsyncContext<
           cmrt::sdk::private_key_service::v1::ListPrivateKeysRequest,
           cmrt::sdk::private_key_service::v1::ListPrivateKeysResponse>&
@@ -57,13 +57,10 @@ class MockPrivateKeyClientProviderWithOverrides
     if (list_private_keys_by_ids_mock) {
       return list_private_keys_by_ids_mock(context);
     }
-    if (list_private_keys_by_ids_result_mock) {
-      if (list_private_keys_by_ids_result_mock ==
-          core::SuccessExecutionResult()) {
-        context.response = std::make_shared<
-            cmrt::sdk::private_key_service::v1::ListPrivateKeysResponse>();
-      }
-      context.Finish(list_private_keys_by_ids_result_mock);
+    if (list_private_keys_by_ids_result_mock.ok()) {
+      context.response = std::make_shared<
+          cmrt::sdk::private_key_service::v1::ListPrivateKeysResponse>();
+      context.Finish(core::SuccessExecutionResult());
       return list_private_keys_by_ids_result_mock;
     }
 
@@ -77,9 +74,6 @@ class MockPrivateKeyClientProviderWithOverrides
   MockPrivateKeyFetcherProvider& GetPrivateKeyFetcherProvider() {
     return dynamic_cast<MockPrivateKeyFetcherProvider&>(*private_key_fetcher_);
   }
-
- private:
-  core::http2_client::mock::MockHttpClient mock_http_client_;
 };
 
 }  // namespace google::scp::cpio::client_providers::mock

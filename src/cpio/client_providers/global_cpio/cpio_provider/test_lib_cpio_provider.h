@@ -27,18 +27,9 @@
 namespace google::scp::cpio::client_providers {
 /*! @copydoc LibCpioProvider
  */
-class TestLibCpioProvider : public LibCpioProvider {
+class TestLibCpioProvider final : public LibCpioProvider {
  public:
   explicit TestLibCpioProvider(TestCpioOptions test_options);
-
- private:
-  std::unique_ptr<RoleCredentialsProviderInterface>
-  CreateRoleCredentialsProvider(
-      InstanceClientProviderInterface* instance_client_provider,
-      core::AsyncExecutorInterface* cpu_async_executor,
-      core::AsyncExecutorInterface* io_async_executor) noexcept override;
-
-  TestCpioOptions test_options_;
 };
 }  // namespace google::scp::cpio::client_providers
 

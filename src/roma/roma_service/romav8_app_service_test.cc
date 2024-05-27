@@ -31,53 +31,33 @@
 using ::testing::ElementsAreArray;
 using ::testing::StrEq;
 
-namespace google::scp::roma::romav8::app_api {
+namespace google::scp::roma::romav8 {
 
 template <>
-absl::Status Decode(const TEncoded& encoded, std::string& decoded) {
+absl::Status Decode(const std::string& encoded, std::string& decoded) {
   decoded = encoded;
   return absl::OkStatus();
 }
 
 template <>
-absl::StatusOr<TEncoded> Encode(const std::string& obj) {
+absl::StatusOr<std::string> Encode(const std::string& obj) {
   return obj;
 }
 
-}  // namespace google::scp::roma::romav8::app_api
+}  // namespace google::scp::roma::romav8
 
 namespace google::scp::roma::test {
-
-class RomaV8AppServiceTest : public ::testing::Test {
- protected:
-  void SetUp() override {
-    privacy_sandbox::server_common::log::PS_VLOG_IS_ON(0, 10);
-    google::scp::roma::Config cfg;
-    cfg.number_of_workers = 2;
-    roma_service_ = std::make_unique<
-        google::scp::roma::sandbox::roma_service::RomaService<>>(
-        std::move(cfg));
-    const absl::Status status = roma_service_->Init();
-    EXPECT_TRUE(status.ok());
-  }
-
-  void TearDown() override {
-    const absl::Status status = roma_service_->Stop();
-    EXPECT_TRUE(status.ok());
-  }
-
- protected:
-  std::unique_ptr<RomaService<>> roma_service_;
-};
 
 class HelloWorldApp
     : public google::scp::roma::romav8::app_api::RomaV8AppService<> {
  public:
   using Request = std::string;
   using Response = std::string;
-
-  explicit HelloWorldApp(RomaService& roma_service)
-      : RomaV8AppService(roma_service, "fully-qualified-hello-world-name") {}
+  static absl::StatusOr<HelloWorldApp> Create(Config config) {
+    auto service = HelloWorldApp(std::move(config));
+    PS_RETURN_IF_ERROR(service.Init());
+    return service;
+  }
 
   absl::Status Hello1(absl::Notification& notification, const Request& request,
                       Response& response) {
@@ -88,28 +68,21 @@ class HelloWorldApp
                       Response& response) {
     return Execute(notification, "Hello2", request, response);
   }
+
+ private:
+  explicit HelloWorldApp(Config config)
+      : RomaV8AppService(std::move(config),
+                         "fully-qualified-hello-world-name") {}
 };
 
-TEST_F(RomaV8AppServiceTest, EncodeDecodeProtobuf) {
-  ::romav8::app_api::test::HelloWorldRequest req;
-  req.set_name("Foobar");
-
-  using google::scp::roma::romav8::app_api::Decode;
-  using google::scp::roma::romav8::app_api::Encode;
-
-  const auto encoded = Encode(req);
-  EXPECT_TRUE(encoded.ok());
-  std::string decoded;
-  EXPECT_TRUE(Decode<>(*encoded, decoded).ok());
-  const auto encoded2 = Encode(decoded);
-  EXPECT_TRUE(encoded2.ok());
-  EXPECT_THAT(*encoded, testing::StrEq(*encoded2));
-}
-
-TEST_F(RomaV8AppServiceTest, HelloWorld) {
+TEST(RomaV8AppServiceTest, HelloWorld) {
   absl::Notification load_finished;
   absl::Status load_status;
-  HelloWorldApp app(*roma_service_);
+  google::scp::roma::Config config;
+  config.number_of_workers = 2;
+  auto app = HelloWorldApp::Create(std::move(config));
+  EXPECT_TRUE(app.ok());
+
   constexpr std::string_view jscode = R"(
     var Hello1 = (input) => `Hello ${input} [Hello1]`;
     var Hello2 = function(input) {
@@ -118,16 +91,16 @@ TEST_F(RomaV8AppServiceTest, HelloWorld) {
   )";
   const std::string req = "Foobar";
 
-  EXPECT_TRUE(app.Register(load_finished, load_status, jscode).ok());
+  EXPECT_TRUE(app->Register(load_finished, load_status, jscode).ok());
   load_finished.WaitForNotificationWithTimeout(absl::Seconds(10));
 
   std::string resp1;
   absl::Notification execute_finished1;
-  EXPECT_TRUE(app.Hello1(execute_finished1, req, resp1).ok());
+  EXPECT_TRUE(app->Hello1(execute_finished1, req, resp1).ok());
 
   std::string resp2;
   absl::Notification execute_finished2;
-  EXPECT_TRUE(app.Hello2(execute_finished2, req, resp2).ok());
+  EXPECT_TRUE(app->Hello2(execute_finished2, req, resp2).ok());
 
   execute_finished1.WaitForNotificationWithTimeout(absl::Seconds(10));
   EXPECT_THAT(resp1, testing::StrEq("Hello Foobar [Hello1]"));

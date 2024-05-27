@@ -39,7 +39,6 @@ cc_test(
         "//src/core/test/utils",
         "//src/cpio/client_providers/parameter_client_provider:parameter_client_provider_select",
         "//src/public/core:test_execution_result_matchers",
-        "//src/public/cpio/core:lib_cpio_mock",
         "//src/public/cpio/interface:cpio_errors",
         "//src/public/cpio/interface/parameter_client",
         "//src/public/cpio/proto/parameter_service/v1:parameter_service_cc_proto",
@@ -54,5 +53,6 @@ cc_library(
     deps = [
         "//src/cpio/client_providers/parameter_client_provider/mock:parameter_client_provider_mock",
         "//src/public/cpio/interface/parameter_client",
+        "@com_google_absl//absl/status",
     ],
 )

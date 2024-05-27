@@ -45,13 +45,15 @@ std::vector<WorkerSandboxApi> Workers(int num_workers) {
         /*require_preload=*/true,
         /*native_js_function_comms_fd=*/-1,
         /*native_js_function_names=*/std::vector<std::string>(),
+        /*rpc_method_names=*/std::vector<std::string>(),
         /*server_address=*/"",
         /*max_worker_virtual_memory_mb=*/0,
         /*js_engine_initial_heap_size_mb=*/0,
         /*js_engine_maximum_heap_size_mb=*/0,
         /*js_engine_max_wasm_memory_number_of_pages=*/0,
         /*sandbox_request_response_shared_buffer_size_mb=*/0,
-        /*enable_sandbox_sharing_request_response_with_buffer_only=*/false);
+        /*enable_sandbox_sharing_request_response_with_buffer_only=*/false,
+        /*v8_flags=*/std::vector<std::string>());
     CHECK(workers.back().Init().ok());
     CHECK(workers.back().Run().ok());
   }

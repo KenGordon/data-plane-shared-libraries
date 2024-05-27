@@ -44,10 +44,6 @@ using google::scp::core::Uri;
 using google::scp::core::common::kZeroUuid;
 using google::scp::core::errors::
     SC_PUBLIC_KEY_CLIENT_PROVIDER_ALL_URIS_REQUEST_PERFORM_FAILED;
-using google::scp::core::errors::
-    SC_PUBLIC_KEY_CLIENT_PROVIDER_HTTP_CLIENT_REQUIRED;
-using google::scp::core::errors::
-    SC_PUBLIC_KEY_CLIENT_PROVIDER_INVALID_CONFIG_OPTIONS;
 using google::scp::core::http2_client::mock::MockHttpClient;
 using google::scp::core::test::ResultIs;
 using ::testing::StrEq;
@@ -64,31 +60,6 @@ constexpr std::string_view kHeaderDateExample = "Wed, 16 Nov 2022 00:02:48 GMT";
 constexpr std::string_view kCacheControlExample = "max-age=254838";
 constexpr uint64_t kExpectedExpiredTimeInSeconds = 1668811806;
 
-TEST(PublicKeyClientProviderTestI, InitFailedWithInvalidConfig) {
-  MockHttpClient http_client;
-
-  PublicKeyClientOptions public_key_client_options;
-
-  PublicKeyClientProvider public_key_client(
-      std::move(public_key_client_options), &http_client);
-
-  EXPECT_THAT(public_key_client.Init(),
-              ResultIs(FailureExecutionResult(
-                  SC_PUBLIC_KEY_CLIENT_PROVIDER_INVALID_CONFIG_OPTIONS)));
-}
-
-TEST(PublicKeyClientProviderTestI, InitFailedInvalidHttpClient) {
-  PublicKeyClientOptions public_key_client_options;
-  public_key_client_options.endpoints.emplace_back(kPrivateKeyBaseUri1);
-
-  PublicKeyClientProvider public_key_client(
-      std::move(public_key_client_options), nullptr);
-
-  EXPECT_THAT(public_key_client.Init(),
-              ResultIs(FailureExecutionResult(
-                  SC_PUBLIC_KEY_CLIENT_PROVIDER_HTTP_CLIENT_REQUIRED)));
-}
-
 class PublicKeyClientProviderTestII : public ::testing::Test {
  protected:
   void SetUp() override {
@@ -98,9 +69,6 @@ class PublicKeyClientProviderTestII : public ::testing::Test {
 
     public_key_client_.emplace(std::move(public_key_client_options),
                                &http_client_);
-
-    EXPECT_SUCCESS(public_key_client_->Init());
-    EXPECT_SUCCESS(public_key_client_->Run());
   }
 
   HttpResponse GetValidHttpResponse() {
@@ -123,12 +91,6 @@ class PublicKeyClientProviderTestII : public ::testing::Test {
     response.body.bytes->assign(bytes_str.begin(), bytes_str.end());
     response.body.length = bytes_str.length();
     return response;
-  }
-
-  void TearDown() override {
-    if (public_key_client_) {
-      EXPECT_SUCCESS(public_key_client_->Stop());
-    }
   }
 
   MockHttpClient http_client_;
@@ -165,7 +127,7 @@ TEST_F(PublicKeyClientProviderTestII, ListPublicKeysSuccess) {
         success_callback.Notify();
       });
 
-  EXPECT_SUCCESS(public_key_client_->ListPublicKeys(context));
+  EXPECT_TRUE(public_key_client_->ListPublicKeys(context).ok());
   // ListPublicKeys context callback will only run once even all uri get
   // success.
   success_callback.WaitForNotification();
@@ -198,7 +160,7 @@ TEST_F(PublicKeyClientProviderTestII, ListPublicKeysFailure) {
         failure_callback.Notify();
       });
 
-  EXPECT_SUCCESS(public_key_client_->ListPublicKeys(context));
+  EXPECT_TRUE(public_key_client_->ListPublicKeys(context).ok());
 
   // ListPublicKeys context callback will only run once even all uri get
   // fail.
@@ -224,12 +186,11 @@ TEST_F(PublicKeyClientProviderTestII, AllUrisPerformRequestFailed) {
   AsyncContext<ListPublicKeysRequest, ListPublicKeysResponse> context(
       std::move(request), [&](AsyncContext<ListPublicKeysRequest,
                                            ListPublicKeysResponse>& context) {
-        EXPECT_THAT(context.result, ResultIs(cpio_failure));
+        EXPECT_FALSE(context.result.Successful());
         failure_callback.Notify();
       });
 
-  EXPECT_THAT(public_key_client_->ListPublicKeys(context),
-              ResultIs(cpio_failure));
+  EXPECT_FALSE(public_key_client_->ListPublicKeys(context).ok());
 
   // ListPublicKeys context callback will only run once even all uri get
   // fail.
@@ -264,7 +225,7 @@ TEST_F(PublicKeyClientProviderTestII, ListPublicKeysPartialUriSuccess) {
         success_callback.Notify();
       });
 
-  EXPECT_SUCCESS(public_key_client_->ListPublicKeys(context));
+  EXPECT_TRUE(public_key_client_->ListPublicKeys(context).ok());
   // ListPublicKeys success with partial uris got success response.
   success_callback.WaitForNotification();
   perform_calls.Wait();

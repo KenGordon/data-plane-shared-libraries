@@ -31,16 +31,6 @@
 namespace google::scp::cpio::client_providers {
 /// Configurations for Test InstanceClientProvider.
 struct TestInstanceClientOptions {
-  TestInstanceClientOptions() = default;
-
-  explicit TestInstanceClientOptions(const TestCpioOptions& cpio_options)
-      : region(cpio_options.region),
-        instance_id(cpio_options.instance_id),
-        public_ipv4_address(cpio_options.public_ipv4_address),
-        private_ipv4_address(cpio_options.private_ipv4_address),
-        project_id(cpio_options.project_id),
-        zone(cpio_options.zone) {}
-
   /// Cloud region.
   std::string region;
   /// Instance ID.
@@ -63,43 +53,37 @@ class TestInstanceClientProvider : public InstanceClientProviderInterface {
   explicit TestInstanceClientProvider(TestInstanceClientOptions test_options)
       : test_options_(std::move(test_options)) {}
 
-  core::ExecutionResult Init() noexcept override;
-
-  core::ExecutionResult Run() noexcept override;
-
-  core::ExecutionResult Stop() noexcept override;
-
-  core::ExecutionResult GetCurrentInstanceResourceName(
+  absl::Status GetCurrentInstanceResourceName(
       core::AsyncContext<cmrt::sdk::instance_service::v1::
                              GetCurrentInstanceResourceNameRequest,
                          cmrt::sdk::instance_service::v1::
                              GetCurrentInstanceResourceNameResponse>&
           context) noexcept override;
 
-  core::ExecutionResult GetTagsByResourceName(
+  absl::Status GetTagsByResourceName(
       core::AsyncContext<
           cmrt::sdk::instance_service::v1::GetTagsByResourceNameRequest,
           cmrt::sdk::instance_service::v1::GetTagsByResourceNameResponse>&
           context) noexcept override;
 
-  core::ExecutionResult GetInstanceDetailsByResourceName(
+  absl::Status GetInstanceDetailsByResourceName(
       core::AsyncContext<cmrt::sdk::instance_service::v1::
                              GetInstanceDetailsByResourceNameRequest,
                          cmrt::sdk::instance_service::v1::
                              GetInstanceDetailsByResourceNameResponse>&
           context) noexcept override;
 
-  core::ExecutionResult GetCurrentInstanceResourceNameSync(
+  absl::Status GetCurrentInstanceResourceNameSync(
       std::string& resource_name) noexcept override;
 
-  core::ExecutionResult ListInstanceDetailsByEnvironment(
+  absl::Status ListInstanceDetailsByEnvironment(
       core::AsyncContext<cmrt::sdk::instance_service::v1::
                              ListInstanceDetailsByEnvironmentRequest,
                          cmrt::sdk::instance_service::v1::
                              ListInstanceDetailsByEnvironmentResponse>&
           context) noexcept override;
 
-  core::ExecutionResult GetInstanceDetailsByResourceNameSync(
+  absl::Status GetInstanceDetailsByResourceNameSync(
       std::string_view resource_name,
       cmrt::sdk::instance_service::v1::InstanceDetails&
           instance_details) noexcept override;
