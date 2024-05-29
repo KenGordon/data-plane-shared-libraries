@@ -17,5 +17,9 @@ package(default_visibility = ["//visibility:public"])
 cc_binary(
     name = "fetch_auth_token",
     srcs = ["fetch_auth_token.cc"],
-    deps = [],
+    deps = [
+        "@com_google_absl//absl/log:check",
+        "//src/public/cpio/interface:cpio",
+        "//src/cpio/client_providers/global_cpio",
+    ],
 )

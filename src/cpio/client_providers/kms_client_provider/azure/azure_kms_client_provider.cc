@@ -228,7 +228,7 @@ std::unique_ptr<KmsClientProviderInterface> KmsClientProviderFactory::Create(
 
   AuthTokenProviderInterface* auth_token_provider;
   auto provider = cpio_->GetAuthTokenProvider();
-  CHECK(provider.ok()) << "failed to get auth tokeb provider";
+  CHECK(provider.ok()) << "failed to get auth token provider";
   auth_token_provider = *provider;
 
   return std::make_unique<AzureKmsClientProvider>(http_client,
