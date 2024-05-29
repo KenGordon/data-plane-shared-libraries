@@ -313,20 +313,23 @@ void AzureKmsClientProvider::OnDecryptCallback(
 std::unique_ptr<KmsClientProviderInterface> KmsClientProviderFactory::Create(
     KmsClientOptions options,
     RoleCredentialsProviderInterface* role_credentials_provider,
-    core::AsyncExecutorInterface* io_async_executor) noexcept {
-  // We uses GlobalCpio::GetGlobalCpio()->GetHttpClient() to get http_client
-  // object instead of adding it to KmsClientProviderFactory::Create() as a new
-  // parameter. This is to prevent the existing GCP and AWS implementations from
-  // being changed.
+    AsyncExecutorInterface* io_async_executor) noexcept {
+  auto cpio_ = &GlobalCpio::GetGlobalCpio();
+
+  // Retrieve HttpClient
   std::shared_ptr<core::HttpClientInterface> http_client;
-  auto httpClient_result =
-      GlobalCpio::GetGlobalCpio().GetHttpClient();
-  CHECK(httpClient_result.ok()) << "failed to get http client";
+  auto client_result = cpio_->GetHttpClient();
+  CHECK(client_result.ok()) << "failed to get http client";
+  http_client.reset(
+      client_result.value());  // Convert raw pointer to shared_ptr
+
+  // Retrieve AuthTokenProvider
   std::shared_ptr<AuthTokenProviderInterface> auth_token_provider;
-  auto authProvider_result =
-      GlobalCpio::GetGlobalCpio().GetAuthTokenProvider();
-  CHECK(authProvider_result.ok()) << "failed to get auth token provider";
-  return make_unique<AzureKmsClientProvider>(http_client, auth_token_provider);
+  auto provider_result = cpio_->GetAuthTokenProvider();
+  CHECK(provider_result.ok()) << "failed to get auth token provider";
+
+  return std::make_unique<AzureKmsClientProvider>(http_client,
+                                                  auth_token_provider);
 }
 
 #endif
