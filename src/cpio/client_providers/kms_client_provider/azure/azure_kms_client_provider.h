@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef CPIO_CLIENT_PROVIDERS_KMS_CLIENT_PROVIDER_SRC_AZURE_AZURE_KMS_CLIENT_PROVIDER_H_
-#define CPIO_CLIENT_PROVIDERS_KMS_CLIENT_PROVIDER_SRC_AZURE_AZURE_KMS_CLIENT_PROVIDER_H_
+#ifndef CPIO_CLIENT_PROVIDERS_KMS_CLIENT_PROVIDER_AZURE_AZURE_KMS_CLIENT_PROVIDER_H_
+#define CPIO_CLIENT_PROVIDERS_KMS_CLIENT_PROVIDER_AZURE_AZURE_KMS_CLIENT_PROVIDER_H_
 
 #include <cstdlib>
 #include <memory>
@@ -26,9 +26,9 @@
 #include "src/azure/attestation/src/attestation.h"
 #include "src/core/interface/async_context.h"
 #include "src/cpio/client_providers/interface/kms_client_provider_interface.h"
-#include "src/public/core/interface/execution_result.h"
 #include "src/cpio/client_providers/private_key_fetcher_provider/azure/azure_private_key_fetcher_provider_utils.h"
 #include "src/cpio/client_providers/private_key_fetcher_provider/private_key_fetcher_provider_utils.h"
+#include "src/public/core/interface/execution_result.h"
 
 namespace google::scp::cpio::client_providers {
 
@@ -82,8 +82,7 @@ class AzureKmsClientProvider : public KmsClientProviderInterface {
           decrypt_context,
       std::shared_ptr<EvpPkeyWrapper> ephemeral_private_key,
       core::AsyncContext<core::HttpRequest, core::HttpResponse>&
-          http_client_context
-      ) noexcept;
+          http_client_context) noexcept;
 
   std::shared_ptr<core::HttpClientInterface> http_client_;
   // Auth token provider.
@@ -93,4 +92,4 @@ class AzureKmsClientProvider : public KmsClientProviderInterface {
 };
 }  // namespace google::scp::cpio::client_providers
 
-#endif  // CPIO_CLIENT_PROVIDERS_KMS_CLIENT_PROVIDER_SRC_AZURE_AZURE_KMS_CLIENT_PROVIDER_H_
+#endif  // CPIO_CLIENT_PROVIDERS_KMS_CLIENT_PROVIDER_AZURE_AZURE_KMS_CLIENT_PROVIDER_H_

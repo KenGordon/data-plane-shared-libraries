@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cpio/client_providers/private_key_fetcher_provider/src/azure/azure_private_key_fetcher_provider.h"
+#include "azure_private_key_fetcher_provider.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -91,7 +91,7 @@ class AzurePrivateKeyFetcherProviderTest : public ::testing::Test {
         credentials_provider_(std::make_shared<MockAuthTokenProvider>()),
         azure_private_key_fetcher_provider_(
             std::make_unique<AzurePrivateKeyFetcherProvider>(
-                http_client_, credentials_provider_)) {
+                http_client_.get(), credentials_provider_.get())) {
     EXPECT_SUCCESS(azure_private_key_fetcher_provider_->Init());
     EXPECT_SUCCESS(azure_private_key_fetcher_provider_->Run());
 
@@ -142,8 +142,8 @@ class AzurePrivateKeyFetcherProviderTest : public ::testing::Test {
 
 TEST_F(AzurePrivateKeyFetcherProviderTest, MissingHttpClient) {
   azure_private_key_fetcher_provider_ =
-      std::make_unique<AzurePrivateKeyFetcherProvider>(nullptr,
-                                                       credentials_provider_);
+      std::make_unique<AzurePrivateKeyFetcherProvider>(
+          nullptr, credentials_provider_.get());
 
   EXPECT_THAT(azure_private_key_fetcher_provider_->Init(),
               ResultIs(FailureExecutionResult(
@@ -152,7 +152,8 @@ TEST_F(AzurePrivateKeyFetcherProviderTest, MissingHttpClient) {
 
 TEST_F(AzurePrivateKeyFetcherProviderTest, MissingCredentialsProvider) {
   azure_private_key_fetcher_provider_ =
-      std::make_unique<AzurePrivateKeyFetcherProvider>(http_client_, nullptr);
+      std::make_unique<AzurePrivateKeyFetcherProvider>(http_client_.get(),
+                                                       nullptr);
 
   EXPECT_THAT(
       azure_private_key_fetcher_provider_->Init(),

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cpio/client_providers/kms_client_provider/src/azure/azure_kms_client_provider.h"
+#include "azure_kms_client_provider.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

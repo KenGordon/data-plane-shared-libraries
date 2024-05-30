@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-#ifndef CPIO_CLIENT_PROVIDERS_PRIVATE_KEY_FETCHER_PROVIDER_SRC_AZURE_AZURE_PRIVATE_KEY_FETCHER_PROVIDER_UTILS_H_
-#define CPIO_CLIENT_PROVIDERS_PRIVATE_KEY_FETCHER_PROVIDER_SRC_AZURE_AZURE_PRIVATE_KEY_FETCHER_PROVIDER_UTILS_H_
+#ifndef CPIO_CLIENT_PROV_PK_FETCHER_PROVIDER_AZURE_PK_FETCHER_PROV_UTILS_H_
+#define CPIO_CLIENT_PROV_PK_FETCHER_PROVIDER_AZURE_PK_FETCHER_PROV_UTILS_H_
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <openssl/bio.h>
@@ -152,7 +153,7 @@ class EvpPkeyWrapper {
  public:
   EvpPkeyWrapper() : pkey_(EVP_PKEY_new()) {}
 
-  EvpPkeyWrapper(EVP_PKEY* pkey) : pkey_(pkey) {}
+  explicit EvpPkeyWrapper(EVP_PKEY* pkey) : pkey_(pkey) {}
 
   ~EvpPkeyWrapper() { EVP_PKEY_free(pkey_); }
 
@@ -267,4 +268,4 @@ class AzurePrivateKeyFetchingClientUtils {
 };
 }  // namespace google::scp::cpio::client_providers
 
-#endif  // CPIO_CLIENT_PROVIDERS_PRIVATE_KEY_FETCHER_PROVIDER_SRC_AZURE_AZURE_PRIVATE_KEY_FETCHER_PROVIDER_UTILS_H_
+#endif  // CPIO_CLIENT_PROV_PK_FETCHER_PROVIDER_AZURE_PK_FETCHER_PROV_UTILS_H_
