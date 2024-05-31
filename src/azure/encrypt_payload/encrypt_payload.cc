@@ -300,7 +300,6 @@ int main(int argc, char **argv)
         // We can improve this by checking the directly of the file exists.
         // Currently it silently fails to write if the dir is not there.
         std::ofstream fout(output_path);
-        // fout << "decryption can be done with key ID " << static_cast<int>(encryption_result.key_id) << ". input: " << nlohmann::json(input).dump(2) << std::endl;
         fout << DecryptCiphertext(std::move(key_fetcher_manager), encryption_result);
     }
 

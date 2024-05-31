@@ -19,6 +19,8 @@ cc_binary(
     srcs = ["fetch_auth_token.cc"],
     deps = [
         "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
         "//src/public/cpio/interface:cpio",
         "//src/cpio/client_providers/global_cpio",
     ],

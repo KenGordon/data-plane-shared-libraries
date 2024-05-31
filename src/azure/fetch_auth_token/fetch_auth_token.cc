@@ -1,8 +1,11 @@
 #include <iostream>
 #include <memory>
 #include <utility>
+#include <fstream>
 
 #include "absl/log/check.h"
+#include "absl/flags/flag.h"
+#include "absl/flags/parse.h"
 #include "absl/synchronization/notification.h"
 #include "src/public/cpio/interface/cpio.h"
 #include "src/cpio/client_providers/global_cpio/global_cpio.h"
@@ -18,7 +21,15 @@ TODO: env vars? parameters?
 
 */
 
-int main () {
+
+ABSL_FLAG(std::string, output_path,
+          "fetch_auth_token_out",
+          "Path to the output of this tool");
+
+
+int main(int argc, char **argv)
+{
+    absl::ParseCommandLine(argc, argv);
     // Setup
     google::scp::cpio::CpioOptions cpio_options;
     cpio_options.log_option = google::scp::cpio::LogOption::kConsoleLog;
@@ -40,14 +51,18 @@ int main () {
         get_token_context(std::move(request), [&finished](auto& context) {
             CHECK(context.result.Successful()) << "GetSessionTokenRequest failed";
             CHECK(context.response->session_token->size() > 0) << "Session token needs to have length more than zero";
-            // TODO: check there is no other stdout log.
-            std::cout << *context.response->session_token << std::endl;
+
+            const auto output_path = absl::GetFlag(FLAGS_output_path);
+            // We can improve this by checking the directly of the file exists.
+            // Currently it silently fails to write if the dir is not there.
+            std::ofstream fout(output_path);
+            fout << *context.response->session_token;
+
             finished.Notify();
         });
     CHECK(auth_token_provider->GetSessionToken(get_token_context).Successful())
      << "Failed to run auth_token_provider";
     finished.WaitForNotification();
-
 
     // Tear down
     CHECK(auth_token_provider->Stop().Successful())
