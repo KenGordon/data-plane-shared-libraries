@@ -12,6 +12,12 @@ using google::scp::cpio::client_providers::GlobalCpio;
 using google::scp::cpio::client_providers::GetSessionTokenRequest;
 using google::scp::cpio::client_providers::GetSessionTokenResponse;
 
+/*
+This tool fetches JWT auth token from IDP (Managed Identity in production) and write it to stdout.
+TODO: env vars? parameters?
+
+*/
+
 int main () {
     // Setup
     google::scp::cpio::CpioOptions cpio_options;
@@ -21,6 +27,7 @@ int main () {
     auto provider = GlobalCpio::GetGlobalCpio().GetAuthTokenProvider();
     CHECK(provider.ok()) << "failed to get auth token provider";
     auto auth_token_provider = *provider;
+    // TODO: check if you really need to do this. It might be done by InitCpio for example.
     CHECK(auth_token_provider->Init().Successful())
         << "Failed to initialize auth_token_provider";
     CHECK(auth_token_provider->Run().Successful())
