@@ -2,6 +2,7 @@
 #include <memory>
 #include <utility>
 #include <fstream>
+#include <stdlib.h> 
 
 #include "absl/log/check.h"
 #include "absl/flags/flag.h"
@@ -26,10 +27,18 @@ ABSL_FLAG(std::string, output_path,
           "fetch_auth_token_out",
           "Path to the output of this tool");
 
+ABSL_FLAG(std::string, get_token_url,
+          "get_token_url",
+          "http://127.0.0.1:8000/metadata/identity/oauth2/token?api-version=2018-02-01");
+
 
 int main(int argc, char **argv)
 {
     absl::ParseCommandLine(argc, argv);
+
+    const auto get_token_url = absl::GetFlag(FLAGS_get_token_url);
+    setenv("AZURE_BA_PARAM_GET_TOKEN_URL", get_token_url.c_str(), 0);
+
     // Setup
     google::scp::cpio::CpioOptions cpio_options;
     cpio_options.log_option = google::scp::cpio::LogOption::kConsoleLog;

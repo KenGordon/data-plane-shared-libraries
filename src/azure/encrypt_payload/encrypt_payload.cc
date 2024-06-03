@@ -4,6 +4,7 @@
 #include <memory>
 #include <utility>
 #include <fstream>
+#include <stdlib.h>
 
 #include <nlohmann/json.hpp>
 
@@ -37,6 +38,10 @@ ABSL_FLAG(std::string, primary_coordinator_private_key_endpoint,
           "https://127.0.0.1:8000/app/key?fmt=tink",
           "Primary coordinator's private key vending service endpoint");
 
+ABSL_FLAG(std::string, unwrap_private_key_endpoint,
+          "http://127.0.0.1:8000/app/unwrapKey?fmt=tink",
+          "Endpoint to unwrap private key");
+
 ABSL_FLAG(std::string, output_path,
           "encrypt_payload_out",
           "Path to the output of this tool");
@@ -44,6 +49,10 @@ ABSL_FLAG(std::string, output_path,
 ABSL_FLAG(bool, decrypt_mode,
           false,
           "If it's true it decrypts the input with the private key fetched from Azure Protected Audience KMS");
+
+ABSL_FLAG(std::string, get_token_url,
+          "get_token_url",
+          "http://127.0.0.1:8000/metadata/identity/oauth2/token?api-version=2018-02-01");
 
 /* 
 This tool encrypts the stdin input payload using a public key fetched from Azure Protected Audience KMS.
@@ -80,22 +89,6 @@ namespace privacy_sandbox::azure_encrypt_payload
         server_common::CloudPlatform,
         std::vector<google::scp::cpio::PublicKeyVendingServiceEndpoint>>;
 
-    // This function is redundant considering the usage, but
-    // should be useful to know how bytes are handled in privacy sandbox code base.
-    std::string GetTestHpkePrivateKey()
-    {
-      const std::string hpke_key_hex =
-          "b77431ecfa8f4cfc30d6e467aafa06944dffe28cb9dd1409e33a3045f5adc8a1";
-      return absl::HexStringToBytes(hpke_key_hex);
-    }
-
-    std::string GetTestHpkePublicKey()
-    {
-      const std::string public_key =
-          "6d21cfe09fbea5122f9ebc2eb2a69fcc4f06408cd54aac934f012e76fcdcef62";
-      return absl::HexStringToBytes(public_key);
-    }
-
     const quiche::ObliviousHttpHeaderKeyConfig GetOhttpKeyConfig(uint8_t key_id,
                                                                  uint16_t kem_id,
                                                                  uint16_t kdf_id,
@@ -107,8 +100,7 @@ namespace privacy_sandbox::azure_encrypt_payload
       return std::move(ohttp_key_config.value());
     }
 
-    // Copied from unnamed namespace in
-    // data-plane-shared-libraries/src/cpp/communication/ohttp_utils.cc
+    // Copied from data-plane-shared-libraries/src/cpp/communication/ohttp_utils.cc
     absl::StatusOr<uint8_t> ToIntKeyId(absl::string_view key_id)
     {
       uint32_t val;
@@ -148,13 +140,9 @@ namespace privacy_sandbox::azure_encrypt_payload
             kDefaultKeyRefreshFlowRunFrequencySeconds)
     {
       google::scp::cpio::PrivateKeyVendingEndpoint primary;
-      // AZURE_TODO: We might have to specify more fields for primary.
-      //             See services/common/encryption/key_fetcher_factory.cc for what
-      //             the original code does
 
       primary.private_key_vending_service_endpoint =
           absl::GetFlag(FLAGS_primary_coordinator_private_key_endpoint);
-      // AZURE_TODO: make it a command line option
       absl::Duration private_key_ttl = absl::Seconds(private_key_cache_ttl_seconds);
       std::unique_ptr<server_common::PrivateKeyFetcherInterface>
           private_key_fetcher = server_common::PrivateKeyFetcherFactory::Create(
@@ -163,8 +151,6 @@ namespace privacy_sandbox::azure_encrypt_payload
       absl::Duration key_refresh_flow_run_freq =
           absl::Seconds(key_refresh_flow_run_frequency_seconds);
 
-    //   auto event_engine = std::make_unique<server_common::EventEngineExecutor>(
-    //       grpc_event_engine::experimental::CreateEventEngine());
       auto event_engine = std::make_unique<server_common::EventEngineExecutor>(
           grpc_event_engine::experimental::GetDefaultEventEngine());
       std::unique_ptr<server_common::KeyFetcherManagerInterface> manager =
@@ -266,8 +252,15 @@ namespace privacy_sandbox::azure_encrypt_payload
 int main(int argc, char **argv)
 {
     absl::ParseCommandLine(argc, argv);
+
     // Setup
-    // Initialize and shutdown gRPC client. DO NOT REMOVE.
+    const auto get_token_url = absl::GetFlag(FLAGS_get_token_url);
+    setenv("AZURE_BA_PARAM_GET_TOKEN_URL", get_token_url.c_str(), 0);
+
+    const auto unwrap_private_key_endpoint = absl::GetFlag(FLAGS_unwrap_private_key_endpoint);
+    setenv("AZURE_BA_PARAM_KMS_UNWRAP_URL", unwrap_private_key_endpoint.c_str(), 0);
+
+    // grpc_init initializes and shutdown gRPC client.
     privacy_sandbox::server_common::GrpcInit grpc_init;
     google::scp::cpio::CpioOptions cpio_options;
     cpio_options.log_option = google::scp::cpio::LogOption::kConsoleLog;
