@@ -12,25 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+
 package(default_visibility = ["//visibility:public"])
 
 cc_binary(
     name = "encrypt_payload",
     srcs = ["encrypt_payload.cc"],
     deps = [
-        "@com_google_absl//absl/log:check",
-        "//src/public/cpio/interface:cpio",
-        "//src/cpio/client_providers/global_cpio",
-        "@com_github_google_quiche//quiche:oblivious_http_unstable_api",
-        "@com_google_absl//absl/flags:flag",
-        "@com_google_absl//absl/flags:parse",
-        "@com_google_absl//absl/strings",
-        "//src/core/utils:core_utils",
         "//src/communication:ohttp_utils",
         "//src/concurrent:executor",
+        "//src/core/utils:core_utils",
+        "//src/cpio/client_providers/global_cpio",
         "//src/encryption/key_fetcher:fake_key_fetcher_manager",
         "//src/encryption/key_fetcher:key_fetcher_manager",
         "//src/encryption/key_fetcher:private_key_fetcher",
         "//src/encryption/key_fetcher:public_key_fetcher",
+        "//src/public/cpio/interface:cpio",
+        "@com_github_google_quiche//quiche:oblivious_http_unstable_api",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/strings",
     ],
 )

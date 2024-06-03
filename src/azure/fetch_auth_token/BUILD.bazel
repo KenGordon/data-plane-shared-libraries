@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+
 package(default_visibility = ["//visibility:public"])
 
 cc_binary(
     name = "fetch_auth_token",
     srcs = ["fetch_auth_token.cc"],
     deps = [
-        "@com_google_absl//absl/log:check",
+        "//src/cpio/client_providers/global_cpio",
+        "//src/public/cpio/interface:cpio",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
-        "//src/public/cpio/interface:cpio",
-        "//src/cpio/client_providers/global_cpio",
+        "@com_google_absl//absl/log:check",
     ],
 )
