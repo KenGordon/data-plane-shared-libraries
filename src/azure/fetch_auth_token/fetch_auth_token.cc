@@ -75,9 +75,11 @@ int main(int argc, char** argv) {
         CHECK(context.response->session_token->size() > 0)
             << "Session token needs to have length more than zero";
 
-        const auto output_path = absl::GetFlag(FLAGS_output_path);
-        // We can improve this by checking the directly of the file exists.
-        // Currently it silently fails to write if the dir is not there.
+        const std::filesystem::path output_path =
+            absl::GetFlag(FLAGS_output_path);
+        if (output_path.has_parent_path()) {
+          create_directories(output_path.parent_path());
+        }
         std::ofstream fout(output_path);
         fout << *context.response->session_token;
 

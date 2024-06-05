@@ -278,17 +278,18 @@ int main(int argc, char** argv) {
 
   bool decrypt_mode = {absl::GetFlag(FLAGS_decrypt_mode)};
 
+  const std::filesystem::path output_path = absl::GetFlag(FLAGS_output_path);
+  if (output_path.has_parent_path()) {
+    create_directories(output_path.parent_path());
+  }
+  std::ofstream fout(output_path);
+
   if (!decrypt_mode) {
     std::string plaintext_payload;
     std::cin >> plaintext_payload;
     const auto encrypt_result =
         privacy_sandbox::azure_encrypt_payload::EncryptPayload(
             std::move(key_fetcher_manager), plaintext_payload);
-
-    const auto output_path = absl::GetFlag(FLAGS_output_path);
-    // We can improve this by checking the directly of the file exists.
-    // Currently it silently fails to write if the dir is not there.
-    std::ofstream fout(output_path);
     fout << nlohmann::json(encrypt_result).dump(2);
 
   } else {
@@ -297,9 +298,6 @@ int main(int argc, char** argv) {
     auto encryption_result = input.template get<
         privacy_sandbox::azure_encrypt_payload::EncryptPayloadResult>();
     const auto output_path = absl::GetFlag(FLAGS_output_path);
-    // We can improve this by checking the directly of the file exists.
-    // Currently it silently fails to write if the dir is not there.
-    std::ofstream fout(output_path);
     fout << DecryptCiphertext(std::move(key_fetcher_manager),
                               encryption_result);
   }
