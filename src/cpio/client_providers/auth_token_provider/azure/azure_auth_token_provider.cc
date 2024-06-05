@@ -209,6 +209,7 @@ void AzureAuthTokenProvider::OnGetSessionTokenCallback(
   auto access_token = json_response[kJsonAccessTokenKey].get<std::string>();
   get_token_context.response->session_token =
       std::make_shared<std::string>(std::move(access_token));
+
   get_token_context.result = SuccessExecutionResult();
   get_token_context.Finish();
 }

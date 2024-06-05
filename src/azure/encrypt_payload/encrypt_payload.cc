@@ -42,6 +42,21 @@ using google::scp::cpio::client_providers::GetSessionTokenRequest;
 using google::scp::cpio::client_providers::GetSessionTokenResponse;
 using google::scp::cpio::client_providers::GlobalCpio;
 
+/*
+This tool encrypts the stdin input payload using a public key fetched from Azure
+Protected Audience KMS. The output is written to stdout with the following
+format:
+{
+    "key_id": <Non negative integer key ID>,
+    "public_key_base64": "<Base64-encoded public key>",
+    "ciphertext_base64": "<Base64-encoded ciphertext>"
+}
+
+With --decrypt_mode, it decrypts the stdin input and output the plaintext using
+the private key fetched from Azure Protected Audience KMS. The above json format
+is used for the input.
+*/
+
 ABSL_FLAG(std::string, public_key_endpoint,
           "https://127.0.0.1:8000/app/listpubkeys",
           "Endpoint serving set of public keys used for encryption");
@@ -64,23 +79,6 @@ ABSL_FLAG(bool, decrypt_mode, false,
 ABSL_FLAG(std::string, get_token_url, "get_token_url",
           "http://127.0.0.1:8000/metadata/identity/oauth2/"
           "token?api-version=2018-02-01");
-
-/*
-This tool encrypts the stdin input payload using a public key fetched from Azure
-Protected Audience KMS. The output is written to stdout with the following
-format:
-{
-    "key_id": <Non negative integer key ID>,
-    "public_key_base64": "<Base64-encoded public key>",
-    "ciphertext_base64": "<Base64-encoded ciphertext>"
-}
-
-With --decrypt_mode, it decrypts the stdin input and output the plaintext using
-the private key fetched from Azure Protected Audience KMS. The above json format
-is used for the input.
-
-TODO: env vars? parameters?
-*/
 
 namespace privacy_sandbox::azure_encrypt_payload {
 namespace {
@@ -110,7 +108,9 @@ const quiche::ObliviousHttpHeaderKeyConfig GetOhttpKeyConfig(uint8_t key_id,
   return std::move(ohttp_key_config.value());
 }
 
-// Copied from data-plane-shared-libraries/src/cpp/communication/ohttp_utils.cc
+// Copied from data-plane-shared-libraries/src/cpp/communication/ohttp_utils.cc.
+// We copied it rather than making it visible to other classes to
+// minimize the changes in the existing codes.
 absl::StatusOr<uint8_t> ToIntKeyId(absl::string_view key_id) {
   uint32_t val;
   if (!absl::SimpleAtoi(key_id, &val) ||
@@ -302,7 +302,6 @@ int main(int argc, char** argv) {
                               encryption_result);
   }
 
-  // TODO: Do it in RAII style
   google::scp::cpio::Cpio::ShutdownCpio(cpio_options);
   return 0;
 }

@@ -34,8 +34,6 @@ using google::scp::cpio::client_providers::GlobalCpio;
 /*
 This tool fetches JWT auth token from IDP (Managed Identity in production) and
 write it to stdout.
-TODO: env vars? parameters?
-
 */
 
 ABSL_FLAG(std::string, output_path, "fetch_auth_token_out",
@@ -59,12 +57,6 @@ int main(int argc, char** argv) {
   auto provider = GlobalCpio::GetGlobalCpio().GetAuthTokenProvider();
   CHECK(provider.ok()) << "failed to get auth token provider";
   auto auth_token_provider = *provider;
-  // TODO: check if you really need to do this. It might be done by InitCpio for
-  // example.
-  CHECK(auth_token_provider->Init().Successful())
-      << "Failed to initialize auth_token_provider";
-  CHECK(auth_token_provider->Run().Successful())
-      << "Failed to run auth_token_provider";
 
   // Fetch token
   auto request = std::make_shared<GetSessionTokenRequest>();
@@ -90,8 +82,6 @@ int main(int argc, char** argv) {
   finished.WaitForNotification();
 
   // Tear down
-  CHECK(auth_token_provider->Stop().Successful())
-      << "Failed to stop auth_token_provider";
   google::scp::cpio::Cpio::ShutdownCpio(cpio_options);
 
   return 0;
