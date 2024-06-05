@@ -145,6 +145,8 @@ class AwsQueueClientProviderTest : public ::testing::Test {
         &io_async_executor_, mock_sqs_client_factory_);
   }
 
+  void TearDown() override { EXPECT_SUCCESS(queue_client_provider_->Stop()); }
+
   QueueClientOptions queue_client_options_;
   MockAsyncExecutor cpu_async_executor_;
   MockAsyncExecutor io_async_executor_;
@@ -171,19 +173,23 @@ TEST_F(AwsQueueClientProviderTest, RunWithEmptyQueueName) {
                                 &cpu_async_executor, &io_async_executor,
                                 mock_sqs_client_factory_);
 
-  EXPECT_FALSE(client.Init().ok());
+  EXPECT_SUCCESS(client.Init());
+  EXPECT_THAT(client.Run(),
+              ResultIs(FailureExecutionResult(
+                  SC_AWS_QUEUE_CLIENT_PROVIDER_QUEUE_NAME_REQUIRED)));
 }
 
 TEST_F(AwsQueueClientProviderTest, RunWithCreateClientConfigurationFailed) {
-  mock_instance_client_.get_instance_resource_name_mock =
-      absl::UnknownError("");
+  auto failure_result = FailureExecutionResult(123);
+  mock_instance_client_.get_instance_resource_name_mock = failure_result;
   MockAsyncExecutor cpu_async_executor;
   MockAsyncExecutor io_async_executor;
   AwsQueueClientProvider client(queue_client_options_, &mock_instance_client_,
                                 &cpu_async_executor, &io_async_executor,
                                 mock_sqs_client_factory_);
 
-  EXPECT_FALSE(client.Init().ok());
+  EXPECT_SUCCESS(client.Init());
+  EXPECT_THAT(client.Run(), ResultIs(failure_result));
 }
 
 TEST_F(AwsQueueClientProviderTest, RunWithGetQueueUrlFailed) {
@@ -193,7 +199,9 @@ TEST_F(AwsQueueClientProviderTest, RunWithGetQueueUrlFailed) {
   EXPECT_CALL(*mock_sqs_client_, GetQueueUrl)
       .WillOnce(Return(get_queue_url_outcome));
 
-  EXPECT_FALSE(queue_client_provider_->Init().ok());
+  EXPECT_SUCCESS(queue_client_provider_->Init());
+  EXPECT_THAT(queue_client_provider_->Run(),
+              ResultIs(FailureExecutionResult(SC_AWS_SERVICE_UNAVAILABLE)));
 }
 
 MATCHER_P(HasGetQueueUrlRequestParams, queue_name, "") {
@@ -209,12 +217,14 @@ TEST_F(AwsQueueClientProviderTest, RunSuccessWithExistingQueue) {
               GetQueueUrl(HasGetQueueUrlRequestParams(kQueueName)))
       .WillOnce(Return(get_queue_url_outcome));
 
-  EXPECT_TRUE(queue_client_provider_->Init().ok());
+  EXPECT_SUCCESS(queue_client_provider_->Init());
+  EXPECT_SUCCESS(queue_client_provider_->Run());
 }
 
 TEST_F(AwsQueueClientProviderTest,
        UpdateMessageVisibilityTimeoutWithInvalidReceiptInfo) {
-  EXPECT_TRUE(queue_client_provider_->Init().ok());
+  EXPECT_SUCCESS(queue_client_provider_->Init());
+  EXPECT_SUCCESS(queue_client_provider_->Run());
 
   update_message_visibility_timeout_context_.request->set_receipt_info(
       kInvalidReceiptInfo);
@@ -222,17 +232,18 @@ TEST_F(AwsQueueClientProviderTest,
       ->mutable_message_visibility_timeout()
       ->set_seconds(kInvalidVisibilityTimeoutSeconds);
 
-  EXPECT_FALSE(queue_client_provider_
-                   ->UpdateMessageVisibilityTimeout(
-                       update_message_visibility_timeout_context_)
-                   .ok());
+  EXPECT_THAT(queue_client_provider_->UpdateMessageVisibilityTimeout(
+                  update_message_visibility_timeout_context_),
+              ResultIs(FailureExecutionResult(
+                  SC_AWS_QUEUE_CLIENT_PROVIDER_INVALID_RECEIPT_INFO)));
   absl::MutexLock l(&finish_called_mu_);
   finish_called_mu_.Await(absl::Condition(&finish_called_));
 }
 
 TEST_F(AwsQueueClientProviderTest,
        UpdateMessageVisibilityTimeoutWithInvalidExpirationTime) {
-  EXPECT_TRUE(queue_client_provider_->Init().ok());
+  EXPECT_SUCCESS(queue_client_provider_->Init());
+  EXPECT_SUCCESS(queue_client_provider_->Run());
 
   update_message_visibility_timeout_context_.request->set_receipt_info(
       kReceiptInfo);
@@ -240,10 +251,10 @@ TEST_F(AwsQueueClientProviderTest,
       ->mutable_message_visibility_timeout()
       ->set_seconds(kInvalidVisibilityTimeoutSeconds);
 
-  EXPECT_FALSE(queue_client_provider_
-                   ->UpdateMessageVisibilityTimeout(
-                       update_message_visibility_timeout_context_)
-                   .ok());
+  EXPECT_THAT(queue_client_provider_->UpdateMessageVisibilityTimeout(
+                  update_message_visibility_timeout_context_),
+              ResultIs(FailureExecutionResult(
+                  SC_AWS_QUEUE_CLIENT_PROVIDER_INVALID_VISIBILITY_TIMEOUT)));
   absl::MutexLock l(&finish_called_mu_);
   finish_called_mu_.Await(absl::Condition(&finish_called_));
 }

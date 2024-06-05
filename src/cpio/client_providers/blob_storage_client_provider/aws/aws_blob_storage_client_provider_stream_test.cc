@@ -117,7 +117,8 @@ class AwsBlobStorageClientProviderStreamTest : public ::testing::Test {
       finish_called_ = true;
     };
 
-    EXPECT_TRUE(provider_->Init().ok());
+    EXPECT_SUCCESS(provider_->Init());
+    EXPECT_SUCCESS(provider_->Run());
   }
 
   ~AwsBlobStorageClientProviderStreamTest() { ShutdownAPI(options_); }
@@ -229,7 +230,7 @@ TEST_F(AwsBlobStorageClientProviderStreamTest, GetBlobStream) {
     }
   };
 
-  EXPECT_TRUE(provider_->GetBlobStream(get_blob_stream_context_).ok());
+  EXPECT_SUCCESS(provider_->GetBlobStream(get_blob_stream_context_));
 
   {
     absl::MutexLock l(&finish_called_mu_);
@@ -304,7 +305,7 @@ TEST_F(AwsBlobStorageClientProviderStreamTest, GetBlobStreamMultipleResponses) {
     }
   };
 
-  EXPECT_TRUE(provider_->GetBlobStream(get_blob_stream_context_).ok());
+  EXPECT_SUCCESS(provider_->GetBlobStream(get_blob_stream_context_));
 
   {
     absl::MutexLock l(&finish_called_mu_);
@@ -393,7 +394,7 @@ TEST_F(AwsBlobStorageClientProviderStreamTest, GetBlobStreamByteRange) {
     }
   };
 
-  EXPECT_TRUE(provider_->GetBlobStream(get_blob_stream_context_).ok());
+  EXPECT_SUCCESS(provider_->GetBlobStream(get_blob_stream_context_));
 
   {
     absl::MutexLock l(&finish_called_mu_);
@@ -452,7 +453,7 @@ TEST_F(AwsBlobStorageClientProviderStreamTest, GetBlobStreamIndexBeyondEnd) {
     }
   };
 
-  EXPECT_TRUE(provider_->GetBlobStream(get_blob_stream_context_).ok());
+  EXPECT_SUCCESS(provider_->GetBlobStream(get_blob_stream_context_));
 
   {
     absl::MutexLock l(&finish_called_mu_);
@@ -485,7 +486,7 @@ TEST_F(AwsBlobStorageClientProviderStreamTest,
     finish_called_ = true;
   };
 
-  EXPECT_TRUE(provider_->GetBlobStream(get_blob_stream_context_).ok());
+  EXPECT_SUCCESS(provider_->GetBlobStream(get_blob_stream_context_));
 
   {
     absl::MutexLock l(&finish_called_mu_);
@@ -524,7 +525,7 @@ TEST_F(AwsBlobStorageClientProviderStreamTest, GetBlobStreamFailsIfQueueDone) {
     finish_called_ = true;
   };
 
-  EXPECT_TRUE(provider_->GetBlobStream(get_blob_stream_context_).ok());
+  EXPECT_SUCCESS(provider_->GetBlobStream(get_blob_stream_context_));
 
   {
     absl::MutexLock l(&finish_called_mu_);
@@ -565,7 +566,7 @@ TEST_F(AwsBlobStorageClientProviderStreamTest,
     finish_called_ = true;
   };
 
-  EXPECT_TRUE(provider_->GetBlobStream(get_blob_stream_context_).ok());
+  EXPECT_SUCCESS(provider_->GetBlobStream(get_blob_stream_context_));
 
   {
     absl::MutexLock l(&finish_called_mu_);

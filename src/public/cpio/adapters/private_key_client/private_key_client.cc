@@ -60,6 +60,15 @@ constexpr std::string_view kPrivateKeyClient = "PrivateKeyClient";
 namespace google::scp::cpio {
 ExecutionResult PrivateKeyClient::CreatePrivateKeyClientProvider() noexcept {
   cpio_ = &GlobalCpio::GetGlobalCpio();
+  HttpClientInterface* http_client;
+  if (auto client = cpio_->GetHttpClient(); !client.ok()) {
+    ExecutionResult execution_result;
+    SCP_ERROR(kPrivateKeyClient, kZeroUuid, execution_result,
+              "Failed to get http client.");
+    return execution_result;
+  } else {
+    http_client = *client;
+  }
   RoleCredentialsProviderInterface* role_credentials_provider;
   if (auto provider = cpio_->GetRoleCredentialsProvider(); !provider.ok()) {
     ExecutionResult execution_result;
@@ -69,9 +78,27 @@ ExecutionResult PrivateKeyClient::CreatePrivateKeyClientProvider() noexcept {
   } else {
     role_credentials_provider = *provider;
   }
+  AuthTokenProviderInterface* auth_token_provider;
+  if (auto provider = cpio_->GetAuthTokenProvider(); !provider.ok()) {
+    ExecutionResult execution_result;
+    SCP_ERROR(kPrivateKeyClient, kZeroUuid, execution_result,
+              "Failed to get role auth token provider.");
+    return execution_result;
+  } else {
+    auth_token_provider = *provider;
+  }
+  AsyncExecutorInterface* io_async_executor;
+  if (auto executor = cpio_->GetIoAsyncExecutor(); !executor.ok()) {
+    ExecutionResult execution_result;
+    SCP_ERROR(kPrivateKeyClient, kZeroUuid, execution_result,
+              "Failed to get IOAsyncExecutor.");
+    return execution_result;
+  } else {
+    io_async_executor = *executor;
+  }
   private_key_client_provider_ = PrivateKeyClientProviderFactory::Create(
-      options_, &cpio_->GetHttpClient(), role_credentials_provider,
-      &cpio_->GetAuthTokenProvider(), &cpio_->GetIoAsyncExecutor());
+      *options_, http_client, role_credentials_provider, auth_token_provider,
+      io_async_executor);
   return SuccessExecutionResult();
 }
 
@@ -82,32 +109,45 @@ ExecutionResult PrivateKeyClient::Init() noexcept {
               "Failed to create PrivateKeyClientProvider.");
     return ConvertToPublicExecutionResult(execution_result);
   }
-  return SuccessExecutionResult();
+
+  execution_result = private_key_client_provider_->Init();
+  if (!execution_result.Successful()) {
+    SCP_ERROR(kPrivateKeyClient, kZeroUuid, execution_result,
+              "Failed to initialize PrivateKeyClient.");
+  }
+  return ConvertToPublicExecutionResult(execution_result);
 }
 
 ExecutionResult PrivateKeyClient::Run() noexcept {
-  return SuccessExecutionResult();
+  auto execution_result = private_key_client_provider_->Run();
+  if (!execution_result.Successful()) {
+    SCP_ERROR(kPrivateKeyClient, kZeroUuid, execution_result,
+              "Failed to run PrivateKeyClient.");
+  }
+  return ConvertToPublicExecutionResult(execution_result);
 }
 
 ExecutionResult PrivateKeyClient::Stop() noexcept {
-  return SuccessExecutionResult();
+  auto execution_result = private_key_client_provider_->Stop();
+  if (!execution_result.Successful()) {
+    SCP_ERROR(kPrivateKeyClient, kZeroUuid, execution_result,
+              "Failed to stop PrivateKeyClient.");
+  }
+  return ConvertToPublicExecutionResult(execution_result);
 }
 
 core::ExecutionResult PrivateKeyClient::ListPrivateKeys(
     ListPrivateKeysRequest request,
     Callback<ListPrivateKeysResponse> callback) noexcept {
   return Execute<ListPrivateKeysRequest, ListPrivateKeysResponse>(
-             absl::bind_front(
-                 &PrivateKeyClientProviderInterface::ListPrivateKeys,
-                 private_key_client_provider_.get()),
-             request, callback)
-                 .ok()
-             ? SuccessExecutionResult()
-             : FailureExecutionResult(SC_UNKNOWN);
+      absl::bind_front(&PrivateKeyClientProviderInterface::ListPrivateKeys,
+                       private_key_client_provider_.get()),
+      request, callback);
 }
 
 std::unique_ptr<PrivateKeyClientInterface> PrivateKeyClientFactory::Create(
     PrivateKeyClientOptions options) {
-  return std::make_unique<PrivateKeyClient>(std::move(options));
+  return std::make_unique<PrivateKeyClient>(
+      std::make_shared<PrivateKeyClientOptions>(std::move(options)));
 }
 }  // namespace google::scp::cpio

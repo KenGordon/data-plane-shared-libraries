@@ -31,8 +31,13 @@ namespace google::scp::cpio::client_providers {
  */
 class GcpAuthTokenProvider : public AuthTokenProviderInterface {
  public:
-  explicit GcpAuthTokenProvider(
-      absl::Nonnull<core::HttpClientInterface*> http_client);
+  explicit GcpAuthTokenProvider(core::HttpClientInterface* http_client);
+
+  core::ExecutionResult Init() noexcept override;
+
+  core::ExecutionResult Run() noexcept override;
+
+  core::ExecutionResult Stop() noexcept override;
 
   core::ExecutionResult GetSessionToken(
       core::AsyncContext<GetSessionTokenRequest, GetSessionTokenResponse>&

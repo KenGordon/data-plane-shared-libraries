@@ -63,37 +63,35 @@ constexpr size_t kGcpTimeSeriesSizeLimit = 200;
 
 namespace google::scp::cpio::client_providers {
 
-absl::Status GcpMetricClientProvider::Run() noexcept {
-  if (absl::Status error = MetricClientProvider::Run(); !error.ok()) {
-    SCP_ERROR(kGcpMetricClientProvider, kZeroUuid, error,
+ExecutionResult GcpMetricClientProvider::Run() noexcept {
+  auto execution_result = MetricClientProvider::Run();
+  if (!execution_result.Successful()) {
+    SCP_ERROR(kGcpMetricClientProvider, kZeroUuid, execution_result,
               "Failed to initialize MetricClientProvider");
-    return error;
+    return execution_result;
   }
 
   std::string instance_resource_name;
-  if (absl::Status error =
-          instance_client_provider_->GetCurrentInstanceResourceNameSync(
-              instance_resource_name);
-      !error.ok()) {
-    SCP_ERROR(kGcpMetricClientProvider, kZeroUuid, error,
+  execution_result =
+      instance_client_provider_->GetCurrentInstanceResourceNameSync(
+          instance_resource_name);
+  if (!execution_result.Successful()) {
+    SCP_ERROR(kGcpMetricClientProvider, kZeroUuid, execution_result,
               "Failed to fetch current instance resource name");
-    return error;
+    return execution_result;
   }
 
-  if (const auto result =
-          GcpInstanceClientUtils::GetInstanceResourceNameDetails(
-              instance_resource_name, instance_resource_);
-      !result.Successful()) {
-    SCP_ERROR(kGcpMetricClientProvider, kZeroUuid, result,
+  execution_result = GcpInstanceClientUtils::GetInstanceResourceNameDetails(
+      instance_resource_name, instance_resource_);
+  if (!execution_result.Successful()) {
+    SCP_ERROR(kGcpMetricClientProvider, kZeroUuid, execution_result,
               "Failed to parse instance resource name %s",
               instance_resource_name.c_str());
-    return absl::UnknownError(
-        core::errors::GetErrorMessage(result.status_code));
   }
 
   CreateMetricServiceClient();
 
-  return absl::OkStatus();
+  return SuccessExecutionResult();
 }
 
 void GcpMetricClientProvider::CreateMetricServiceClient() noexcept {
@@ -156,10 +154,7 @@ ExecutionResult GcpMetricClientProvider::MetricsBatchPush(
           .then(absl::bind_front(
               &GcpMetricClientProvider::OnAsyncCreateTimeSeriesCallback, this,
               *requests_vector));
-      {
-        absl::MutexLock l(&sync_mutex_);
-        active_push_count_++;
-      }
+      active_push_count_++;
 
       // Clear requests_vector and protobuf repeated field.
       time_series_request.mutable_time_series()->Clear();
@@ -176,10 +171,7 @@ void GcpMetricClientProvider::OnAsyncCreateTimeSeriesCallback(
     std::vector<AsyncContext<PutMetricsRequest, PutMetricsResponse>>
         metric_requests_vector,
     future<Status> outcome) noexcept {
-  {
-    absl::MutexLock l(&sync_mutex_);
-    active_push_count_--;
-  }
+  active_push_count_--;
   auto outcome_status = outcome.get();
   auto result = GcpUtils::GcpErrorConverter(outcome_status);
 
@@ -196,8 +188,7 @@ void GcpMetricClientProvider::OnAsyncCreateTimeSeriesCallback(
   return;
 }
 
-std::unique_ptr<MetricClientProviderInterface>
-MetricClientProviderFactory::Create(
+std::unique_ptr<MetricClientInterface> MetricClientProviderFactory::Create(
     MetricClientOptions options,
     InstanceClientProviderInterface* instance_client_provider,
     AsyncExecutorInterface* async_executor,

@@ -51,7 +51,7 @@ TEST_F(KmsClientTest, DecryptSuccess) {
 
   EXPECT_CALL(client_provider, Decrypt).WillOnce([&called](auto context) {
     called = true;
-    return absl::OkStatus();
+    return SuccessExecutionResult();
   });
   EXPECT_THAT(client_.Decrypt(context), IsSuccessful());
   EXPECT_TRUE(called);

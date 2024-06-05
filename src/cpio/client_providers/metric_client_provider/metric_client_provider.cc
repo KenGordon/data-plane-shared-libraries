@@ -60,7 +60,7 @@ constexpr size_t kMetricsBatchSize = 1000;
 
 namespace google::scp::cpio::client_providers {
 
-absl::Status MetricClientProvider::Init() noexcept {
+ExecutionResult MetricClientProvider::Init() noexcept {
   // Metric namespace cannot be empty when enable batch recording.
   if (is_batch_recording_enable &&
       metric_batching_options_.metric_namespace.empty()) {
@@ -68,54 +68,54 @@ absl::Status MetricClientProvider::Init() noexcept {
         FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_NAMESPACE_NOT_SET);
     SCP_ERROR(kMetricClientProvider, kZeroUuid, execution_result,
               "Invalid namespace.");
-    return absl::InvalidArgumentError("Namespace not set.");
+    return execution_result;
   }
 
   if (is_batch_recording_enable && !async_executor_) {
-    return absl::InvalidArgumentError(
-        "Batch recording enabled but async executor unavailable.");
+    return FailureExecutionResult(
+        SC_METRIC_CLIENT_PROVIDER_EXECUTOR_NOT_AVAILABLE);
   }
 
-  return absl::OkStatus();
+  return SuccessExecutionResult();
 }
 
-absl::Status MetricClientProvider::Run() noexcept {
+ExecutionResult MetricClientProvider::Run() noexcept {
   if (absl::MutexLock l(&sync_mutex_); is_running_) {
     auto execution_result =
         FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_IS_ALREADY_RUNNING);
     SCP_ERROR(kMetricClientProvider, kZeroUuid, execution_result,
               "Failed to run MetricClientProvider.");
-    return absl::FailedPreconditionError("Metric client is already running.");
+    return execution_result;
   } else {
     is_running_ = true;
   }
 
   if (is_batch_recording_enable) {
-    if (const auto result = ScheduleMetricsBatchPush(); !result.Successful()) {
-      return absl::UnknownError(
-          google::scp::core::errors::GetErrorMessage(result.status_code));
+    return ScheduleMetricsBatchPush();
+  }
+  return SuccessExecutionResult();
+}
+
+ExecutionResult MetricClientProvider::Stop() noexcept {
+  {
+    absl::MutexLock l(&sync_mutex_);
+    is_running_ = false;
+    if (is_batch_recording_enable) {
+      current_cancellation_callback_();
+      // To push the remaining metrics in the vector.
+      RunMetricsBatchPush();
     }
   }
-  return absl::OkStatus();
-}
 
-absl::Status MetricClientProvider::Stop() noexcept {
-  absl::MutexLock l(&sync_mutex_);
-  is_running_ = false;
-  if (is_batch_recording_enable) {
-    current_cancellation_callback_();
-    // To push the remaining metrics in the vector.
-    RunMetricsBatchPush();
+  while (active_push_count_ > 0) {
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(kShutdownWaitIntervalMilliseconds));
   }
-  auto condition_fn = [&] {
-    sync_mutex_.AssertReaderHeld();
-    return active_push_count_ == 0;
-  };
-  sync_mutex_.Await(absl::Condition(&condition_fn));
-  return absl::OkStatus();
+
+  return SuccessExecutionResult();
 }
 
-absl::Status MetricClientProvider::PutMetrics(
+ExecutionResult MetricClientProvider::PutMetrics(
     AsyncContext<PutMetricsRequest, PutMetricsResponse>
         record_metric_context) noexcept {
   absl::MutexLock l(&sync_mutex_);
@@ -125,7 +125,7 @@ absl::Status MetricClientProvider::PutMetrics(
     SCP_ERROR_CONTEXT(kMetricClientProvider, record_metric_context,
                       execution_result, "Failed to record metric.");
     record_metric_context.Finish(execution_result);
-    return absl::FailedPreconditionError("Metric client isn't running.");
+    return execution_result;
   }
 
   auto execution_result = MetricClientUtils::ValidateRequest(
@@ -134,7 +134,7 @@ absl::Status MetricClientProvider::PutMetrics(
     SCP_ERROR_CONTEXT(kMetricClientProvider, record_metric_context,
                       execution_result, "Invalid metric.");
     record_metric_context.Finish(execution_result);
-    return absl::InvalidArgumentError("Invalid request.");
+    return execution_result;
   }
 
   // In following actions:
@@ -156,7 +156,7 @@ absl::Status MetricClientProvider::PutMetrics(
       number_metrics_in_vector_ >= kMetricsBatchSize) {
     RunMetricsBatchPush();
   }
-  return absl::OkStatus();
+  return SuccessExecutionResult();
 }
 
 void MetricClientProvider::RunMetricsBatchPush() noexcept {
@@ -173,6 +173,7 @@ void MetricClientProvider::RunMetricsBatchPush() noexcept {
     SCP_ERROR(kMetricClientProvider, kZeroUuid, execution_result,
               "Failed to push metrics in batch.");
   }
+  return;
 }
 
 ExecutionResult MetricClientProvider::ScheduleMetricsBatchPush() noexcept {
@@ -212,8 +213,6 @@ void MetricClientProvider::OnPutMetrics(
           CallbackToPackAnyResponse<PutMetricsRequest, PutMetricsResponse>,
           any_context),
       any_context);
-  context.result = PutMetrics(context).ok()
-                       ? SuccessExecutionResult()
-                       : FailureExecutionResult(SC_UNKNOWN);
+  context.result = PutMetrics(context);
 }
 }  // namespace google::scp::cpio::client_providers

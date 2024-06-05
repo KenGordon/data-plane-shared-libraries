@@ -41,15 +41,15 @@ class MockPrivateKeyClientProviderWithOverrides
             std::make_unique<MockPrivateKeyFetcherProvider>(),
             std::make_unique<MockKmsClientProvider>()) {}
 
-  std::function<absl::Status(
+  std::function<core::ExecutionResult(
       core::AsyncContext<
           cmrt::sdk::private_key_service::v1::ListPrivateKeysRequest,
           cmrt::sdk::private_key_service::v1::ListPrivateKeysResponse>&)>
       list_private_keys_by_ids_mock;
 
-  absl::Status list_private_keys_by_ids_result_mock = absl::UnknownError("");
+  core::ExecutionResult list_private_keys_by_ids_result_mock;
 
-  absl::Status ListPrivateKeys(
+  core::ExecutionResult ListPrivateKeys(
       core::AsyncContext<
           cmrt::sdk::private_key_service::v1::ListPrivateKeysRequest,
           cmrt::sdk::private_key_service::v1::ListPrivateKeysResponse>&
@@ -57,10 +57,13 @@ class MockPrivateKeyClientProviderWithOverrides
     if (list_private_keys_by_ids_mock) {
       return list_private_keys_by_ids_mock(context);
     }
-    if (list_private_keys_by_ids_result_mock.ok()) {
-      context.response = std::make_shared<
-          cmrt::sdk::private_key_service::v1::ListPrivateKeysResponse>();
-      context.Finish(core::SuccessExecutionResult());
+    if (list_private_keys_by_ids_result_mock) {
+      if (list_private_keys_by_ids_result_mock ==
+          core::SuccessExecutionResult()) {
+        context.response = std::make_shared<
+            cmrt::sdk::private_key_service::v1::ListPrivateKeysResponse>();
+      }
+      context.Finish(list_private_keys_by_ids_result_mock);
       return list_private_keys_by_ids_result_mock;
     }
 

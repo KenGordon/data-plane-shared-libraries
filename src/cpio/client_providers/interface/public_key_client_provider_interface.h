@@ -20,7 +20,6 @@
 #include <memory>
 #include <string>
 
-#include "absl/status/statusor.h"
 #include "src/core/interface/async_context.h"
 #include "src/core/interface/http_client_interface.h"
 #include "src/core/interface/service_interface.h"
@@ -32,7 +31,7 @@ namespace google::scp::cpio::client_providers {
 /**
  * @brief Interface responsible for fetching public keys.
  */
-class PublicKeyClientProviderInterface {
+class PublicKeyClientProviderInterface : public core::ServiceInterface {
  public:
   virtual ~PublicKeyClientProviderInterface() = default;
   /**
@@ -41,7 +40,7 @@ class PublicKeyClientProviderInterface {
    * @param context context of the operation.
    * @return ExecutionResult result of the operation.
    */
-  virtual absl::Status ListPublicKeys(
+  virtual core::ExecutionResult ListPublicKeys(
       core::AsyncContext<
           cmrt::sdk::public_key_service::v1::ListPublicKeysRequest,
           cmrt::sdk::public_key_service::v1::ListPublicKeysResponse>&
@@ -56,9 +55,8 @@ class PublicKeyClientProviderFactory {
    * @return std::unique_ptr<PublicKeyClientProviderInterface> created
    * PublicKeyClientProvider.
    */
-  static absl::StatusOr<std::unique_ptr<PublicKeyClientProviderInterface>>
-  Create(PublicKeyClientOptions options,
-         core::HttpClientInterface* http_client);
+  static std::unique_ptr<PublicKeyClientProviderInterface> Create(
+      PublicKeyClientOptions options, core::HttpClientInterface* http_client);
 };
 }  // namespace google::scp::cpio::client_providers
 

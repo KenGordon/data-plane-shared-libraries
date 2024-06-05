@@ -280,29 +280,25 @@ TEST(PrivateKeyClientUtilsTest,
 
 TEST(PrivateKeyClientUtilsTest, ExtractAnyFailureNoFailure) {
   std::vector<KeysResultPerEndpoint> keys_result_list(2);
-  {
-    absl::MutexLock l(&keys_result_list[0].mu);
-    keys_result_list[0].fetch_result_key_id_map.insert(
-        {"key1", SuccessExecutionResult()});
-    keys_result_list[0].fetch_result_key_id_map.insert(
-        {"key2", SuccessExecutionResult()});
-    keys_result_list[0].decrypt_result_key_id_map.insert(
-        {"key1", CreateDecryptResult("")});
-    keys_result_list[0].decrypt_result_key_id_map.insert(
-        {"key2", CreateDecryptResult("")});
-  }
+  ExecutionResult fetch_result_out;
+  keys_result_list[0].fetch_result_key_id_map.Insert(
+      std::make_pair("key1", SuccessExecutionResult()), fetch_result_out);
+  keys_result_list[0].fetch_result_key_id_map.Insert(
+      std::make_pair("key2", SuccessExecutionResult()), fetch_result_out);
+  DecryptResult decrypt_result_out;
+  keys_result_list[0].decrypt_result_key_id_map.Insert(
+      std::make_pair("key1", CreateDecryptResult("")), decrypt_result_out);
+  keys_result_list[0].decrypt_result_key_id_map.Insert(
+      std::make_pair("key2", CreateDecryptResult("")), decrypt_result_out);
 
-  {
-    absl::MutexLock l(&keys_result_list[1].mu);
-    keys_result_list[1].fetch_result_key_id_map.insert(
-        {"key1", SuccessExecutionResult()});
-    keys_result_list[1].fetch_result_key_id_map.insert(
-        {"key2", SuccessExecutionResult()});
-    keys_result_list[1].decrypt_result_key_id_map.insert(
-        {"key1", CreateDecryptResult("")});
-    keys_result_list[1].decrypt_result_key_id_map.insert(
-        {"key2", CreateDecryptResult("")});
-  }
+  keys_result_list[1].fetch_result_key_id_map.Insert(
+      std::make_pair("key1", SuccessExecutionResult()), fetch_result_out);
+  keys_result_list[1].fetch_result_key_id_map.Insert(
+      std::make_pair("key2", SuccessExecutionResult()), fetch_result_out);
+  keys_result_list[1].decrypt_result_key_id_map.Insert(
+      std::make_pair("key1", CreateDecryptResult("")), decrypt_result_out);
+  keys_result_list[1].decrypt_result_key_id_map.Insert(
+      std::make_pair("key2", CreateDecryptResult("")), decrypt_result_out);
 
   EXPECT_SUCCESS(
       PrivateKeyClientUtils::ExtractAnyFailure(keys_result_list, "key1"));
@@ -312,31 +308,27 @@ TEST(PrivateKeyClientUtilsTest, ExtractAnyFailureNoFailure) {
 
 TEST(PrivateKeyClientUtilsTest, ExtractAnyFailureReturnFetchFailure) {
   std::vector<KeysResultPerEndpoint> keys_result_list(2);
+  ExecutionResult fetch_result_out;
+  keys_result_list[0].fetch_result_key_id_map.Insert(
+      std::make_pair("key1", SuccessExecutionResult()), fetch_result_out);
+  keys_result_list[0].fetch_result_key_id_map.Insert(
+      std::make_pair("key2", SuccessExecutionResult()), fetch_result_out);
+  DecryptResult decrypt_result_out;
+  keys_result_list[0].decrypt_result_key_id_map.Insert(
+      std::make_pair("key1", CreateDecryptResult("")), decrypt_result_out);
+  keys_result_list[0].decrypt_result_key_id_map.Insert(
+      std::make_pair("key2", CreateDecryptResult("")), decrypt_result_out);
   auto failure = FailureExecutionResult(SC_UNKNOWN);
-  {
-    absl::MutexLock l(&keys_result_list[0].mu);
-    keys_result_list[0].fetch_result_key_id_map.insert(
-        {"key1", SuccessExecutionResult()});
-    keys_result_list[0].fetch_result_key_id_map.insert(
-        {"key2", SuccessExecutionResult()});
-    keys_result_list[0].decrypt_result_key_id_map.insert(
-        {"key1", CreateDecryptResult("")});
-    keys_result_list[0].decrypt_result_key_id_map.insert(
-        {"key2", CreateDecryptResult("")});
-    keys_result_list[0].fetch_result = failure;
-  }
+  keys_result_list[0].fetch_result = failure;
 
-  {
-    absl::MutexLock l(&keys_result_list[1].mu);
-    keys_result_list[1].fetch_result_key_id_map.insert(
-        {"key1", SuccessExecutionResult()});
-    keys_result_list[1].fetch_result_key_id_map.insert(
-        {"key2", SuccessExecutionResult()});
-    keys_result_list[1].decrypt_result_key_id_map.insert(
-        {"key1", CreateDecryptResult("")});
-    keys_result_list[1].decrypt_result_key_id_map.insert(
-        {"key2", CreateDecryptResult("")});
-  }
+  keys_result_list[1].fetch_result_key_id_map.Insert(
+      std::make_pair("key1", SuccessExecutionResult()), fetch_result_out);
+  keys_result_list[1].fetch_result_key_id_map.Insert(
+      std::make_pair("key2", SuccessExecutionResult()), fetch_result_out);
+  keys_result_list[1].decrypt_result_key_id_map.Insert(
+      std::make_pair("key1", CreateDecryptResult("")), decrypt_result_out);
+  keys_result_list[1].decrypt_result_key_id_map.Insert(
+      std::make_pair("key2", CreateDecryptResult("")), decrypt_result_out);
 
   EXPECT_THAT(
       PrivateKeyClientUtils::ExtractAnyFailure(keys_result_list, "key1"),
@@ -349,28 +341,25 @@ TEST(PrivateKeyClientUtilsTest, ExtractAnyFailureReturnFetchFailure) {
 TEST(PrivateKeyClientUtilsTest, ExtractAnyFailureReturnFetchFailureForOneKey) {
   auto failure = FailureExecutionResult(SC_UNKNOWN);
   std::vector<KeysResultPerEndpoint> keys_result_list(2);
-  {
-    absl::MutexLock l(&keys_result_list[0].mu);
-    keys_result_list[0].fetch_result_key_id_map.insert({"key1", failure});
-    keys_result_list[0].fetch_result_key_id_map.insert(
-        {"key2", SuccessExecutionResult()});
-    keys_result_list[0].decrypt_result_key_id_map.insert(
-        {"key1", CreateDecryptResult("")});
-    keys_result_list[0].decrypt_result_key_id_map.insert(
-        {"key2", CreateDecryptResult("")});
-  }
+  ExecutionResult fetch_result_out;
+  keys_result_list[0].fetch_result_key_id_map.Insert(
+      std::make_pair("key1", failure), fetch_result_out);
+  keys_result_list[0].fetch_result_key_id_map.Insert(
+      std::make_pair("key2", SuccessExecutionResult()), fetch_result_out);
+  DecryptResult decrypt_result_out;
+  keys_result_list[0].decrypt_result_key_id_map.Insert(
+      std::make_pair("key1", CreateDecryptResult("")), decrypt_result_out);
+  keys_result_list[0].decrypt_result_key_id_map.Insert(
+      std::make_pair("key2", CreateDecryptResult("")), decrypt_result_out);
 
-  {
-    absl::MutexLock l(&keys_result_list[1].mu);
-    keys_result_list[1].fetch_result_key_id_map.insert(
-        {"key1", SuccessExecutionResult()});
-    keys_result_list[1].fetch_result_key_id_map.insert(
-        {"key2", SuccessExecutionResult()});
-    keys_result_list[1].decrypt_result_key_id_map.insert(
-        {"key1", CreateDecryptResult("")});
-    keys_result_list[1].decrypt_result_key_id_map.insert(
-        {"key2", CreateDecryptResult("")});
-  }
+  keys_result_list[1].fetch_result_key_id_map.Insert(
+      std::make_pair("key1", SuccessExecutionResult()), fetch_result_out);
+  keys_result_list[1].fetch_result_key_id_map.Insert(
+      std::make_pair("key2", SuccessExecutionResult()), fetch_result_out);
+  keys_result_list[1].decrypt_result_key_id_map.Insert(
+      std::make_pair("key1", CreateDecryptResult("")), decrypt_result_out);
+  keys_result_list[1].decrypt_result_key_id_map.Insert(
+      std::make_pair("key2", CreateDecryptResult("")), decrypt_result_out);
 
   EXPECT_THAT(
       PrivateKeyClientUtils::ExtractAnyFailure(keys_result_list, "key1"),
@@ -383,27 +372,25 @@ TEST(PrivateKeyClientUtilsTest,
      ExtractAnyFailureReturnFetchFailureForBothKeys) {
   auto failure = FailureExecutionResult(SC_UNKNOWN);
   std::vector<KeysResultPerEndpoint> keys_result_list(2);
-  {
-    absl::MutexLock l(&keys_result_list[0].mu);
-    keys_result_list[0].fetch_result_key_id_map.insert({"key1", failure});
-    keys_result_list[0].fetch_result_key_id_map.insert(
-        {"key2", SuccessExecutionResult()});
-    keys_result_list[0].decrypt_result_key_id_map.insert(
-        {"key1", CreateDecryptResult("")});
-    keys_result_list[0].decrypt_result_key_id_map.insert(
-        {"key2", CreateDecryptResult("")});
-  }
+  ExecutionResult fetch_result_out;
+  keys_result_list[0].fetch_result_key_id_map.Insert(
+      std::make_pair("key1", failure), fetch_result_out);
+  keys_result_list[0].fetch_result_key_id_map.Insert(
+      std::make_pair("key2", SuccessExecutionResult()), fetch_result_out);
+  DecryptResult decrypt_result_out;
+  keys_result_list[0].decrypt_result_key_id_map.Insert(
+      std::make_pair("key1", CreateDecryptResult("")), decrypt_result_out);
+  keys_result_list[0].decrypt_result_key_id_map.Insert(
+      std::make_pair("key2", CreateDecryptResult("")), decrypt_result_out);
 
-  {
-    absl::MutexLock l(&keys_result_list[1].mu);
-    keys_result_list[1].fetch_result_key_id_map.insert(
-        {"key1", SuccessExecutionResult()});
-    keys_result_list[1].fetch_result_key_id_map.insert({"key2", failure});
-    keys_result_list[1].decrypt_result_key_id_map.insert(
-        {"key1", CreateDecryptResult("")});
-    keys_result_list[1].decrypt_result_key_id_map.insert(
-        {"key2", CreateDecryptResult("")});
-  }
+  keys_result_list[1].fetch_result_key_id_map.Insert(
+      std::make_pair("key1", SuccessExecutionResult()), fetch_result_out);
+  keys_result_list[1].fetch_result_key_id_map.Insert(
+      std::make_pair("key2", failure), fetch_result_out);
+  keys_result_list[1].decrypt_result_key_id_map.Insert(
+      std::make_pair("key1", CreateDecryptResult("")), decrypt_result_out);
+  keys_result_list[1].decrypt_result_key_id_map.Insert(
+      std::make_pair("key2", CreateDecryptResult("")), decrypt_result_out);
 
   EXPECT_THAT(
       PrivateKeyClientUtils::ExtractAnyFailure(keys_result_list, "key1"),
@@ -417,29 +404,26 @@ TEST(PrivateKeyClientUtilsTest,
      ExtractAnyFailureReturnDecryptFailureForOneKey) {
   auto failure = FailureExecutionResult(SC_UNKNOWN);
   std::vector<KeysResultPerEndpoint> keys_result_list(2);
-  {
-    absl::MutexLock l(&keys_result_list[0].mu);
-    keys_result_list[0].fetch_result_key_id_map.insert(
-        {"key1", SuccessExecutionResult()});
-    keys_result_list[0].fetch_result_key_id_map.insert(
-        {"key2", SuccessExecutionResult()});
-    keys_result_list[0].decrypt_result_key_id_map.insert(
-        {"key1", CreateDecryptResult("", failure)});
-    keys_result_list[0].decrypt_result_key_id_map.insert(
-        {"key2", CreateDecryptResult("")});
-  }
+  ExecutionResult fetch_result_out;
+  keys_result_list[0].fetch_result_key_id_map.Insert(
+      std::make_pair("key1", SuccessExecutionResult()), fetch_result_out);
+  keys_result_list[0].fetch_result_key_id_map.Insert(
+      std::make_pair("key2", SuccessExecutionResult()), fetch_result_out);
+  DecryptResult decrypt_result_out;
+  keys_result_list[0].decrypt_result_key_id_map.Insert(
+      std::make_pair("key1", CreateDecryptResult("", failure)),
+      decrypt_result_out);
+  keys_result_list[0].decrypt_result_key_id_map.Insert(
+      std::make_pair("key2", CreateDecryptResult("")), decrypt_result_out);
 
-  {
-    absl::MutexLock l(&keys_result_list[1].mu);
-    keys_result_list[1].fetch_result_key_id_map.insert(
-        {"key1", SuccessExecutionResult()});
-    keys_result_list[1].fetch_result_key_id_map.insert(
-        {"key2", SuccessExecutionResult()});
-    keys_result_list[1].decrypt_result_key_id_map.insert(
-        {"key1", CreateDecryptResult("")});
-    keys_result_list[1].decrypt_result_key_id_map.insert(
-        {"key2", CreateDecryptResult("")});
-  }
+  keys_result_list[1].fetch_result_key_id_map.Insert(
+      std::make_pair("key1", SuccessExecutionResult()), fetch_result_out);
+  keys_result_list[1].fetch_result_key_id_map.Insert(
+      std::make_pair("key2", SuccessExecutionResult()), fetch_result_out);
+  keys_result_list[1].decrypt_result_key_id_map.Insert(
+      std::make_pair("key1", CreateDecryptResult("")), decrypt_result_out);
+  keys_result_list[1].decrypt_result_key_id_map.Insert(
+      std::make_pair("key2", CreateDecryptResult("")), decrypt_result_out);
 
   EXPECT_THAT(
       PrivateKeyClientUtils::ExtractAnyFailure(keys_result_list, "key1"),
@@ -452,29 +436,27 @@ TEST(PrivateKeyClientUtilsTest,
      ExtractAnyFailureReturnDecryptFailureForBothKeys) {
   auto failure = FailureExecutionResult(SC_UNKNOWN);
   std::vector<KeysResultPerEndpoint> keys_result_list(2);
-  {
-    absl::MutexLock l(&keys_result_list[0].mu);
-    keys_result_list[0].fetch_result_key_id_map.insert(
-        {"key1", SuccessExecutionResult()});
-    keys_result_list[0].fetch_result_key_id_map.insert(
-        {"key2", SuccessExecutionResult()});
-    keys_result_list[0].decrypt_result_key_id_map.insert(
-        {"key1", CreateDecryptResult("", failure)});
-    keys_result_list[0].decrypt_result_key_id_map.insert(
-        {"key2", CreateDecryptResult("")});
-  }
+  ExecutionResult fetch_result_out;
+  keys_result_list[0].fetch_result_key_id_map.Insert(
+      std::make_pair("key1", SuccessExecutionResult()), fetch_result_out);
+  keys_result_list[0].fetch_result_key_id_map.Insert(
+      std::make_pair("key2", SuccessExecutionResult()), fetch_result_out);
+  DecryptResult decrypt_result_out;
+  keys_result_list[0].decrypt_result_key_id_map.Insert(
+      std::make_pair("key1", CreateDecryptResult("", failure)),
+      decrypt_result_out);
+  keys_result_list[0].decrypt_result_key_id_map.Insert(
+      std::make_pair("key2", CreateDecryptResult("")), decrypt_result_out);
 
-  {
-    absl::MutexLock l(&keys_result_list[1].mu);
-    keys_result_list[1].fetch_result_key_id_map.insert(
-        {"key1", SuccessExecutionResult()});
-    keys_result_list[1].fetch_result_key_id_map.insert(
-        {"key2", SuccessExecutionResult()});
-    keys_result_list[1].decrypt_result_key_id_map.insert(
-        {"key1", CreateDecryptResult("")});
-    keys_result_list[1].decrypt_result_key_id_map.insert(
-        {"key2", CreateDecryptResult("", failure)});
-  }
+  keys_result_list[1].fetch_result_key_id_map.Insert(
+      std::make_pair("key1", SuccessExecutionResult()), fetch_result_out);
+  keys_result_list[1].fetch_result_key_id_map.Insert(
+      std::make_pair("key2", SuccessExecutionResult()), fetch_result_out);
+  keys_result_list[1].decrypt_result_key_id_map.Insert(
+      std::make_pair("key1", CreateDecryptResult("")), decrypt_result_out);
+  keys_result_list[1].decrypt_result_key_id_map.Insert(
+      std::make_pair("key2", CreateDecryptResult("", failure)),
+      decrypt_result_out);
 
   EXPECT_THAT(
       PrivateKeyClientUtils::ExtractAnyFailure(keys_result_list, "key1"),
@@ -487,25 +469,26 @@ TEST(PrivateKeyClientUtilsTest,
 TEST(PrivateKeyClientUtilsTest, ExtractAnyFailureFetchResultNotFound) {
   auto failure = FailureExecutionResult(SC_UNKNOWN);
   std::vector<KeysResultPerEndpoint> keys_result_list(2);
-  {
-    absl::MutexLock l(&keys_result_list[0].mu);
-    keys_result_list[0].fetch_result_key_id_map.insert({"key1", failure});
-    keys_result_list[0].fetch_result_key_id_map.insert({"key2", failure});
-    keys_result_list[0].decrypt_result_key_id_map.insert(
-        {"key1", CreateDecryptResult("", failure)});
-    keys_result_list[0].decrypt_result_key_id_map.insert(
-        {"key3", CreateDecryptResult("")});
-  }
+  ExecutionResult fetch_result_out;
+  keys_result_list[0].fetch_result_key_id_map.Insert(
+      std::make_pair("key1", failure), fetch_result_out);
+  keys_result_list[0].fetch_result_key_id_map.Insert(
+      std::make_pair("key2", failure), fetch_result_out);
+  DecryptResult decrypt_result_out;
+  keys_result_list[0].decrypt_result_key_id_map.Insert(
+      std::make_pair("key1", CreateDecryptResult("", failure)),
+      decrypt_result_out);
+  keys_result_list[0].decrypt_result_key_id_map.Insert(
+      std::make_pair("key3", CreateDecryptResult("")), decrypt_result_out);
 
-  {
-    absl::MutexLock l(&keys_result_list[1].mu);
-    keys_result_list[1].fetch_result_key_id_map.insert({"key1", failure});
-    keys_result_list[1].fetch_result_key_id_map.insert({"key2", failure});
-    keys_result_list[1].decrypt_result_key_id_map.insert(
-        {"key1", CreateDecryptResult("")});
-    keys_result_list[1].decrypt_result_key_id_map.insert(
-        {"key3", CreateDecryptResult("")});
-  }
+  keys_result_list[1].fetch_result_key_id_map.Insert(
+      std::make_pair("key1", failure), fetch_result_out);
+  keys_result_list[1].fetch_result_key_id_map.Insert(
+      std::make_pair("key2", failure), fetch_result_out);
+  keys_result_list[1].decrypt_result_key_id_map.Insert(
+      std::make_pair("key1", CreateDecryptResult("")), decrypt_result_out);
+  keys_result_list[1].decrypt_result_key_id_map.Insert(
+      std::make_pair("key3", CreateDecryptResult("")), decrypt_result_out);
 
   EXPECT_SUCCESS(
       PrivateKeyClientUtils::ExtractAnyFailure(keys_result_list, "key3"));
@@ -514,29 +497,29 @@ TEST(PrivateKeyClientUtilsTest, ExtractAnyFailureFetchResultNotFound) {
 TEST(PrivateKeyClientUtilsTest, ExtractAnyFailureDecryptResultNotFound) {
   auto failure = FailureExecutionResult(SC_UNKNOWN);
   std::vector<KeysResultPerEndpoint> keys_result_list(2);
-  {
-    absl::MutexLock l(&keys_result_list[0].mu);
-    keys_result_list[0].fetch_result_key_id_map.insert(
-        {"key1", SuccessExecutionResult()});
-    keys_result_list[0].fetch_result_key_id_map.insert(
-        {"key3", SuccessExecutionResult()});
-    keys_result_list[0].decrypt_result_key_id_map.insert(
-        {"key1", CreateDecryptResult("", failure)});
-    keys_result_list[0].decrypt_result_key_id_map.insert(
-        {"key2", CreateDecryptResult("", failure)});
-  }
+  ExecutionResult fetch_result_out;
+  keys_result_list[0].fetch_result_key_id_map.Insert(
+      std::make_pair("key1", SuccessExecutionResult()), fetch_result_out);
+  keys_result_list[0].fetch_result_key_id_map.Insert(
+      std::make_pair("key3", SuccessExecutionResult()), fetch_result_out);
+  DecryptResult decrypt_result_out;
+  keys_result_list[0].decrypt_result_key_id_map.Insert(
+      std::make_pair("key1", CreateDecryptResult("", failure)),
+      decrypt_result_out);
+  keys_result_list[0].decrypt_result_key_id_map.Insert(
+      std::make_pair("key2", CreateDecryptResult("", failure)),
+      decrypt_result_out);
 
-  {
-    absl::MutexLock l(&keys_result_list[1].mu);
-    keys_result_list[1].fetch_result_key_id_map.insert(
-        {"key1", SuccessExecutionResult()});
-    keys_result_list[1].fetch_result_key_id_map.insert(
-        {"key3", SuccessExecutionResult()});
-    keys_result_list[1].decrypt_result_key_id_map.insert(
-        {"key1", CreateDecryptResult("", failure)});
-    keys_result_list[1].decrypt_result_key_id_map.insert(
-        {"key2", CreateDecryptResult("", failure)});
-  }
+  keys_result_list[1].fetch_result_key_id_map.Insert(
+      std::make_pair("key1", SuccessExecutionResult()), fetch_result_out);
+  keys_result_list[1].fetch_result_key_id_map.Insert(
+      std::make_pair("key3", SuccessExecutionResult()), fetch_result_out);
+  keys_result_list[1].decrypt_result_key_id_map.Insert(
+      std::make_pair("key1", CreateDecryptResult("", failure)),
+      decrypt_result_out);
+  keys_result_list[1].decrypt_result_key_id_map.Insert(
+      std::make_pair("key2", CreateDecryptResult("", failure)),
+      decrypt_result_out);
 
   EXPECT_SUCCESS(
       PrivateKeyClientUtils::ExtractAnyFailure(keys_result_list, "key3"));
@@ -544,21 +527,16 @@ TEST(PrivateKeyClientUtilsTest, ExtractAnyFailureDecryptResultNotFound) {
 
 TEST(PrivateKeyClientUtilsTest, ExtractSinglePartyKeyReturnNoKey) {
   std::vector<KeysResultPerEndpoint> keys_result_list(2);
-  {
-    absl::MutexLock l(&keys_result_list[0].mu);
-    keys_result_list[0].decrypt_result_key_id_map.insert(
-        {"key1", CreateDecryptResult("")});
-    keys_result_list[0].decrypt_result_key_id_map.insert(
-        {"key2", CreateDecryptResult("")});
-  }
+  DecryptResult decrypt_result_out;
+  keys_result_list[0].decrypt_result_key_id_map.Insert(
+      std::make_pair("key1", CreateDecryptResult("")), decrypt_result_out);
+  keys_result_list[0].decrypt_result_key_id_map.Insert(
+      std::make_pair("key2", CreateDecryptResult("")), decrypt_result_out);
 
-  {
-    absl::MutexLock l(&keys_result_list[1].mu);
-    keys_result_list[1].decrypt_result_key_id_map.insert(
-        {"key1", CreateDecryptResult("")});
-    keys_result_list[1].decrypt_result_key_id_map.insert(
-        {"key2", CreateDecryptResult("")});
-  }
+  keys_result_list[1].decrypt_result_key_id_map.Insert(
+      std::make_pair("key1", CreateDecryptResult("")), decrypt_result_out);
+  keys_result_list[1].decrypt_result_key_id_map.Insert(
+      std::make_pair("key2", CreateDecryptResult("")), decrypt_result_out);
 
   EXPECT_FALSE(
       PrivateKeyClientUtils::ExtractSinglePartyKey(keys_result_list, "key1")
@@ -574,21 +552,20 @@ TEST(PrivateKeyClientUtilsTest, ExtractSinglePartyKeyReturnNoKey) {
 TEST(PrivateKeyClientUtilsTest, ExtractSinglePartyKeyReturnKey) {
   auto failure = FailureExecutionResult(SC_UNKNOWN);
   std::vector<KeysResultPerEndpoint> keys_result_list(2);
-  {
-    absl::MutexLock l(&keys_result_list[0].mu);
-    keys_result_list[0].decrypt_result_key_id_map.insert(
-        {"key1", CreateDecryptResult("", failure, false)});
-    keys_result_list[0].decrypt_result_key_id_map.insert(
-        {"key2", CreateDecryptResult("", failure, false)});
-  }
+  DecryptResult decrypt_result_out;
+  keys_result_list[0].decrypt_result_key_id_map.Insert(
+      std::make_pair("key1", CreateDecryptResult("", failure, false)),
+      decrypt_result_out);
+  keys_result_list[0].decrypt_result_key_id_map.Insert(
+      std::make_pair("key2", CreateDecryptResult("", failure, false)),
+      decrypt_result_out);
 
-  {
-    absl::MutexLock l(&keys_result_list[1].mu);
-    keys_result_list[1].decrypt_result_key_id_map.insert(
-        {"key1", CreateDecryptResult("", failure)});
-    keys_result_list[1].decrypt_result_key_id_map.insert(
-        {"key2", CreateDecryptResult("", failure, false)});
-  }
+  keys_result_list[1].decrypt_result_key_id_map.Insert(
+      std::make_pair("key1", CreateDecryptResult("", failure)),
+      decrypt_result_out);
+  keys_result_list[1].decrypt_result_key_id_map.Insert(
+      std::make_pair("key2", CreateDecryptResult("", failure, false)),
+      decrypt_result_out);
 
   EXPECT_TRUE(
       PrivateKeyClientUtils::ExtractSinglePartyKey(keys_result_list, "key1")

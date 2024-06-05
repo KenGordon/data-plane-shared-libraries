@@ -195,15 +195,19 @@ ExecutionResult PrivateKeyClientUtils::ExtractAnyFailure(
   for (auto& key_result : keys_result) {
     RETURN_IF_FAILURE(key_result.fetch_result);
 
-    absl::MutexLock l(&key_result.mu);
-    if (const auto it = key_result.fetch_result_key_id_map.find(key_id);
-        it != key_result.fetch_result_key_id_map.end()) {
-      RETURN_IF_FAILURE(it->second);
+    ExecutionResult fetch_result;
+    auto find_result =
+        key_result.fetch_result_key_id_map.Find(key_id, fetch_result);
+    if (find_result.Successful() && !fetch_result.Successful()) {
+      return fetch_result;
     }
 
-    if (const auto it = key_result.decrypt_result_key_id_map.find(key_id);
-        it != key_result.decrypt_result_key_id_map.end()) {
-      RETURN_IF_FAILURE(it->second.decrypt_result);
+    DecryptResult decrypt_result;
+    find_result =
+        key_result.decrypt_result_key_id_map.Find(key_id, decrypt_result);
+    if (find_result.Successful() &&
+        !decrypt_result.decrypt_result.Successful()) {
+      return decrypt_result.decrypt_result;
     }
   }
   return SuccessExecutionResult();
@@ -214,12 +218,12 @@ std::optional<DecryptResult> PrivateKeyClientUtils::ExtractSinglePartyKey(
     const std::string& key_id) noexcept {
   for (auto& key_result : keys_result) {
     DecryptResult decrypt_result;
-    absl::MutexLock l(&key_result.mu);
-    if (const auto it = key_result.decrypt_result_key_id_map.find(key_id);
-        it != key_result.decrypt_result_key_id_map.end() &&
-        it->second.encryption_key.encryption_key_type ==
+    auto find_result =
+        key_result.decrypt_result_key_id_map.Find(key_id, decrypt_result);
+    if (find_result.Successful() &&
+        decrypt_result.encryption_key.encryption_key_type ==
             EncryptionKeyType::kSinglePartyHybridKey) {
-      return it->second;
+      return decrypt_result;
     }
   }
   return std::nullopt;

@@ -48,7 +48,20 @@ constexpr std::string_view kAwsResourceNameFormat =
 }  // namespace
 
 namespace google::scp::cpio::client_providers {
-absl::Status TestInstanceClientProvider::GetInstanceDetailsByResourceNameSync(
+ExecutionResult TestInstanceClientProvider::Init() noexcept {
+  return SuccessExecutionResult();
+}
+
+ExecutionResult TestInstanceClientProvider::Run() noexcept {
+  return SuccessExecutionResult();
+}
+
+ExecutionResult TestInstanceClientProvider::Stop() noexcept {
+  return SuccessExecutionResult();
+}
+
+ExecutionResult
+TestInstanceClientProvider::GetInstanceDetailsByResourceNameSync(
     std::string_view resource_name,
     cmrt::sdk::instance_service::v1::InstanceDetails&
         instance_details) noexcept {
@@ -56,42 +69,42 @@ absl::Status TestInstanceClientProvider::GetInstanceDetailsByResourceNameSync(
   auto* network = instance_details.add_networks();
   network->set_private_ipv4_address(test_options_.private_ipv4_address);
   network->set_public_ipv4_address(test_options_.public_ipv4_address);
-  return absl::OkStatus();
+  return SuccessExecutionResult();
 }
 
-absl::Status TestInstanceClientProvider::GetCurrentInstanceResourceName(
+ExecutionResult TestInstanceClientProvider::GetCurrentInstanceResourceName(
     AsyncContext<GetCurrentInstanceResourceNameRequest,
                  GetCurrentInstanceResourceNameResponse>& context) noexcept {
-  return absl::OkStatus();
+  return SuccessExecutionResult();
 }
 
-absl::Status TestInstanceClientProvider::GetTagsByResourceName(
+ExecutionResult TestInstanceClientProvider::GetTagsByResourceName(
     AsyncContext<GetTagsByResourceNameRequest, GetTagsByResourceNameResponse>&
         context) noexcept {
   // Not implemented.
-  return absl::OkStatus();
+  return SuccessExecutionResult();
 }
 
-absl::Status TestInstanceClientProvider::GetInstanceDetailsByResourceName(
+ExecutionResult TestInstanceClientProvider::GetInstanceDetailsByResourceName(
     AsyncContext<GetInstanceDetailsByResourceNameRequest,
                  GetInstanceDetailsByResourceNameResponse>& context) noexcept {
   // Not implemented.
-  return absl::OkStatus();
+  return SuccessExecutionResult();
 }
 
-absl::Status TestInstanceClientProvider::ListInstanceDetailsByEnvironment(
+ExecutionResult TestInstanceClientProvider::ListInstanceDetailsByEnvironment(
     AsyncContext<ListInstanceDetailsByEnvironmentRequest,
                  ListInstanceDetailsByEnvironmentResponse>& context) noexcept {
   // Not implemented.
-  return absl::OkStatus();
+  return SuccessExecutionResult();
 }
 
-absl::Status TestInstanceClientProvider::GetCurrentInstanceResourceNameSync(
+ExecutionResult TestInstanceClientProvider::GetCurrentInstanceResourceNameSync(
     std::string& resource_name) noexcept {
   resource_name =
       absl::Substitute(kAwsResourceNameFormat, test_options_.region,
                        test_options_.project_id, test_options_.instance_id);
-  return absl::OkStatus();
+  return SuccessExecutionResult();
 }
 
 }  // namespace google::scp::cpio::client_providers

@@ -68,7 +68,8 @@ TEST(GcpInstanceClientUtilsTest, GetCurrentProjectIdSuccess) {
 
 TEST(GcpInstanceClientUtilsTest, GetCurrentProjectIdFailedWithResourceName) {
   MockInstanceClientProvider instance_client;
-  instance_client.get_instance_resource_name_mock = absl::UnknownError("");
+  instance_client.get_instance_resource_name_mock =
+      FailureExecutionResult(SC_UNKNOWN);
 
   auto project_id =
       GcpInstanceClientUtils::GetCurrentProjectId(instance_client);

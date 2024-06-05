@@ -50,21 +50,54 @@ void RunEnqueueMessageValidator(
               << std::endl;
     return;
   }
+
+  InstanceClientProviderInterface* instance_client;
+  AsyncExecutorInterface* cpu_async_executor;
+  AsyncExecutorInterface* io_async_executor;
+
+  if (auto res = GlobalCpio::GetGlobalCpio().GetInstanceClientProvider();
+      !res.ok()) {
+    std::cout << "[ FAILURE ] Unable to get Instance Client Provider."
+              << std::endl;
+    return;
+  } else {
+    instance_client = *res;
+  }
+
+  if (auto res = GlobalCpio::GetGlobalCpio().GetCpuAsyncExecutor(); !res.ok()) {
+    std::cout << "[ FAILURE ] Unable to get Cpu Async Executor." << std::endl;
+    return;
+  } else {
+    cpu_async_executor = *res;
+  }
+
+  if (auto res = GlobalCpio::GetGlobalCpio().GetIoAsyncExecutor(); !res.ok()) {
+    std::cout << "[ FAILURE ] Unable to get Io Async Executor." << std::endl;
+    return;
+  } else {
+    io_async_executor = *res;
+  }
+
   QueueClientOptions options;
   options.queue_name = kQueueName;
   options.project_id = GlobalCpio::GetGlobalCpio().GetProjectId();
   auto queue_client =
       google::scp::cpio::client_providers::QueueClientProviderFactory::Create(
-          std::move(options),
-          &GlobalCpio::GetGlobalCpio().GetInstanceClientProvider(),
-          &GlobalCpio::GetGlobalCpio().GetCpuAsyncExecutor(),
-          &GlobalCpio::GetGlobalCpio().GetIoAsyncExecutor());
-  if (!queue_client.ok()) {
-    std::cout << "[ FAILURE ] " << name << " " << queue_client.status()
-              << std::endl;
+          std::move(options), instance_client, cpu_async_executor,
+          io_async_executor);
+
+  if (google::scp::core::ExecutionResult result = queue_client->Init();
+      !result.Successful()) {
+    std::cout << "[ FAILURE ] " << name << " "
+              << core::errors::GetErrorMessage(result.status_code) << std::endl;
     return;
   }
-
+  if (google::scp::core::ExecutionResult result = queue_client->Run();
+      !result.Successful()) {
+    std::cout << "[ FAILURE ] " << name << " "
+              << core::errors::GetErrorMessage(result.status_code) << std::endl;
+    return;
+  }
   // EnqueueMessage.
   absl::Notification finished;
   google::scp::core::ExecutionResult result;
@@ -82,10 +115,13 @@ void RunEnqueueMessageValidator(
             }
             finished.Notify();
           });
-  if (absl::Status error =
-          (*queue_client)->EnqueueMessage(enqueue_message_context);
-      !error.ok()) {
-    std::cout << "[ FAILURE ] " << name << " " << error << std::endl;
+  if (auto enqueue_message_result =
+          queue_client->EnqueueMessage(enqueue_message_context);
+      !enqueue_message_result.Successful()) {
+    std::cout << "[ FAILURE ] " << name << " "
+              << core::errors::GetErrorMessage(
+                     enqueue_message_result.status_code)
+              << std::endl;
     return;
   }
   finished.WaitForNotification();
@@ -94,24 +130,60 @@ void RunEnqueueMessageValidator(
               << core::errors::GetErrorMessage(result.status_code) << std::endl;
     return;
   }
+  if (auto result = queue_client->Stop(); !result.Successful()) {
+    std::cout << " [ FAILURE ] " << name << " "
+              << core::errors::GetErrorMessage(result.status_code) << std::endl;
+  }
 }
 
 void RunGetTopMessageValidator(std::string_view name) {
+  InstanceClientProviderInterface* instance_client;
+  AsyncExecutorInterface* cpu_async_executor;
+  AsyncExecutorInterface* io_async_executor;
+
+  if (auto res = GlobalCpio::GetGlobalCpio().GetInstanceClientProvider();
+      !res.ok()) {
+    std::cout << "[ FAILURE ] Unable to get Instance Client Provider."
+              << std::endl;
+    return;
+  } else {
+    instance_client = *res;
+  }
+
+  if (auto res = GlobalCpio::GetGlobalCpio().GetCpuAsyncExecutor(); !res.ok()) {
+    std::cout << "[ FAILURE ] Unable to get Cpu Async Executor." << std::endl;
+    return;
+  } else {
+    cpu_async_executor = *res;
+  }
+
+  if (auto res = GlobalCpio::GetGlobalCpio().GetIoAsyncExecutor(); !res.ok()) {
+    std::cout << "[ FAILURE ] Unable to get Io Async Executor." << std::endl;
+    return;
+  } else {
+    io_async_executor = *res;
+  }
+
   QueueClientOptions options;
   options.queue_name = kQueueName;
   options.project_id = GlobalCpio::GetGlobalCpio().GetProjectId();
   auto queue_client =
       google::scp::cpio::client_providers::QueueClientProviderFactory::Create(
-          std::move(options),
-          &GlobalCpio::GetGlobalCpio().GetInstanceClientProvider(),
-          &GlobalCpio::GetGlobalCpio().GetCpuAsyncExecutor(),
-          &GlobalCpio::GetGlobalCpio().GetIoAsyncExecutor());
-  if (!queue_client.ok()) {
-    std::cout << "[ FAILURE ] " << name << " " << queue_client.status()
-              << std::endl;
+          std::move(options), instance_client, cpu_async_executor,
+          io_async_executor);
+
+  if (google::scp::core::ExecutionResult result = queue_client->Init();
+      !result.Successful()) {
+    std::cout << "[ FAILURE ] " << name << " "
+              << core::errors::GetErrorMessage(result.status_code) << std::endl;
     return;
   }
-
+  if (google::scp::core::ExecutionResult result = queue_client->Run();
+      !result.Successful()) {
+    std::cout << "[ FAILURE ] " << name << " "
+              << core::errors::GetErrorMessage(result.status_code) << std::endl;
+    return;
+  }
   // GetTopMessage.
   absl::Notification finished;
   google::scp::core::ExecutionResult result;
@@ -128,10 +200,13 @@ void RunGetTopMessageValidator(std::string_view name) {
             }
             finished.Notify();
           });
-  if (absl::Status error =
-          (*queue_client)->GetTopMessage(get_top_message_context);
-      !error.ok()) {
-    std::cout << "[ FAILURE ] " << name << " " << error << std::endl;
+  if (auto get_top_message_result =
+          queue_client->GetTopMessage(get_top_message_context);
+      !get_top_message_result.Successful()) {
+    std::cout << "[ FAILURE ] " << name << " "
+              << core::errors::GetErrorMessage(
+                     get_top_message_result.status_code)
+              << std::endl;
     return;
   }
   finished.WaitForNotification();
@@ -139,6 +214,10 @@ void RunGetTopMessageValidator(std::string_view name) {
     std::cout << "[ FAILURE ] " << name << " "
               << core::errors::GetErrorMessage(result.status_code) << std::endl;
     return;
+  }
+  if (auto result = queue_client->Stop(); !result.Successful()) {
+    std::cout << " [ FAILURE ] " << name << " "
+              << core::errors::GetErrorMessage(result.status_code) << std::endl;
   }
 }
 }  // namespace google::scp::cpio::validator

@@ -19,7 +19,6 @@
 
 #include <memory>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include "src/core/common/concurrent_queue/concurrent_queue.h"
@@ -37,7 +36,8 @@ namespace google::scp::cpio {
  */
 class KmsClient : public KmsClientInterface {
  public:
-  explicit KmsClient(KmsClientOptions options) : options_(std::move(options)) {}
+  explicit KmsClient(const std::shared_ptr<KmsClientOptions>& options)
+      : options_(options) {}
 
   virtual ~KmsClient() = default;
 
@@ -55,7 +55,7 @@ class KmsClient : public KmsClientInterface {
       kms_client_provider_;
 
  private:
-  KmsClientOptions options_;
+  std::shared_ptr<const KmsClientOptions> options_;
   client_providers::CpioProviderInterface* cpio_;
 };
 }  // namespace google::scp::cpio

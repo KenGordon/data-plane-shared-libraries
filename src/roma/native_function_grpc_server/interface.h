@@ -199,9 +199,9 @@ class RequestHandlerImpl : public Proceedable, public THandler<TMetadata> {
 // Function to handle logic for processing RPCs
 template <typename TMetadata>
 void HandleRpcs(grpc::ServerCompletionQueue* cq, MetadataStorage<TMetadata>* ms,
-                const std::vector<FactoryFunction<TMetadata>>& factories) {
+                std::vector<FactoryFunction<TMetadata>>& factories) {
   // Spawn a new RequestHandler instance to serve new clients.
-  for (const auto& factory : factories) {
+  for (auto& factory : factories) {
     factory(cq, ms);
   }
   bool ok = true;

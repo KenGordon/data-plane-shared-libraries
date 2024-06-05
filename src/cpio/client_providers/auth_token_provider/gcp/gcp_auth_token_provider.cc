@@ -108,9 +108,28 @@ const auto& GetRequiredJWTComponentsForTargetAudienceToken() {
 }  // namespace
 
 namespace google::scp::cpio::client_providers {
-GcpAuthTokenProvider::GcpAuthTokenProvider(
-    absl::Nonnull<HttpClientInterface*> http_client)
+GcpAuthTokenProvider::GcpAuthTokenProvider(HttpClientInterface* http_client)
     : http_client_(http_client) {}
+
+ExecutionResult GcpAuthTokenProvider::Init() noexcept {
+  if (!http_client_) {
+    auto execution_result = FailureExecutionResult(
+        SC_GCP_INSTANCE_AUTHORIZER_PROVIDER_INITIALIZATION_FAILED);
+    SCP_ERROR(kGcpAuthTokenProvider, kZeroUuid, execution_result,
+              "Http client cannot be nullptr.");
+    return execution_result;
+  }
+
+  return SuccessExecutionResult();
+};
+
+ExecutionResult GcpAuthTokenProvider::Run() noexcept {
+  return SuccessExecutionResult();
+}
+
+ExecutionResult GcpAuthTokenProvider::Stop() noexcept {
+  return SuccessExecutionResult();
+}
 
 ExecutionResult GcpAuthTokenProvider::GetSessionToken(
     AsyncContext<GetSessionTokenRequest, GetSessionTokenResponse>&
@@ -319,7 +338,7 @@ void GcpAuthTokenProvider::OnGetSessionTokenForTargetAudienceCallback(
 }
 
 std::unique_ptr<AuthTokenProviderInterface> AuthTokenProviderFactory::Create(
-    absl::Nonnull<core::HttpClientInterface*> http1_client) {
+    core::HttpClientInterface* http1_client) {
   return std::make_unique<GcpAuthTokenProvider>(http1_client);
 }
 }  // namespace google::scp::cpio::client_providers

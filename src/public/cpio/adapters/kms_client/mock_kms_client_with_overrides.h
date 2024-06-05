@@ -26,7 +26,10 @@
 namespace google::scp::cpio::mock {
 class MockKmsClientWithOverrides : public KmsClient {
  public:
-  MockKmsClientWithOverrides() : KmsClient(KmsClientOptions()) {}
+  explicit MockKmsClientWithOverrides(
+      const std::shared_ptr<KmsClientOptions>& options =
+          std::make_shared<KmsClientOptions>())
+      : KmsClient(options) {}
 
   core::ExecutionResult Init() noexcept override {
     kms_client_provider_ =

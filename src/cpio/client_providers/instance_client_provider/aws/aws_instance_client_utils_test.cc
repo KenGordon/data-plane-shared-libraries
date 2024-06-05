@@ -74,7 +74,8 @@ TEST(AwsInstanceClientUtilsTest, GetCurrentRegionCodeSuccess) {
 
 TEST(AwsInstanceClientUtilsTest, GetCurrentRegionCodeFailedWithResourceName) {
   MockInstanceClientProvider instance_client;
-  instance_client.get_instance_resource_name_mock = absl::UnknownError("");
+  instance_client.get_instance_resource_name_mock =
+      FailureExecutionResult(SC_UNKNOWN);
 
   auto region_code =
       AwsInstanceClientUtils::GetCurrentRegionCode(instance_client);

@@ -35,6 +35,14 @@ HttpClient::HttpClient(AsyncExecutorInterface* async_executor,
       operation_dispatcher_(async_executor,
                             RetryStrategy(options.retry_strategy_options)) {}
 
+ExecutionResult HttpClient::Init() noexcept {
+  return http_connection_pool_->Init();
+}
+
+ExecutionResult HttpClient::Run() noexcept {
+  return http_connection_pool_->Run();
+}
+
 ExecutionResult HttpClient::Stop() noexcept {
   return http_connection_pool_->Stop();
 }

@@ -27,6 +27,10 @@ namespace google::scp::core::test {
 
 class MockCurlClient : public HttpClientInterface {
  public:
+  MOCK_METHOD(ExecutionResult, Init, (), (override, noexcept));
+  MOCK_METHOD(ExecutionResult, Run, (), (override, noexcept));
+  MOCK_METHOD(ExecutionResult, Stop, (), (override, noexcept));
+
   ExecutionResult PerformRequest(
       AsyncContext<HttpRequest, HttpResponse>& context,
       const absl::Duration& timeout) noexcept override {

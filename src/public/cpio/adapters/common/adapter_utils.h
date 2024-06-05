@@ -55,24 +55,21 @@ void OnExecutionCallback(Callback<TResponse>& client_callback,
  * @tparam TRequest request type of the async call.
  * @tparam TResponse response type of the async call.
  * @param context async context.
- * @return ExecutionResult or absl::Status
+ * @return core::ExecutionResult execution result.
  */
-template <typename TRequest, typename TResponse, typename Fn>
-auto Execute(Fn&& func, TRequest request, Callback<TResponse> callback) {
+template <typename TRequest, typename TResponse>
+core::ExecutionResult Execute(std::function<core::ExecutionResult(
+                                  core::AsyncContext<TRequest, TResponse>&)>
+                                  func,
+                              TRequest request, Callback<TResponse> callback) {
   auto activity_id = core::common::Uuid::GenerateUuid();
   core::AsyncContext<TRequest, TResponse> context(
       std::make_shared<TRequest>(std::move(request)),
-      absl::bind_front(OnExecutionCallback<TRequest, TResponse>,
-                       std::move(callback)),
+      bind(OnExecutionCallback<TRequest, TResponse>, callback,
+           std::placeholders::_1),
       activity_id, activity_id);
-  if constexpr (std::is_invocable_r_v<core::ExecutionResult, Fn,
-                                      decltype(context)&>) {
-    return core::utils::ConvertToPublicExecutionResult(
-        std::invoke(std::forward<Fn>(func), context));
-  } else {
-    static_assert(std::is_invocable_r_v<absl::Status, Fn, decltype(context)&>);
-    return std::invoke(std::forward<Fn>(func), context);
-  }
+
+  return core::utils::ConvertToPublicExecutionResult(func(context));
 }
 }  // namespace google::scp::cpio
 

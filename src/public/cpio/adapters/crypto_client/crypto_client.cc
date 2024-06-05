@@ -26,6 +26,7 @@
 #include "src/core/interface/async_context.h"
 #include "src/core/interface/errors.h"
 #include "src/core/utils/error_utils.h"
+#include "src/cpio/client_providers/crypto_client_provider/crypto_client_provider.h"
 #include "src/public/core/interface/execution_result.h"
 #include "src/public/cpio/adapters/common/adapter_utils.h"
 #include "src/public/cpio/proto/crypto_service/v1/crypto_service.pb.h"
@@ -50,68 +51,77 @@ constexpr std::string_view kCryptoClient = "CryptoClient";
 }
 
 namespace google::scp::cpio {
+CryptoClient::CryptoClient(const std::shared_ptr<CryptoClientOptions>& options)
+    : options_(options) {
+  crypto_client_provider_ = std::make_shared<CryptoClientProvider>(options_);
+}
+
 ExecutionResult CryptoClient::Init() noexcept {
-  return SuccessExecutionResult();
+  auto execution_result = crypto_client_provider_->Init();
+  if (!execution_result.Successful()) {
+    SCP_ERROR(kCryptoClient, kZeroUuid, execution_result,
+              "Failed to initialize CryptoClientProvider.");
+  }
+  return ConvertToPublicExecutionResult(execution_result);
 }
 
 ExecutionResult CryptoClient::Run() noexcept {
-  return SuccessExecutionResult();
+  auto execution_result = crypto_client_provider_->Run();
+  if (!execution_result.Successful()) {
+    SCP_ERROR(kCryptoClient, kZeroUuid, execution_result,
+              "Failed to run CryptoClientProvider.");
+  }
+  return ConvertToPublicExecutionResult(execution_result);
 }
 
 ExecutionResult CryptoClient::Stop() noexcept {
-  return SuccessExecutionResult();
+  auto execution_result = crypto_client_provider_->Stop();
+  if (!execution_result.Successful()) {
+    SCP_ERROR(kCryptoClient, kZeroUuid, execution_result,
+              "Failed to stop CryptoClientProvider.");
+  }
+  return ConvertToPublicExecutionResult(execution_result);
 }
 
 core::ExecutionResult CryptoClient::HpkeEncrypt(
     HpkeEncryptRequest request,
     Callback<HpkeEncryptResponse> callback) noexcept {
   return Execute<HpkeEncryptRequest, HpkeEncryptResponse>(
-             absl::bind_front(&CryptoClientProviderInterface::HpkeEncrypt,
-                              crypto_client_provider_.get()),
-             request, callback)
-                 .ok()
-             ? core::SuccessExecutionResult()
-             : core::FailureExecutionResult(SC_UNKNOWN);
+      absl::bind_front(&CryptoClientProviderInterface::HpkeEncrypt,
+                       crypto_client_provider_),
+      request, callback);
 }
 
 core::ExecutionResult CryptoClient::HpkeDecrypt(
     HpkeDecryptRequest request,
     Callback<HpkeDecryptResponse> callback) noexcept {
   return Execute<HpkeDecryptRequest, HpkeDecryptResponse>(
-             absl::bind_front(&CryptoClientProviderInterface::HpkeDecrypt,
-                              crypto_client_provider_.get()),
-             request, callback)
-                 .ok()
-             ? core::SuccessExecutionResult()
-             : core::FailureExecutionResult(SC_UNKNOWN);
+      absl::bind_front(&CryptoClientProviderInterface::HpkeDecrypt,
+                       crypto_client_provider_),
+      request, callback);
 }
 
 core::ExecutionResult CryptoClient::AeadEncrypt(
     AeadEncryptRequest request,
     Callback<AeadEncryptResponse> callback) noexcept {
   return Execute<AeadEncryptRequest, AeadEncryptResponse>(
-             absl::bind_front(&CryptoClientProviderInterface::AeadEncrypt,
-                              crypto_client_provider_.get()),
-             request, callback)
-                 .ok()
-             ? core::SuccessExecutionResult()
-             : core::FailureExecutionResult(SC_UNKNOWN);
+      absl::bind_front(&CryptoClientProviderInterface::AeadEncrypt,
+                       crypto_client_provider_),
+      request, callback);
 }
 
 core::ExecutionResult CryptoClient::AeadDecrypt(
     AeadDecryptRequest request,
     Callback<AeadDecryptResponse> callback) noexcept {
   return Execute<AeadDecryptRequest, AeadDecryptResponse>(
-             absl::bind_front(&CryptoClientProviderInterface::AeadDecrypt,
-                              crypto_client_provider_.get()),
-             request, callback)
-                 .ok()
-             ? core::SuccessExecutionResult()
-             : core::FailureExecutionResult(SC_UNKNOWN);
+      absl::bind_front(&CryptoClientProviderInterface::AeadDecrypt,
+                       crypto_client_provider_),
+      request, callback);
 }
 
 std::unique_ptr<CryptoClientInterface> CryptoClientFactory::Create(
     CryptoClientOptions options) {
-  return std::make_unique<CryptoClient>(std::move(options));
+  return std::make_unique<CryptoClient>(
+      std::make_shared<CryptoClientOptions>(options));
 }
 }  // namespace google::scp::cpio

@@ -46,7 +46,8 @@ using google::scp::cpio::mock::MockPrivateKeyClientWithOverrides;
 namespace google::scp::cpio::test {
 class PrivateKeyClientTest : public ::testing::Test {
  protected:
-  PrivateKeyClientTest() {
+  PrivateKeyClientTest()
+      : client_(std::make_shared<PrivateKeyClientOptions>()) {
     EXPECT_THAT(client_.Init(), IsSuccessful());
     EXPECT_THAT(client_.Run(), IsSuccessful());
   }
@@ -62,7 +63,7 @@ TEST_F(PrivateKeyClientTest, ListPrivateKeysSuccess) {
                                  ListPrivateKeysResponse>& context) {
         context.response = std::make_shared<ListPrivateKeysResponse>();
         context.Finish(SuccessExecutionResult());
-        return absl::OkStatus();
+        return SuccessExecutionResult();
       });
 
   absl::Notification finished;
@@ -81,7 +82,7 @@ TEST_F(PrivateKeyClientTest, ListPrivateKeysFailure) {
       .WillOnce([=](AsyncContext<ListPrivateKeysRequest,
                                  ListPrivateKeysResponse>& context) {
         context.Finish(FailureExecutionResult(SC_UNKNOWN));
-        return absl::UnknownError("");
+        return FailureExecutionResult(SC_UNKNOWN);
       });
 
   absl::Notification finished;

@@ -59,43 +59,35 @@ class NativeFunctionGrpcServer final {
 
   ~NativeFunctionGrpcServer() {
     // Always shutdown the completion queue after the server.
-    handle_rpc_thread_.join();
     completion_queue_->Shutdown();
     DrainQueue(completion_queue_.get());
   }
 
   void Shutdown() { server_->Shutdown(); }
 
-  /** @brief Adds a vector of gRPC services to server for invocation of RPCs
-    from arbitrary services.
+  /** @brief Adds a gRPC service to server for invocation of RPCs from arbitrary
+    services. Lifetime of service is managed externally, for RomaService, is
+    managed by Config.
    */
-  void AddServices(std::vector<std::unique_ptr<grpc::Service>> services) {
-    services_ = std::move(services);
-    for (auto& service : services_) {
-      builder_.RegisterService(service.get());
-    }
-  }
+  void AddService(grpc::Service* service) { builder_.RegisterService(service); }
 
   /** @brief Stores pointer to vector of factory functions on server for
    * generation of RequestHandlerImpl<TMetadata, THandler> instances, allowing
-   * completion queue to handle arbitrary RPCs in HandleRpcs. Factories exists
-   * on the heap, and the NativeFunctionGrpcServer takes ownership and handles
-   * deallocation.
+   * completion queue to handle arbitrary RPCs in HandleRpcs. Lifetime of
+   factories vector is managed externally, for RomaService, is managed by
+   Config.
    */
   void AddFactories(
       std::vector<grpc_server::FactoryFunction<TMetadata>>* factories) {
-    factories_ =
-        std::unique_ptr<std::vector<grpc_server::FactoryFunction<TMetadata>>>(
-            factories);
+    factories_ = factories;
   }
 
   void Run() {
     // Start accepting requests to the server.
     completion_queue_ = builder_.AddCompletionQueue();
     server_ = builder_.BuildAndStart();
-    handle_rpc_thread_ =
-        std::thread(HandleRpcs<TMetadata>, completion_queue_.get(),
-                    metadata_storage_, *factories_);
+    HandleRpcs<TMetadata>(completion_queue_.get(), metadata_storage_,
+                          *factories_);
   }
 
  private:
@@ -111,11 +103,9 @@ class NativeFunctionGrpcServer final {
 
   std::unique_ptr<grpc::ServerCompletionQueue> completion_queue_;
   MetadataStorage<TMetadata>* metadata_storage_;
-  std::vector<std::unique_ptr<grpc::Service>> services_;
-  std::unique_ptr<std::vector<FactoryFunction<TMetadata>>> factories_;
+  std::vector<FactoryFunction<TMetadata>>* factories_;
   std::unique_ptr<grpc::Server> server_;
   grpc::ServerBuilder builder_;
-  std::thread handle_rpc_thread_;
 };
 }  // namespace google::scp::roma::grpc_server
 

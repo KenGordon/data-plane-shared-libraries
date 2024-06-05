@@ -36,7 +36,7 @@
 namespace google::scp::cpio::client_providers {
 /*! @copydoc MetricClientInterface
  */
-class MetricClientProvider : public MetricClientProviderInterface {
+class MetricClientProvider : public MetricClientInterface {
  public:
   virtual ~MetricClientProvider() = default;
 
@@ -55,13 +55,15 @@ class MetricClientProvider : public MetricClientProviderInterface {
         active_push_count_(0),
         number_metrics_in_vector_(0) {}
 
-  absl::Status Init() noexcept override;
+  core::ExecutionResult Init() noexcept override;
 
-  absl::Status Run() noexcept override ABSL_LOCKS_EXCLUDED(sync_mutex_);
+  core::ExecutionResult Run() noexcept override
+      ABSL_LOCKS_EXCLUDED(sync_mutex_);
 
-  absl::Status Stop() noexcept override ABSL_LOCKS_EXCLUDED(sync_mutex_);
+  core::ExecutionResult Stop() noexcept override
+      ABSL_LOCKS_EXCLUDED(sync_mutex_);
 
-  absl::Status PutMetrics(
+  core::ExecutionResult PutMetrics(
       core::AsyncContext<cmrt::sdk::metric_service::v1::PutMetricsRequest,
                          cmrt::sdk::metric_service::v1::PutMetricsResponse>
           record_metric_context) noexcept override
@@ -132,7 +134,7 @@ class MetricClientProvider : public MetricClientProviderInterface {
   /// Indicates whther the component stopped
   bool is_running_ ABSL_GUARDED_BY(sync_mutex_);
   /// Number of active metric push.
-  size_t active_push_count_ ABSL_GUARDED_BY(sync_mutex_);
+  std::atomic<size_t> active_push_count_;
   /// Number of metrics received in metric_requests_vector_.
   uint64_t number_metrics_in_vector_ ABSL_GUARDED_BY(sync_mutex_);
 

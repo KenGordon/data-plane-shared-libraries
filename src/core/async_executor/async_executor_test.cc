@@ -39,11 +39,94 @@ using google::scp::core::async_executor::mock::MockAsyncExecutorWithInternals;
 
 namespace google::scp::core::test {
 
-TEST(AsyncExecutorTests, EmptyWorkQueue) { AsyncExecutor executor(1, 10); }
+TEST(AsyncExecutorTests, CannotInitWithZeroThreadCount) {
+  AsyncExecutor executor(0, 10);
+  EXPECT_THAT(executor.Init(),
+              ResultIs(FailureExecutionResult(
+                  errors::SC_ASYNC_EXECUTOR_INVALID_THREAD_COUNT)));
+}
+
+TEST(AsyncExecutorTests, CannotInitWithTooBigThreadCount) {
+  AsyncExecutor executor(10001, 10);
+  EXPECT_THAT(executor.Init(),
+              ResultIs(FailureExecutionResult(
+                  errors::SC_ASYNC_EXECUTOR_INVALID_THREAD_COUNT)));
+}
+
+TEST(AsyncExecutorTests, CannotInitWithTooBigQueueCap) {
+  AsyncExecutor executor(10, kMaxQueueCap + 1);
+  EXPECT_THAT(executor.Init(),
+              ResultIs(FailureExecutionResult(
+                  errors::SC_ASYNC_EXECUTOR_INVALID_QUEUE_CAP)));
+}
+
+TEST(AsyncExecutorTests, EmptyWorkQueue) {
+  AsyncExecutor executor(1, 10);
+  ASSERT_SUCCESS(executor.Init());
+  ASSERT_SUCCESS(executor.Run());
+  EXPECT_SUCCESS(executor.Stop());
+}
+
+TEST(AsyncExecutorTests, CannotRunTwice) {
+  AsyncExecutor executor(1, 10);
+  ASSERT_SUCCESS(executor.Init());
+  ASSERT_SUCCESS(executor.Run());
+  EXPECT_THAT(executor.Run(), ResultIs(FailureExecutionResult(
+                                  errors::SC_ASYNC_EXECUTOR_ALREADY_RUNNING)));
+  EXPECT_SUCCESS(executor.Stop());
+}
+
+TEST(AsyncExecutorTests, CannotStopTwice) {
+  AsyncExecutor executor(1, 10);
+  ASSERT_SUCCESS(executor.Init());
+  ASSERT_SUCCESS(executor.Run());
+  ASSERT_SUCCESS(executor.Stop());
+  EXPECT_THAT(
+      executor.Stop(),
+      ResultIs(FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_NOT_RUNNING)));
+}
+
+TEST(AsyncExecutorTests, CannotScheduleWorkBeforeInit) {
+  AsyncExecutor executor(1, 10);
+  EXPECT_THAT(executor.Schedule([] {}, AsyncPriority::Normal),
+              ResultIs(FailureExecutionResult(
+                  errors::SC_ASYNC_EXECUTOR_NOT_INITIALIZED)));
+  EXPECT_THAT(executor.ScheduleFor([] {}, 10000),
+              ResultIs(FailureExecutionResult(
+                  errors::SC_ASYNC_EXECUTOR_NOT_INITIALIZED)));
+}
+
+TEST(AsyncExecutorTests, CannotScheduleWorkBeforeRun) {
+  AsyncExecutor executor(1, 10);
+  ASSERT_SUCCESS(executor.Init());
+  EXPECT_THAT(
+      executor.Schedule([] {}, AsyncPriority::Normal),
+      ResultIs(FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_NOT_RUNNING)));
+  EXPECT_THAT(
+      executor.ScheduleFor([] {}, 1000),
+      ResultIs(FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_NOT_RUNNING)));
+}
+
+TEST(AsyncExecutorTests, CannotRunBeforeInit) {
+  AsyncExecutor executor(1, 10);
+  EXPECT_THAT(executor.Run(), ResultIs(FailureExecutionResult(
+                                  errors::SC_ASYNC_EXECUTOR_NOT_INITIALIZED)));
+}
+
+TEST(AsyncExecutorTests, CannotStopBeforeRun) {
+  AsyncExecutor executor(1, 10);
+  ASSERT_SUCCESS(executor.Init());
+  EXPECT_THAT(
+      executor.Stop(),
+      ResultIs(FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_NOT_RUNNING)));
+}
 
 TEST(AsyncExecutorTests, ExceedingQueueCapSchedule) {
   constexpr int kQueueCap = 1;
   MockAsyncExecutorWithInternals executor(1, kQueueCap);
+  executor.Init();
+  executor.Run();
+
   {
     // Blocking queue with enough work
     executor.Schedule(
@@ -80,11 +163,15 @@ TEST(AsyncExecutorTests, ExceedingQueueCapSchedule) {
     EXPECT_THAT(result, ResultIs(RetryExecutionResult(
                             errors::SC_ASYNC_EXECUTOR_EXCEEDING_QUEUE_CAP)));
   }
+
+  executor.Stop();
 }
 
 TEST(AsyncExecutorTests, CountWorkSingleThread) {
   constexpr int kQueueCap = 10;
   AsyncExecutor executor(1, kQueueCap);
+  executor.Init();
+  executor.Run();
   {
     absl::BlockingCounter count(kQueueCap);
     for (int i = 0; i < kQueueCap; i++) {
@@ -101,11 +188,14 @@ TEST(AsyncExecutorTests, CountWorkSingleThread) {
     // Waits some time to finish the work.
     count.Wait();
   }
+  executor.Stop();
 }
 
 TEST(AsyncExecutorTests, CountWorkSingleThreadWithAffinity) {
   constexpr int kQueueCap = 10;
   AsyncExecutor executor(1, kQueueCap);
+  executor.Init();
+  executor.Run();
   absl::BlockingCounter count(kQueueCap);
   for (int i = 0; i < kQueueCap / 2; i++) {
     executor.Schedule(
@@ -128,11 +218,14 @@ TEST(AsyncExecutorTests, CountWorkSingleThreadWithAffinity) {
   }
   // Waits some time to finish the work.
   count.Wait();
+  executor.Stop();
 }
 
 TEST(AsyncExecutorTests, CountWorkSingleThreadScheduleForWithAffinity) {
   constexpr int kQueueCap = 10;
   AsyncExecutor executor(1, kQueueCap);
+  ASSERT_SUCCESS(executor.Init());
+  ASSERT_SUCCESS(executor.Run());
   absl::BlockingCounter count(kQueueCap);
   for (int i = 0; i < kQueueCap / 2; i++) {
     executor.ScheduleFor(
@@ -155,11 +248,14 @@ TEST(AsyncExecutorTests, CountWorkSingleThreadScheduleForWithAffinity) {
   }
   // Waits some time to finish the work.
   count.Wait();
+  executor.Stop();
 }
 
 TEST(AsyncExecutorTests, CountWorkSingleThreadNormalToUrgent) {
   constexpr int kQueueCap = 10;
   AsyncExecutor executor(1, kQueueCap);
+  ASSERT_SUCCESS(executor.Init());
+  ASSERT_SUCCESS(executor.Run());
   absl::BlockingCounter count(kQueueCap);
   for (int i = 0; i < kQueueCap / 2; i++) {
     executor.Schedule(
@@ -176,11 +272,14 @@ TEST(AsyncExecutorTests, CountWorkSingleThreadNormalToUrgent) {
   }
   // Waits some time to finish the work.
   count.Wait();
+  executor.Stop();
 }
 
 TEST(AsyncExecutorTests, CountWorkSingleThreadUrgentToNormal) {
   constexpr int kQueueCap = 10;
   AsyncExecutor executor(1, kQueueCap);
+  ASSERT_SUCCESS(executor.Init());
+  ASSERT_SUCCESS(executor.Run());
   absl::BlockingCounter count(kQueueCap);
   for (int i = 0; i < kQueueCap / 2; i++) {
     executor.ScheduleFor(
@@ -197,21 +296,29 @@ TEST(AsyncExecutorTests, CountWorkSingleThreadUrgentToNormal) {
   }
   // Waits some time to finish the work.
   count.Wait();
+  executor.Stop();
 }
 
 TEST(AsyncExecutorTests, CountWorkMultipleThread) {
   constexpr int kQueueCap = 50;
   AsyncExecutor executor(10, kQueueCap);
+  executor.Init();
+  executor.Run();
+
   absl::BlockingCounter count(kQueueCap);
   for (int i = 0; i < kQueueCap; i++) {
     executor.Schedule([&] { count.DecrementCount(); }, AsyncPriority::Normal);
   }
   // Waits some time to finish the work.
   count.Wait();
+  executor.Stop();
 }
 
 TEST(AsyncExecutorTests, AsyncContextCallback) {
   AsyncExecutor executor(1, 10);
+  executor.Init();
+  executor.Run();
+
   {
     absl::Notification callback_count;
     auto request = std::make_shared<std::string>("request");
@@ -258,11 +365,16 @@ TEST(AsyncExecutorTests, AsyncContextCallback) {
     ASSERT_SUCCESS(context.result);
     EXPECT_EQ(*(context.response), "response");
   }
+
+  executor.Stop();
 }
 
 TEST(AsyncExecutorTests, FinishWorkWhenStopInMiddle) {
   constexpr int kQueueCap = 5;
   AsyncExecutor executor(2, kQueueCap);
+  executor.Init();
+  executor.Run();
+
   absl::Mutex count_mu;
   int normal_count = 0;
   for (int i = 0; i < kQueueCap; i++) {
@@ -289,6 +401,7 @@ TEST(AsyncExecutorTests, FinishWorkWhenStopInMiddle) {
         },
         AsyncPriority::Urgent);
   }
+  executor.Stop();
 
   // Waits some time to finish the work.
   {
@@ -447,11 +560,15 @@ TEST(AsyncExecutorTests, PickTaskExecutorRoundRobinGlobalConcurrent) {
 TEST(AsyncExecutorTests, TestPickRandomTaskExecutorWithAffinity) {
   // Picks random executor even with affinity.
   AsyncExecutor async_executor(1, 1);
+  ASSERT_SUCCESS(async_executor.Init());
+  ASSERT_SUCCESS(async_executor.Run());
   std::vector<std::unique_ptr<SingleThreadAsyncExecutor>> task_executor_pool;
   task_executor_pool.push_back(
       std::make_unique<SingleThreadAsyncExecutor>(100 /* queue cap */));
   auto& executor = task_executor_pool.back();
-  const auto expected_id = executor->GetThreadId();
+  ASSERT_SUCCESS(executor->Init());
+  ASSERT_SUCCESS(executor->Run());
+  const auto expected_id = *executor->GetThreadId();
   auto chosen_task_executor_or = async_executor.PickTaskExecutor(
       AsyncExecutorAffinitySetting::AffinitizedToCallingAsyncExecutor,
       task_executor_pool, TaskExecutorPoolType::NotUrgentPool,
@@ -460,12 +577,17 @@ TEST(AsyncExecutorTests, TestPickRandomTaskExecutorWithAffinity) {
   ASSERT_SUCCESS(chosen_task_executor_or);
 
   // Picking an executor should result in a random executor being chosen.
-  EXPECT_EQ((*chosen_task_executor_or)->GetThreadId(), expected_id);
+  EXPECT_THAT((*chosen_task_executor_or)->GetThreadId(),
+              IsSuccessfulAndHolds(expected_id));
+  EXPECT_SUCCESS(executor->Stop());
+  EXPECT_SUCCESS(async_executor.Stop());
 }
 
 TEST(AsyncExecutorTests, TestPickNonUrgentToNonUrgentTaskExecutorWithAffinity) {
   // Picks the same non-urgent thread when executing subsequent work.
   AsyncExecutor executor(10, 1);
+  ASSERT_SUCCESS(executor.Init());
+  ASSERT_SUCCESS(executor.Run());
   // Scheduling another task with affinity should result in using the same
   // thread.
   absl::Notification done;
@@ -483,18 +605,21 @@ TEST(AsyncExecutorTests, TestPickNonUrgentToNonUrgentTaskExecutorWithAffinity) {
         ASSERT_SUCCESS(chosen_task_executor_or);
         // Picking an executor should choose the executor owning the current
         // thread.
-        EXPECT_EQ((*chosen_task_executor_or)->GetThreadId(),
-                  std::this_thread::get_id());
+        EXPECT_THAT((*chosen_task_executor_or)->GetThreadId(),
+                    IsSuccessfulAndHolds(std::this_thread::get_id()));
         done.Notify();
       },
       AsyncPriority::Normal);
   done.WaitForNotification();
+  EXPECT_SUCCESS(executor.Stop());
 }
 
 TEST(AsyncExecutorTests, TestPickNonUrgentToUrgentTaskExecutorWithAffinity) {
   // Picks the urgent thread with the same affinity when executing subsequent
   // work.
   AsyncExecutor executor(10, 1);
+  ASSERT_SUCCESS(executor.Init());
+  ASSERT_SUCCESS(executor.Run());
   // Scheduling another task with affinity should result in using the same
   // thread.
   absl::Notification done;
@@ -518,12 +643,15 @@ TEST(AsyncExecutorTests, TestPickNonUrgentToUrgentTaskExecutorWithAffinity) {
       },
       AsyncPriority::Normal);
   done.WaitForNotification();
+  EXPECT_SUCCESS(executor.Stop());
 }
 
 TEST(AsyncExecutorTests, TestPickUrgentToUrgentTaskExecutorWithAffinity) {
   // Picks the non-urgent thread with the same affinity when executing
   // subsequent work.
   AsyncExecutor executor(10, 1);
+  ASSERT_SUCCESS(executor.Init());
+  ASSERT_SUCCESS(executor.Run());
   // Scheduling another task with affinity should result in using the same
   // thread.
   absl::Notification done;
@@ -541,18 +669,21 @@ TEST(AsyncExecutorTests, TestPickUrgentToUrgentTaskExecutorWithAffinity) {
         ASSERT_SUCCESS(chosen_task_executor_or);
         // Picking an executor should choose the executor owning the current
         // thread.
-        EXPECT_EQ((*chosen_task_executor_or)->GetThreadId(),
-                  std::this_thread::get_id());
+        EXPECT_THAT((*chosen_task_executor_or)->GetThreadId(),
+                    IsSuccessfulAndHolds(std::this_thread::get_id()));
         done.Notify();
       },
       123456);
   done.WaitForNotification();
+  EXPECT_SUCCESS(executor.Stop());
 }
 
 TEST(AsyncExecutorTests, TestPickUrgentToNonUrgentTaskExecutorWithAffinity) {
   // Picks the non-urgent thread with the same affinity when executing
   // subsequent work.
   AsyncExecutor executor(10, 1);
+  ASSERT_SUCCESS(executor.Init());
+  ASSERT_SUCCESS(executor.Run());
   // Scheduling another task with affinity should result in using the same
   // thread.
   absl::Notification done;
@@ -576,5 +707,6 @@ TEST(AsyncExecutorTests, TestPickUrgentToNonUrgentTaskExecutorWithAffinity) {
       },
       123456);
   done.WaitForNotification();
+  EXPECT_SUCCESS(executor.Stop());
 }
 }  // namespace google::scp::core::test

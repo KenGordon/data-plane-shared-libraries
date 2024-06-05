@@ -48,7 +48,7 @@ class GcpMetricClientProvider : public MetricClientProvider {
 
   GcpMetricClientProvider() = delete;
 
-  absl::Status Run() noexcept override;
+  core::ExecutionResult Run() noexcept override;
 
  protected:
   explicit GcpMetricClientProvider(
@@ -69,8 +69,7 @@ class GcpMetricClientProvider : public MetricClientProvider {
       const std::shared_ptr<std::vector<core::AsyncContext<
           cmrt::sdk::metric_service::v1::PutMetricsRequest,
           cmrt::sdk::metric_service::v1::PutMetricsResponse>>>&
-          metric_requests_vector) noexcept override
-      ABSL_LOCKS_EXCLUDED(sync_mutex_);
+          metric_requests_vector) noexcept override;
 
   /**
    * @brief Is called after GCP AsyncCreateTimeSeries is completed.
@@ -84,8 +83,7 @@ class GcpMetricClientProvider : public MetricClientProvider {
           core::AsyncContext<cmrt::sdk::metric_service::v1::PutMetricsRequest,
                              cmrt::sdk::metric_service::v1::PutMetricsResponse>>
           metric_requests_vector,
-      google::cloud::future<google::cloud::Status> outcome) noexcept
-      ABSL_LOCKS_EXCLUDED(sync_mutex_);
+      google::cloud::future<google::cloud::Status> outcome) noexcept;
 
  private:
   GcpInstanceResourceNameDetails instance_resource_;

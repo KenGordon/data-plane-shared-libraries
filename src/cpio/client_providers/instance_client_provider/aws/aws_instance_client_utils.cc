@@ -57,12 +57,12 @@ namespace google::scp::cpio::client_providers {
 ExecutionResultOr<std::string> AwsInstanceClientUtils::GetCurrentRegionCode(
     InstanceClientProviderInterface& instance_client) noexcept {
   std::string instance_resource_name;
-  if (absl::Status error = instance_client.GetCurrentInstanceResourceNameSync(
+  if (auto result = instance_client.GetCurrentInstanceResourceNameSync(
           instance_resource_name);
-      !error.ok()) {
-    SCP_ERROR(kAwsInstanceClientUtils, kZeroUuid, error,
+      !result.Successful()) {
+    SCP_ERROR(kAwsInstanceClientUtils, kZeroUuid, result,
               "Failed getting instance resource name.");
-    return FailureExecutionResult(SC_UNKNOWN);
+    return result;
   }
 
   auto region_code_or = ParseRegionFromResourceName(instance_resource_name);

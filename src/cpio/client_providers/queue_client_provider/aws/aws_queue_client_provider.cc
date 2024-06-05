@@ -33,7 +33,6 @@
 #include "src/cpio/common/aws/aws_utils.h"
 #include "src/public/core/interface/execution_result.h"
 #include "src/public/cpio/proto/queue_service/v1/queue_service.pb.h"
-#include "src/util/status_macro/status_macros.h"
 
 #include "sqs_error_converter.h"
 
@@ -90,24 +89,26 @@ constexpr uint16_t kMaxVisibilityTimeoutSeconds = 600;
 }  // namespace
 
 namespace google::scp::cpio::client_providers {
-absl::Status AwsQueueClientProvider::Init() noexcept {
+ExecutionResult AwsQueueClientProvider::Init() noexcept {
+  return SuccessExecutionResult();
+}
+
+ExecutionResult AwsQueueClientProvider::Run() noexcept {
+  ExecutionResult execution_result(SuccessExecutionResult());
   if (queue_name_.empty()) {
-    const ExecutionResult execution_result = FailureExecutionResult(
+    execution_result = FailureExecutionResult(
         SC_AWS_QUEUE_CLIENT_PROVIDER_QUEUE_NAME_REQUIRED);
     SCP_ERROR(kAwsQueueClientProvider, kZeroUuid, execution_result,
               "Invalid queue name.");
-    return absl::InvalidArgumentError(
-        google::scp::core::errors::GetErrorMessage(
-            execution_result.status_code));
+    return execution_result;
   }
 
   auto client_config_or = CreateClientConfiguration();
   if (!client_config_or.Successful()) {
-    const ExecutionResult& execution_result = client_config_or.result();
+    execution_result = client_config_or.result();
     SCP_ERROR(kAwsQueueClientProvider, kZeroUuid, execution_result,
               "Failed to create ClientConfiguration");
-    return absl::InternalError(google::scp::core::errors::GetErrorMessage(
-        execution_result.status_code));
+    return execution_result;
   }
 
   sqs_client_ =
@@ -115,15 +116,14 @@ absl::Status AwsQueueClientProvider::Init() noexcept {
 
   auto queue_url_or = GetQueueUrl();
   if (!queue_url_or.Successful() || queue_url_or->empty()) {
-    const ExecutionResult& execution_result = queue_url_or.result();
+    execution_result = queue_url_or.result();
     SCP_ERROR(kAwsQueueClientProvider, kZeroUuid, execution_result,
               "Failed to get queue url.");
-    return absl::InternalError(google::scp::core::errors::GetErrorMessage(
-        execution_result.status_code));
+    return execution_result;
   }
   queue_url_ = std::move(*queue_url_or);
 
-  return absl::OkStatus();
+  return execution_result;
 }
 
 ExecutionResultOr<ClientConfiguration>
@@ -162,21 +162,23 @@ ExecutionResultOr<std::string> AwsQueueClientProvider::GetQueueUrl() noexcept {
   return get_queue_url_outcome.GetResult().GetQueueUrl().c_str();
 }
 
-absl::Status AwsQueueClientProvider::EnqueueMessage(
+ExecutionResult AwsQueueClientProvider::Stop() noexcept {
+  return SuccessExecutionResult();
+}
+
+ExecutionResult AwsQueueClientProvider::EnqueueMessage(
     AsyncContext<EnqueueMessageRequest, EnqueueMessageResponse>&
         enqueue_message_context) noexcept {
   const std::string& message_body =
       enqueue_message_context.request->message_body();
   if (message_body.empty()) {
-    const ExecutionResult execution_result =
+    auto execution_result =
         FailureExecutionResult(SC_AWS_QUEUE_CLIENT_PROVIDER_INVALID_MESSAGE);
     SCP_ERROR_CONTEXT(kAwsQueueClientProvider, enqueue_message_context,
                       execution_result,
                       "Failed to send message due to missing message body");
     enqueue_message_context.Finish(execution_result);
-    return absl::InvalidArgumentError(
-        google::scp::core::errors::GetErrorMessage(
-            execution_result.status_code));
+    return execution_result;
   }
 
   SendMessageRequest send_message_request;
@@ -189,7 +191,7 @@ absl::Status AwsQueueClientProvider::EnqueueMessage(
                        enqueue_message_context),
       nullptr);
 
-  return absl::OkStatus();
+  return SuccessExecutionResult();
 }
 
 void AwsQueueClientProvider::OnSendMessageCallback(
@@ -219,7 +221,7 @@ void AwsQueueClientProvider::OnSendMessageCallback(
                 *cpu_async_executor_);
 }
 
-absl::Status AwsQueueClientProvider::GetTopMessage(
+ExecutionResult AwsQueueClientProvider::GetTopMessage(
     AsyncContext<GetTopMessageRequest, GetTopMessageResponse>&
         get_top_message_context) noexcept {
   ReceiveMessageRequest receive_message_request;
@@ -232,7 +234,7 @@ absl::Status AwsQueueClientProvider::GetTopMessage(
                        get_top_message_context),
       nullptr);
 
-  return absl::OkStatus();
+  return SuccessExecutionResult();
 }
 
 void AwsQueueClientProvider::OnReceiveMessageCallback(
@@ -292,14 +294,14 @@ void AwsQueueClientProvider::OnReceiveMessageCallback(
                 *cpu_async_executor_);
 }
 
-absl::Status AwsQueueClientProvider::UpdateMessageVisibilityTimeout(
+ExecutionResult AwsQueueClientProvider::UpdateMessageVisibilityTimeout(
     AsyncContext<UpdateMessageVisibilityTimeoutRequest,
                  UpdateMessageVisibilityTimeoutResponse>&
         update_message_visibility_timeout_context) noexcept {
   const std::string& receipt_info =
       update_message_visibility_timeout_context.request->receipt_info();
   if (receipt_info.empty()) {
-    const ExecutionResult execution_result = FailureExecutionResult(
+    auto execution_result = FailureExecutionResult(
         SC_AWS_QUEUE_CLIENT_PROVIDER_INVALID_RECEIPT_INFO);
     SCP_ERROR_CONTEXT(
         kAwsQueueClientProvider, update_message_visibility_timeout_context,
@@ -307,16 +309,14 @@ absl::Status AwsQueueClientProvider::UpdateMessageVisibilityTimeout(
         "Failed to update visibility timeout of the message due to "
         "missing receipt info");
     update_message_visibility_timeout_context.Finish(execution_result);
-    return absl::InvalidArgumentError(
-        google::scp::core::errors::GetErrorMessage(
-            execution_result.status_code));
+    return execution_result;
   }
 
   const int64_t lifetime = update_message_visibility_timeout_context.request
                                ->message_visibility_timeout()
                                .seconds();
   if (lifetime < 0 || lifetime > kMaxVisibilityTimeoutSeconds) {
-    const ExecutionResult execution_result = FailureExecutionResult(
+    auto execution_result = FailureExecutionResult(
         SC_AWS_QUEUE_CLIENT_PROVIDER_INVALID_VISIBILITY_TIMEOUT);
     SCP_ERROR_CONTEXT(
         kAwsQueueClientProvider, update_message_visibility_timeout_context,
@@ -324,9 +324,7 @@ absl::Status AwsQueueClientProvider::UpdateMessageVisibilityTimeout(
         "Failed to update visibility timeout of the message due to "
         "invalid lifetime time");
     update_message_visibility_timeout_context.Finish(execution_result);
-    return absl::InvalidArgumentError(
-        google::scp::core::errors::GetErrorMessage(
-            execution_result.status_code));
+    return execution_result;
   }
 
   ChangeMessageVisibilityRequest change_message_visibility_request;
@@ -341,7 +339,7 @@ absl::Status AwsQueueClientProvider::UpdateMessageVisibilityTimeout(
           update_message_visibility_timeout_context),
       nullptr);
 
-  return absl::OkStatus();
+  return SuccessExecutionResult();
 }
 
 void AwsQueueClientProvider::OnChangeMessageVisibilityCallback(
@@ -371,21 +369,19 @@ void AwsQueueClientProvider::OnChangeMessageVisibilityCallback(
                 *cpu_async_executor_);
 }
 
-absl::Status AwsQueueClientProvider::DeleteMessage(
+ExecutionResult AwsQueueClientProvider::DeleteMessage(
     AsyncContext<DeleteMessageRequest, DeleteMessageResponse>&
         delete_message_context) noexcept {
   const std::string& receipt_info =
       delete_message_context.request->receipt_info();
   if (receipt_info.empty()) {
-    const ExecutionResult execution_result = FailureExecutionResult(
+    auto execution_result = FailureExecutionResult(
         SC_AWS_QUEUE_CLIENT_PROVIDER_INVALID_RECEIPT_INFO);
     SCP_ERROR_CONTEXT(kAwsQueueClientProvider, delete_message_context,
                       execution_result,
                       "Failed to delete message due to missing receipt info");
     delete_message_context.Finish(execution_result);
-    return absl::InvalidArgumentError(
-        google::scp::core::errors::GetErrorMessage(
-            execution_result.status_code));
+    return execution_result;
   }
 
   Aws::SQS::Model::DeleteMessageRequest delete_message_request;
@@ -398,7 +394,7 @@ absl::Status AwsQueueClientProvider::DeleteMessage(
                        delete_message_context),
       nullptr);
 
-  return absl::OkStatus();
+  return SuccessExecutionResult();
 }
 
 void AwsQueueClientProvider::OnDeleteMessageCallback(
@@ -428,16 +424,14 @@ std::shared_ptr<SQSClient> AwsSqsClientFactory::CreateSqsClient(
   return std::make_shared<SQSClient>(client_config);
 }
 
-absl::StatusOr<std::unique_ptr<QueueClientProviderInterface>>
+std::unique_ptr<QueueClientProviderInterface>
 QueueClientProviderFactory::Create(
     QueueClientOptions options,
     InstanceClientProviderInterface* instance_client,
     AsyncExecutorInterface* cpu_async_executor,
     AsyncExecutorInterface* io_async_executor) noexcept {
-  auto provider = std::make_unique<AwsQueueClientProvider>(
+  return std::make_unique<AwsQueueClientProvider>(
       std::move(options), instance_client, cpu_async_executor,
       io_async_executor);
-  PS_RETURN_IF_ERROR(provider->Init());
-  return provider;
 }
 }  // namespace google::scp::cpio::client_providers

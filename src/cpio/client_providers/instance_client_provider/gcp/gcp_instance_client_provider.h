@@ -17,8 +17,10 @@
 #ifndef CPIO_CLIENT_PROVIDERS_INSTANCE_CLIENT_PROVIDER_GCP_GCP_INSTANCE_CLIENT_PROVIDER_H_
 #define CPIO_CLIENT_PROVIDERS_INSTANCE_CLIENT_PROVIDER_GCP_GCP_INSTANCE_CLIENT_PROVIDER_H_
 
+#include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "absl/base/thread_annotations.h"
 #include "absl/synchronization/mutex.h"
@@ -33,37 +35,43 @@ class GcpInstanceClientProvider : public InstanceClientProviderInterface {
                             core::HttpClientInterface* http1_client,
                             core::HttpClientInterface* http2_client);
 
-  absl::Status GetCurrentInstanceResourceName(
+  core::ExecutionResult Init() noexcept override;
+
+  core::ExecutionResult Run() noexcept override;
+
+  core::ExecutionResult Stop() noexcept override;
+
+  core::ExecutionResult GetCurrentInstanceResourceName(
       core::AsyncContext<cmrt::sdk::instance_service::v1::
                              GetCurrentInstanceResourceNameRequest,
                          cmrt::sdk::instance_service::v1::
                              GetCurrentInstanceResourceNameResponse>&
           context) noexcept override;
 
-  absl::Status GetTagsByResourceName(
+  core::ExecutionResult GetTagsByResourceName(
       core::AsyncContext<
           cmrt::sdk::instance_service::v1::GetTagsByResourceNameRequest,
           cmrt::sdk::instance_service::v1::GetTagsByResourceNameResponse>&
           context) noexcept override;
 
-  absl::Status GetInstanceDetailsByResourceName(
+  core::ExecutionResult GetInstanceDetailsByResourceName(
       core::AsyncContext<cmrt::sdk::instance_service::v1::
                              GetInstanceDetailsByResourceNameRequest,
                          cmrt::sdk::instance_service::v1::
                              GetInstanceDetailsByResourceNameResponse>&
           context) noexcept override;
 
-  absl::Status ListInstanceDetailsByEnvironment(
+  core::ExecutionResult ListInstanceDetailsByEnvironment(
       core::AsyncContext<cmrt::sdk::instance_service::v1::
                              ListInstanceDetailsByEnvironmentRequest,
                          cmrt::sdk::instance_service::v1::
                              ListInstanceDetailsByEnvironmentResponse>&
           context) noexcept override;
 
-  absl::Status GetCurrentInstanceResourceNameSync(
+  core::ExecutionResult GetCurrentInstanceResourceNameSync(
       std::string& resource_name) noexcept override;
 
-  absl::Status GetInstanceDetailsByResourceNameSync(
+  core::ExecutionResult GetInstanceDetailsByResourceNameSync(
       std::string_view resource_name,
       cmrt::sdk::instance_service::v1::InstanceDetails&
           instance_details) noexcept override;

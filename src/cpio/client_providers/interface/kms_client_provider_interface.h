@@ -33,7 +33,7 @@ namespace google::scp::cpio::client_providers {
 /**
  * @brief Interface responsible for fetching KMS Aead.
  */
-class KmsClientProviderInterface {
+class KmsClientProviderInterface : public core::ServiceInterface {
  public:
   virtual ~KmsClientProviderInterface() = default;
   /**
@@ -42,7 +42,7 @@ class KmsClientProviderInterface {
    * @param decrypt_context decrypt_context of the operation.
    * @return core::ExecutionResult execution result.
    */
-  virtual absl::Status Decrypt(
+  virtual core::ExecutionResult Decrypt(
       core::AsyncContext<cmrt::sdk::kms_service::v1::DecryptRequest,
                          cmrt::sdk::kms_service::v1::DecryptResponse>&
           decrypt_context) noexcept = 0;
@@ -58,8 +58,7 @@ class KmsClientProviderFactory {
    */
   static std::unique_ptr<KmsClientProviderInterface> Create(
       KmsClientOptions options,
-      absl::Nonnull<RoleCredentialsProviderInterface*>
-          role_credentials_provider,
+      RoleCredentialsProviderInterface* role_credentials_provider,
       core::AsyncExecutorInterface* io_async_executor) noexcept;
 };
 }  // namespace google::scp::cpio::client_providers

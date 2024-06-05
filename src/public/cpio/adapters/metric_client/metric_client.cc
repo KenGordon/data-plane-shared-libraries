@@ -60,49 +60,64 @@ constexpr std::string_view kMetricClient = "MetricClient";
 }  // namespace
 
 namespace google::scp::cpio {
-void MetricClient::CreateMetricClientProvider() noexcept {
+ExecutionResult MetricClient::CreateMetricClientProvider() noexcept {
   cpio_ = &GlobalCpio::GetGlobalCpio();
+  auto cpu_async_executor = cpio_->GetCpuAsyncExecutor();
+  auto io_async_executor = cpio_->GetIoAsyncExecutor();
+  auto instance_client_provider = cpio_->GetInstanceClientProvider();
+  if (!cpu_async_executor.ok() || !io_async_executor.ok() ||
+      !instance_client_provider.ok()) {
+    return ExecutionResult();
+  }
   metric_client_provider_ = MetricClientProviderFactory::Create(
-      options_, &cpio_->GetInstanceClientProvider(),
-      &cpio_->GetCpuAsyncExecutor(), &cpio_->GetIoAsyncExecutor());
+      *options_, *instance_client_provider, *cpu_async_executor,
+      *io_async_executor);
+
+  return SuccessExecutionResult();
 }
 
 ExecutionResult MetricClient::Init() noexcept {
-  CreateMetricClientProvider();
-  if (absl::Status error = metric_client_provider_->Init(); !error.ok()) {
-    SCP_ERROR(kMetricClient, kZeroUuid, error,
-              "Failed to initialize MetricClient.");
-    return FailureExecutionResult(SC_UNKNOWN);
+  auto execution_result = CreateMetricClientProvider();
+  if (!execution_result.Successful()) {
+    SCP_ERROR(kMetricClient, kZeroUuid, execution_result,
+              "Failed to create MetricClientProvider.");
+    return ConvertToPublicExecutionResult(execution_result);
   }
-  return SuccessExecutionResult();
+
+  execution_result = metric_client_provider_->Init();
+  if (!execution_result.Successful()) {
+    SCP_ERROR(kMetricClient, kZeroUuid, execution_result,
+              "Failed to initialize MetricClient.");
+  }
+  return ConvertToPublicExecutionResult(execution_result);
 }
 
 ExecutionResult MetricClient::Run() noexcept {
-  if (absl::Status error = metric_client_provider_->Run(); !error.ok()) {
-    SCP_ERROR(kMetricClient, kZeroUuid, error, "Failed to run MetricClient.");
-    return FailureExecutionResult(SC_UNKNOWN);
+  auto execution_result = metric_client_provider_->Run();
+  if (!execution_result.Successful()) {
+    SCP_ERROR(kMetricClient, kZeroUuid, execution_result,
+              "Failed to run MetricClient.");
   }
-  return SuccessExecutionResult();
+  return ConvertToPublicExecutionResult(execution_result);
 }
 
 ExecutionResult MetricClient::Stop() noexcept {
-  if (absl::Status error = metric_client_provider_->Stop(); !error.ok()) {
-    SCP_ERROR(kMetricClient, kZeroUuid, error, "Failed to stop MetricClient.");
-    return FailureExecutionResult(SC_UNKNOWN);
+  auto execution_result = metric_client_provider_->Stop();
+  if (!execution_result.Successful()) {
+    SCP_ERROR(kMetricClient, kZeroUuid, execution_result,
+              "Failed to stop MetricClient.");
   }
-  return SuccessExecutionResult();
+  return ConvertToPublicExecutionResult(execution_result);
 }
 
 core::ExecutionResult MetricClient::PutMetrics(
     AsyncContext<PutMetricsRequest, PutMetricsResponse> context) noexcept {
-  if (!metric_client_provider_->PutMetrics(std::move(context)).ok()) {
-    return FailureExecutionResult(SC_UNKNOWN);
-  }
-  return SuccessExecutionResult();
+  return metric_client_provider_->PutMetrics(std::move(context));
 }
 
 std::unique_ptr<MetricClientInterface> MetricClientFactory::Create(
     MetricClientOptions options) {
-  return std::make_unique<MetricClient>(std::move(options));
+  return std::make_unique<MetricClient>(
+      std::make_shared<MetricClientOptions>(std::move(options)));
 }
 }  // namespace google::scp::cpio

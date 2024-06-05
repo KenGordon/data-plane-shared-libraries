@@ -99,11 +99,8 @@ ExecutionResult AwsPrivateKeyFetcherProvider::SignHttpRequest(
                   CreateSessionCredentialsCallbackToSignHttpRequest,
               this, sign_request_context),
           sign_request_context);
-  return role_credentials_provider_
-                 ->GetRoleCredentials(get_session_credentials_context)
-                 .ok()
-             ? SuccessExecutionResult()
-             : FailureExecutionResult(SC_UNKNOWN);
+  return role_credentials_provider_->GetRoleCredentials(
+      get_session_credentials_context);
 }
 
 void AwsPrivateKeyFetcherProvider::

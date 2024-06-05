@@ -106,7 +106,7 @@ using TaskCancellationLambda = std::function<bool()>;
  * number of threads that are used across the application and is capable of
  * scheduling tasks with different priorities.
  */
-class AsyncExecutorInterface {
+class AsyncExecutorInterface : public ServiceInterface {
  public:
   virtual ~AsyncExecutorInterface() = default;
 

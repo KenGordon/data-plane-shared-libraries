@@ -94,25 +94,29 @@ class GcpQueueClientProvider : public QueueClientProviderInterface {
         io_async_executor_(io_async_executor),
         pubsub_stub_factory_(std::move(pubsub_stub_factory)) {}
 
-  absl::Status Init() noexcept;
+  core::ExecutionResult Init() noexcept override;
 
-  absl::Status EnqueueMessage(
+  core::ExecutionResult Run() noexcept override;
+
+  core::ExecutionResult Stop() noexcept override;
+
+  core::ExecutionResult EnqueueMessage(
       core::AsyncContext<cmrt::sdk::queue_service::v1::EnqueueMessageRequest,
                          cmrt::sdk::queue_service::v1::EnqueueMessageResponse>&
           enqueue_message_context) noexcept override;
 
-  absl::Status GetTopMessage(
+  core::ExecutionResult GetTopMessage(
       core::AsyncContext<cmrt::sdk::queue_service::v1::GetTopMessageRequest,
                          cmrt::sdk::queue_service::v1::GetTopMessageResponse>&
           get_top_message_context) noexcept override;
 
-  absl::Status UpdateMessageVisibilityTimeout(
+  core::ExecutionResult UpdateMessageVisibilityTimeout(
       core::AsyncContext<
           cmrt::sdk::queue_service::v1::UpdateMessageVisibilityTimeoutRequest,
           cmrt::sdk::queue_service::v1::UpdateMessageVisibilityTimeoutResponse>&
           update_message_visibility_timeout_context) noexcept override;
 
-  absl::Status DeleteMessage(
+  core::ExecutionResult DeleteMessage(
       core::AsyncContext<cmrt::sdk::queue_service::v1::DeleteMessageRequest,
                          cmrt::sdk::queue_service::v1::DeleteMessageResponse>&
           delete_message_context) noexcept override;

@@ -23,7 +23,13 @@ namespace google::scp::cpio::client_providers {
 
 class GcpRoleCredentialsProvider : public RoleCredentialsProviderInterface {
  public:
-  absl::Status GetRoleCredentials(
+  core::ExecutionResult Init() noexcept override;
+
+  core::ExecutionResult Run() noexcept override;
+
+  core::ExecutionResult Stop() noexcept override;
+
+  core::ExecutionResult GetRoleCredentials(
       core::AsyncContext<GetRoleCredentialsRequest, GetRoleCredentialsResponse>&
           get_credentials_context) noexcept override;
 };

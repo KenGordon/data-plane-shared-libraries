@@ -209,14 +209,26 @@ uint64_t GetRandomNumber(int size) {
   return distribution(random_generator) % size;
 }
 
-absl::Status CryptoClientProvider::HpkeEncrypt(
+ExecutionResult CryptoClientProvider::Init() noexcept {
+  return SuccessExecutionResult();
+}
+
+ExecutionResult CryptoClientProvider::Run() noexcept {
+  return SuccessExecutionResult();
+}
+
+ExecutionResult CryptoClientProvider::Stop() noexcept {
+  return SuccessExecutionResult();
+}
+
+ExecutionResult CryptoClientProvider::HpkeEncrypt(
     AsyncContext<HpkeEncryptRequest, HpkeEncryptResponse>&
         encrypt_context) noexcept {
   std::string decoded_key;
   Base64Decode(encrypt_context.request->public_key().public_key(), decoded_key);
   auto cipher = HpkeContext::SetupSender(
       ToHpkeParams(encrypt_context.request->hpke_params(),
-                   GetExistingHpkeParams(options_.hpke_params)),
+                   GetExistingHpkeParams(options_->hpke_params)),
       decoded_key, "" /*Empty application info*/);
 
   if (!cipher.ok()) {
@@ -226,7 +238,7 @@ absl::Status CryptoClientProvider::HpkeEncrypt(
                       "Hpke encryption failed with error %s.",
                       cipher.status().ToString().c_str());
     encrypt_context.Finish(execution_result);
-    return cipher.status();
+    return encrypt_context.result;
   }
 
   auto ciphertext = (*cipher)->Seal(encrypt_context.request->payload(),
@@ -238,7 +250,7 @@ absl::Status CryptoClientProvider::HpkeEncrypt(
                       "Hpke encryption failed with error %s.",
                       ciphertext.status().ToString().c_str());
     encrypt_context.Finish(execution_result);
-    return ciphertext.status();
+    return encrypt_context.result;
   }
 
   encrypt_context.response = std::make_shared<HpkeEncryptResponse>();
@@ -256,7 +268,7 @@ absl::Status CryptoClientProvider::HpkeEncrypt(
                         "Hpke encryption failed with error %s.",
                         secret.status().ToString().c_str());
       encrypt_context.Finish(execution_result);
-      return secret.status();
+      return encrypt_context.result;
     }
     encrypt_context.response->set_secret(
         std::string(SecretDataAsStringView((*secret))));
@@ -269,10 +281,10 @@ absl::Status CryptoClientProvider::HpkeEncrypt(
 
   encrypt_context.Finish(SuccessExecutionResult());
 
-  return absl::OkStatus();
+  return SuccessExecutionResult();
 }
 
-absl::Status CryptoClientProvider::HpkeDecrypt(
+ExecutionResult CryptoClientProvider::HpkeDecrypt(
     AsyncContext<HpkeDecryptRequest, HpkeDecryptResponse>&
         decrypt_context) noexcept {
   std::string decoded_key;
@@ -282,9 +294,7 @@ absl::Status CryptoClientProvider::HpkeDecrypt(
     SCP_ERROR_CONTEXT(kCryptoClientProvider, decrypt_context, execution_result,
                       "Hpke decryption failed with error.");
     decrypt_context.Finish(execution_result);
-    return absl::InvalidArgumentError(
-        google::scp::core::errors::GetErrorMessage(
-            execution_result.status_code));
+    return decrypt_context.result;
   }
 
   auto keyset_reader = BinaryKeysetReader::New(decoded_key);
@@ -295,7 +305,7 @@ absl::Status CryptoClientProvider::HpkeDecrypt(
                       "Hpke decryption failed with error %s.",
                       keyset_reader.status().ToString().c_str());
     decrypt_context.Finish(execution_result);
-    return keyset_reader.status();
+    return decrypt_context.result;
   }
 
   auto keyset_handle = CleartextKeysetHandle::Read(std::move(*keyset_reader));
@@ -306,7 +316,7 @@ absl::Status CryptoClientProvider::HpkeDecrypt(
                       "Hpke decryption failed with error %s.",
                       keyset_handle.status().ToString().c_str());
     decrypt_context.Finish(execution_result);
-    return keyset_handle.status();
+    return decrypt_context.result;
   }
 
   auto keyset = CleartextKeysetHandle::GetKeyset(*keyset_handle.value());
@@ -316,11 +326,10 @@ absl::Status CryptoClientProvider::HpkeDecrypt(
     SCP_ERROR_CONTEXT(kCryptoClientProvider, decrypt_context, execution_result,
                       "Hpke decryption failed with error.");
     decrypt_context.Finish(execution_result);
-    return absl::UnknownError(google::scp::core::errors::GetErrorMessage(
-        execution_result.status_code));
+    return decrypt_context.result;
   }
   auto hpke_params = ToHpkeParams(decrypt_context.request->hpke_params(),
-                                  GetExistingHpkeParams(options_.hpke_params));
+                                  GetExistingHpkeParams(options_->hpke_params));
   auto splitted_ciphertext = SplitPayload(
       hpke_params.kem, decrypt_context.request->encrypted_data().ciphertext());
   if (!splitted_ciphertext.ok()) {
@@ -330,7 +339,7 @@ absl::Status CryptoClientProvider::HpkeDecrypt(
                       "Hpke decryption failed with error %s.",
                       splitted_ciphertext.status().ToString().c_str());
     decrypt_context.Finish(execution_result);
-    return splitted_ciphertext.status();
+    return decrypt_context.result;
   }
 
   HpkePrivateKey private_key;
@@ -340,8 +349,7 @@ absl::Status CryptoClientProvider::HpkeDecrypt(
     SCP_ERROR_CONTEXT(kCryptoClientProvider, decrypt_context, execution_result,
                       "Hpke decryption failed with error.");
     decrypt_context.Finish(execution_result);
-    return absl::UnknownError(google::scp::core::errors::GetErrorMessage(
-        execution_result.status_code));
+    return decrypt_context.result;
   }
 
   auto cipher = HpkeContext::SetupRecipient(
@@ -355,7 +363,7 @@ absl::Status CryptoClientProvider::HpkeDecrypt(
                       "Hpke decryption failed with error %s.",
                       cipher.status().ToString().c_str());
     decrypt_context.Finish(execution_result);
-    return cipher.status();
+    return decrypt_context.result;
   }
 
   auto payload = (*cipher)->Open(splitted_ciphertext->ciphertext,
@@ -367,7 +375,7 @@ absl::Status CryptoClientProvider::HpkeDecrypt(
                       "Hpke decryption failed with error %s.",
                       payload.status().ToString().c_str());
     decrypt_context.Finish(execution_result);
-    return payload.status();
+    return decrypt_context.result;
   }
 
   decrypt_context.response = std::make_shared<HpkeDecryptResponse>();
@@ -385,7 +393,7 @@ absl::Status CryptoClientProvider::HpkeDecrypt(
                         "Hpke decryption failed with error %s.",
                         secret.status().ToString().c_str());
       decrypt_context.Finish(execution_result);
-      return secret.status();
+      return decrypt_context.result;
     }
     decrypt_context.response->set_secret(
         std::string(SecretDataAsStringView(*secret)));
@@ -394,10 +402,10 @@ absl::Status CryptoClientProvider::HpkeDecrypt(
   decrypt_context.response->set_payload(*payload);
   decrypt_context.Finish(SuccessExecutionResult());
 
-  return absl::OkStatus();
+  return SuccessExecutionResult();
 }
 
-absl::Status CryptoClientProvider::AeadEncrypt(
+ExecutionResult CryptoClientProvider::AeadEncrypt(
     AsyncContext<AeadEncryptRequest, AeadEncryptResponse>& context) noexcept {
   SecretData key = SecretDataFromStringView(context.request->secret());
   auto cipher = AesGcmBoringSsl::New(key);
@@ -408,7 +416,7 @@ absl::Status CryptoClientProvider::AeadEncrypt(
                       "Aead encryption failed with error %s.",
                       cipher.status().ToString().c_str());
     context.Finish(execution_result);
-    return cipher.status();
+    return context.result;
   }
   auto ciphertext = (*cipher)->Encrypt(context.request->payload(),
                                        context.request->shared_info());
@@ -419,15 +427,15 @@ absl::Status CryptoClientProvider::AeadEncrypt(
                       "Aead encryption failed with error %s.",
                       ciphertext.status().ToString().c_str());
     context.Finish(execution_result);
-    return ciphertext.status();
+    return context.result;
   }
   context.response = std::make_shared<AeadEncryptResponse>();
   context.response->mutable_encrypted_data()->set_ciphertext((*ciphertext));
   context.Finish(SuccessExecutionResult());
-  return absl::OkStatus();
+  return SuccessExecutionResult();
 }
 
-absl::Status CryptoClientProvider::AeadDecrypt(
+ExecutionResult CryptoClientProvider::AeadDecrypt(
     AsyncContext<AeadDecryptRequest, AeadDecryptResponse>& context) noexcept {
   SecretData key = SecretDataFromStringView(context.request->secret());
   auto cipher = AesGcmBoringSsl::New(key);
@@ -438,7 +446,7 @@ absl::Status CryptoClientProvider::AeadDecrypt(
                       "Aead decryption failed with error %s.",
                       cipher.status().ToString().c_str());
     context.Finish(execution_result);
-    return cipher.status();
+    return context.result;
   }
   auto payload =
       (*cipher)->Decrypt(context.request->encrypted_data().ciphertext(),
@@ -450,11 +458,11 @@ absl::Status CryptoClientProvider::AeadDecrypt(
                       "Aead decryption failed with error %s.",
                       payload.status().ToString().c_str());
     context.Finish(execution_result);
-    return payload.status();
+    return context.result;
   }
   context.response = std::make_shared<AeadDecryptResponse>();
   context.response->set_payload((*payload));
   context.Finish(SuccessExecutionResult());
-  return absl::OkStatus();
+  return SuccessExecutionResult();
 }
 }  // namespace google::scp::cpio::client_providers

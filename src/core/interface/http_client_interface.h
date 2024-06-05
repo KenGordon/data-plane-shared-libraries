@@ -29,7 +29,7 @@ namespace google::scp::core {
 inline constexpr absl::Duration kHttpRequestTimeout = absl::Seconds(60L);
 
 /// Provides methods for interactions with HTTP servers.
-class HttpClientInterface {
+class HttpClientInterface : public ServiceInterface {
  public:
   virtual ~HttpClientInterface() = default;
 

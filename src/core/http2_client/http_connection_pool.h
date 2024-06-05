@@ -41,7 +41,7 @@ namespace google::scp::core {
  * The order of the connections is chosen in a round robin fashion.
  *
  */
-class HttpConnectionPool {
+class HttpConnectionPool : public ServiceInterface {
  protected:
   /**
    * @brief The http connection pool entry to be kept in the concurrent map of
@@ -73,10 +73,11 @@ class HttpConnectionPool {
           kDefaultHttp2ReadTimeoutInSeconds)
       : async_executor_(async_executor),
         max_connections_per_host_(max_connections_per_host),
-        http2_read_timeout_in_sec_(http2_read_timeout_in_sec) {}
+        http2_read_timeout_in_sec_(http2_read_timeout_in_sec),
+        is_running_(false) {}
 
-  virtual ~HttpConnectionPool() = default;
-
+  ExecutionResult Init() noexcept;
+  ExecutionResult Run() noexcept;
   ExecutionResult Stop() noexcept;
 
   /**
@@ -128,6 +129,8 @@ class HttpConnectionPool {
                               std::shared_ptr<HttpConnectionPoolEntry>>
       connections_;
 
+  /// Indicates whether the connection pool is running.
+  std::atomic<bool> is_running_;
   /// Mutex for recycling connection
   absl::Mutex connection_lock_;
 };

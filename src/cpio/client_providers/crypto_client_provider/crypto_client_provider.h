@@ -18,7 +18,6 @@
 #define CPIO_CLIENT_PROVIDERS_CRYPTO_CLIENT_PROVIDER_CRYPTO_CLIENT_PROVIDER_H_
 
 #include <memory>
-#include <utility>
 
 #include <tink/hybrid/internal/hpke_context.h>
 
@@ -38,25 +37,32 @@ namespace google::scp::cpio::client_providers {
  */
 class CryptoClientProvider : public CryptoClientProviderInterface {
  public:
-  explicit CryptoClientProvider(CryptoClientOptions options)
-      : options_(std::move(options)) {}
+  explicit CryptoClientProvider(
+      const std::shared_ptr<CryptoClientOptions>& options)
+      : options_(options) {}
 
-  absl::Status HpkeEncrypt(
+  core::ExecutionResult Init() noexcept override;
+
+  core::ExecutionResult Run() noexcept override;
+
+  core::ExecutionResult Stop() noexcept override;
+
+  core::ExecutionResult HpkeEncrypt(
       core::AsyncContext<cmrt::sdk::crypto_service::v1::HpkeEncryptRequest,
                          cmrt::sdk::crypto_service::v1::HpkeEncryptResponse>&
           context) noexcept override;
 
-  absl::Status HpkeDecrypt(
+  core::ExecutionResult HpkeDecrypt(
       core::AsyncContext<cmrt::sdk::crypto_service::v1::HpkeDecryptRequest,
                          cmrt::sdk::crypto_service::v1::HpkeDecryptResponse>&
           context) noexcept override;
 
-  absl::Status AeadEncrypt(
+  core::ExecutionResult AeadEncrypt(
       core::AsyncContext<cmrt::sdk::crypto_service::v1::AeadEncryptRequest,
                          cmrt::sdk::crypto_service::v1::AeadEncryptResponse>&
           context) noexcept override;
 
-  absl::Status AeadDecrypt(
+  core::ExecutionResult AeadDecrypt(
       core::AsyncContext<cmrt::sdk::crypto_service::v1::AeadDecryptRequest,
                          cmrt::sdk::crypto_service::v1::AeadDecryptResponse>&
           context) noexcept override;
@@ -64,7 +70,7 @@ class CryptoClientProvider : public CryptoClientProviderInterface {
  protected:
   /// HpkeParams passed in from configuration which will override the default
   /// params.
-  CryptoClientOptions options_;
+  std::shared_ptr<CryptoClientOptions> options_;
 };
 }  // namespace google::scp::cpio::client_providers
 

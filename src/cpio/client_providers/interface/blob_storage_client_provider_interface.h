@@ -21,7 +21,6 @@
 #include <string>
 #include <vector>
 
-#include "absl/status/statusor.h"
 #include "src/core/interface/async_context.h"
 #include "src/core/interface/async_executor_interface.h"
 #include "src/core/interface/service_interface.h"
@@ -35,16 +34,17 @@ namespace google::scp::cpio::client_providers {
 
 /// BlobStorageClientProviderInterface provide cloud blob storage access
 /// functionalities.
-class BlobStorageClientProviderInterface {
+class BlobStorageClientProviderInterface : public core::ServiceInterface {
  public:
   virtual ~BlobStorageClientProviderInterface() = default;
+
   /**
    * @brief Used to download a blob using blob identifiers.
    *
    * @param get_blob_context The get blob context object to download the blob.
-   * @return absl::Status The status of the operation.
+   * @return ExecutionResult The execution result of the operation.
    */
-  virtual absl::Status GetBlob(
+  virtual core::ExecutionResult GetBlob(
       core::AsyncContext<cmrt::sdk::blob_storage_service::v1::GetBlobRequest,
                          cmrt::sdk::blob_storage_service::v1::GetBlobResponse>&
           get_blob_context) noexcept = 0;
@@ -53,9 +53,9 @@ class BlobStorageClientProviderInterface {
    * @brief Used to download a blob using blob identifiers.
    *
    * @param get_blob_context The get blob context object to download the blob.
-   * @return absl::Status The status of the operation.
+   * @return ExecutionResult The execution result of the operation.
    */
-  virtual absl::Status GetBlobStream(
+  virtual core::ExecutionResult GetBlobStream(
       core::ConsumerStreamingContext<
           cmrt::sdk::blob_storage_service::v1::GetBlobStreamRequest,
           cmrt::sdk::blob_storage_service::v1::GetBlobStreamResponse>&
@@ -66,9 +66,9 @@ class BlobStorageClientProviderInterface {
    *
    * @param list_blobs_context The list blobs context object to list all the
    * blobs in a range.
-   * @return absl::Status The status of the operation.
+   * @return ExecutionResult The execution result of the operation.
    */
-  virtual absl::Status ListBlobsMetadata(
+  virtual core::ExecutionResult ListBlobsMetadata(
       core::AsyncContext<
           cmrt::sdk::blob_storage_service::v1::ListBlobsMetadataRequest,
           cmrt::sdk::blob_storage_service::v1::ListBlobsMetadataResponse>&
@@ -78,9 +78,9 @@ class BlobStorageClientProviderInterface {
    * @brief Used to create a blob using blob identifiers.
    *
    * @param put_blob_context The put blob context object to create a blob.
-   * @return absl::Status The status of the operation.
+   * @return ExecutionResult The execution result of the operation.
    */
-  virtual absl::Status PutBlob(
+  virtual core::ExecutionResult PutBlob(
       core::AsyncContext<cmrt::sdk::blob_storage_service::v1::PutBlobRequest,
                          cmrt::sdk::blob_storage_service::v1::PutBlobResponse>&
           put_blob_context) noexcept = 0;
@@ -89,9 +89,9 @@ class BlobStorageClientProviderInterface {
    * @brief Used to create a blob using blob identifiers.
    *
    * @param put_blob_context The put blob context object to create a blob.
-   * @return absl::Status The status of the operation.
+   * @return ExecutionResult The execution result of the operation.
    */
-  virtual absl::Status PutBlobStream(
+  virtual core::ExecutionResult PutBlobStream(
       core::ProducerStreamingContext<
           cmrt::sdk::blob_storage_service::v1::PutBlobStreamRequest,
           cmrt::sdk::blob_storage_service::v1::PutBlobStreamResponse>&
@@ -102,9 +102,9 @@ class BlobStorageClientProviderInterface {
    *
    * @param delete_blob_context The delete blob context object to create a
    * blob.
-   * @return absl::Status The status of the operation.
+   * @return ExecutionResult The execution result of the operation.
    */
-  virtual absl::Status DeleteBlob(
+  virtual core::ExecutionResult DeleteBlob(
       core::AsyncContext<
           cmrt::sdk::blob_storage_service::v1::DeleteBlobRequest,
           cmrt::sdk::blob_storage_service::v1::DeleteBlobResponse>&
@@ -117,11 +117,11 @@ class BlobStorageClientProviderInterface {
  */
 class BlobStorageClientProviderFactory {
  public:
-  static absl::StatusOr<std::unique_ptr<BlobStorageClientProviderInterface>>
-  Create(BlobStorageClientOptions options,
-         InstanceClientProviderInterface* instance_client,
-         core::AsyncExecutorInterface* cpu_async_executor,
-         core::AsyncExecutorInterface* io_async_executor) noexcept;
+  static std::unique_ptr<BlobStorageClientProviderInterface> Create(
+      BlobStorageClientOptions options,
+      InstanceClientProviderInterface* instance_client,
+      core::AsyncExecutorInterface* cpu_async_executor,
+      core::AsyncExecutorInterface* io_async_executor) noexcept;
 };
 
 }  // namespace google::scp::cpio::client_providers

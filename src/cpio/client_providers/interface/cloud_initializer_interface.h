@@ -29,7 +29,7 @@ namespace google::scp::cpio::client_providers {
 /**
  * @brief Interface responsible to initialize and shutdown cloud.
  */
-class CloudInitializerInterface {
+class CloudInitializerInterface : public core::ServiceInterface {
  public:
   virtual ~CloudInitializerInterface() = default;
 

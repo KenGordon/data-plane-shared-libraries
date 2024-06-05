@@ -20,33 +20,22 @@
 #include <chrono>
 #include <functional>
 #include <memory>
-#include <regex>
 #include <string>
 #include <thread>
 #include <tuple>
 #include <utility>
 #include <vector>
 
-#include <nlohmann/json.hpp>
-
 #include "absl/base/thread_annotations.h"
 #include "absl/strings/str_cat.h"
-#include "absl/strings/str_join.h"
-#include "absl/strings/str_split.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/synchronization/notification.h"
 #include "absl/time/time.h"
 #include "src/roma/config/config.h"
 #include "src/roma/config/function_binding_object_v2.h"
 #include "src/roma/interface/roma.h"
-#include "src/roma/native_function_grpc_server/native_function_grpc_server.h"
-#include "src/roma/native_function_grpc_server/proto/callback_service.grpc.pb.h"
-#include "src/roma/native_function_grpc_server/proto/callback_service.pb.h"
-#include "src/roma/native_function_grpc_server/proto/test_host_service_native_request_handler.h"
-#include "src/roma/native_function_grpc_server/test_request_handlers.h"
 #include "src/roma/roma_service/roma_service.h"
 #include "src/util/duration.h"
-#include "src/util/status_macro/status_util.h"
 
 using google::scp::roma::FunctionBindingPayload;
 using google::scp::roma::sandbox::roma_service::RomaService;
@@ -57,7 +46,6 @@ using ::testing::StrEq;
 
 namespace google::scp::roma::test {
 namespace {
-
 TEST(SandboxedServiceTest, InitStop) {
   Config config;
   config.number_of_workers = 2;
@@ -78,7 +66,8 @@ TEST(SandboxedServiceTest,
   EXPECT_FALSE(status.ok());
   EXPECT_THAT(status.message(), StrEq("Receiving TLV value failed"));
 
-  EXPECT_TRUE(roma_service.Stop().ok());
+  status = roma_service.Stop();
+  EXPECT_TRUE(status.ok());
 }
 
 TEST(SandboxedServiceTest, StopGracefullyWithPendingLoads) {
@@ -103,111 +92,12 @@ TEST(SandboxedServiceTest, StopGracefullyWithPendingLoads) {
   EXPECT_TRUE(roma_service.Stop().ok());
 }
 
-template <typename T>
-std::string ProtoToBytesStr(const T& request) {
-  std::string str = request.SerializeAsString();
-  const uint8_t* byte_array = reinterpret_cast<const uint8_t*>(str.c_str());
-
-  return absl::StrCat(
-      "\"", absl::StrJoin(byte_array, byte_array + str.size(), " "), "\"");
-}
-
-TEST(SandboxedServiceTest, ProtobufCanBeSentRecievedAsBytes) {
-  Config<std::string> config;
-  config.number_of_workers = 2;
-  config.enable_native_function_grpc_server = true;
-  config.RegisterRpcHandler(
-      "TestHostServer.NativeMethod",
-      privacysandbox::test_host_server::NativeMethodHandler<std::string>());
-
-  auto roma_service =
-      std::make_unique<RomaService<std::string>>(std::move(config));
-  auto status = roma_service->Init();
-  ASSERT_TRUE(status.ok());
-
-  std::string result;
-  absl::Notification load_finished;
-  absl::Notification execute_finished;
-
-  {
-    auto code_obj = std::make_unique<CodeObject>(CodeObject{
-        .id = "foo",
-        .version_string = "v1",
-        .js = R"JS_CODE(
-        function ArrayStrToString(arrayStr) {
-            const arr = arrayStr.split(" ");
-            let string = "";
-            for (let i = 0; i < arr.length; i++) {
-                string += String.fromCharCode(parseInt(arr[i], 10));
-            }
-            return string;
-        }
-
-        function Handler(input) {
-          return TestHostServer.NativeMethod(ArrayStrToString(input));
-        }
-      )JS_CODE",
-    });
-
-    status = roma_service->LoadCodeObj(
-        std::move(code_obj), [&](absl::StatusOr<ResponseObject> resp) {
-          EXPECT_TRUE(resp.ok());
-          load_finished.Notify();
-        });
-    EXPECT_TRUE(status.ok());
-  }
-
-  {
-    // Convert proto to string representation of byte array and send to UDF.
-    // Stand-in from UDF sending proto encoded as Uint8Array of bytes.
-    privacy_sandbox::server_common::NativeMethodRequest request;
-    request.set_input("Hello ");
-    std::string request_bytes = ProtoToBytesStr(request);
-
-    auto execution_obj = std::make_unique<InvocationStrRequest<std::string>>(
-        InvocationStrRequest<std::string>{
-            .id = "foo",
-            .version_string = "v1",
-            .handler_name = "Handler",
-            .input = {request_bytes},
-        });
-
-    status = roma_service->Execute(std::move(execution_obj),
-                                   [&](absl::StatusOr<ResponseObject> resp) {
-                                     EXPECT_TRUE(resp.ok());
-                                     if (resp.ok()) {
-                                       result = std::move(resp->resp);
-                                     }
-                                     execute_finished.Notify();
-                                   });
-    EXPECT_TRUE(status.ok());
-  }
-  ASSERT_TRUE(load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
-  ASSERT_TRUE(
-      execute_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
-
-  // result is a JSON representation of a string-serialized proto. Construct a
-  // tempory JSON object to remove JSON-escaped characters. Necessary because
-  // nlohmann can only parse JSON objects.
-  std::string jsonStr = R"({"result": )" + result + "}";
-  nlohmann::json j = nlohmann::json::parse(jsonStr);
-  // Extract the string value from the JSON
-  result = j["result"];
-
-  privacy_sandbox::server_common::NativeMethodResponse response;
-  response.ParseFromString(result);
-
-  EXPECT_THAT(response.output(), StrEq("Hello World. From NativeMethod"));
-
-  status = roma_service->Stop();
-  EXPECT_TRUE(status.ok());
-}
-
 TEST(SandboxedServiceTest, ExecuteCode) {
   Config config;
   config.number_of_workers = 2;
   RomaService<> roma_service(std::move(config));
-  ASSERT_TRUE(roma_service.Init().ok());
+  auto status = roma_service.Init();
+  ASSERT_TRUE(status.ok());
 
   std::string result;
   absl::Notification load_finished;
@@ -223,13 +113,12 @@ TEST(SandboxedServiceTest, ExecuteCode) {
   )JS_CODE",
     });
 
-    EXPECT_TRUE(roma_service
-                    .LoadCodeObj(std::move(code_obj),
-                                 [&](absl::StatusOr<ResponseObject> resp) {
-                                   EXPECT_TRUE(resp.ok());
-                                   load_finished.Notify();
-                                 })
-                    .ok());
+    status = roma_service.LoadCodeObj(std::move(code_obj),
+                                      [&](absl::StatusOr<ResponseObject> resp) {
+                                        EXPECT_TRUE(resp.ok());
+                                        load_finished.Notify();
+                                      });
+    EXPECT_TRUE(status.ok());
   }
 
   {
@@ -241,23 +130,23 @@ TEST(SandboxedServiceTest, ExecuteCode) {
             .input = {R"("Foobar")"},
         });
 
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execution_obj),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               EXPECT_TRUE(resp.ok());
-                               if (resp.ok()) {
-                                 result = std::move(resp->resp);
-                               }
-                               execute_finished.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(std::move(execution_obj),
+                                  [&](absl::StatusOr<ResponseObject> resp) {
+                                    EXPECT_TRUE(resp.ok());
+                                    if (resp.ok()) {
+                                      result = std::move(resp->resp);
+                                    }
+                                    execute_finished.Notify();
+                                  });
+    EXPECT_TRUE(status.ok());
   }
   ASSERT_TRUE(load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   ASSERT_TRUE(
       execute_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   EXPECT_THAT(result, StrEq(R"("Hello world! \"Foobar\"")"));
 
-  EXPECT_TRUE(roma_service.Stop().ok());
+  status = roma_service.Stop();
+  EXPECT_TRUE(status.ok());
 }
 
 TEST(SandboxedServiceTest, CanRegisterGrpcServices) {
@@ -269,15 +158,18 @@ TEST(SandboxedServiceTest, CanRegisterGrpcServices) {
                          grpc_server::TestMethod2Handler<DefaultMetadata>());
 
   RomaService<> roma_service(std::move(config));
-  ASSERT_TRUE(roma_service.Init().ok());
-  EXPECT_TRUE(roma_service.Stop().ok());
+  auto status = roma_service.Init();
+  ASSERT_TRUE(status.ok());
+  status = roma_service.Stop();
+  EXPECT_TRUE(status.ok());
 }
 
 TEST(SandboxedServiceTest, ExecuteCodeWithStringViewInput) {
   Config config;
   config.number_of_workers = 2;
   RomaService<> roma_service(std::move(config));
-  ASSERT_TRUE(roma_service.Init().ok());
+  auto status = roma_service.Init();
+  ASSERT_TRUE(status.ok());
 
   std::string result;
   absl::Notification load_finished;
@@ -293,13 +185,12 @@ TEST(SandboxedServiceTest, ExecuteCodeWithStringViewInput) {
         )JS_CODE",
     });
 
-    EXPECT_TRUE(roma_service
-                    .LoadCodeObj(std::move(load_code_obj_request),
-                                 [&](absl::StatusOr<ResponseObject> resp) {
-                                   EXPECT_TRUE(resp.ok());
-                                   load_finished.Notify();
-                                 })
-                    .ok());
+    status = roma_service.LoadCodeObj(std::move(load_code_obj_request),
+                                      [&](absl::StatusOr<ResponseObject> resp) {
+                                        EXPECT_TRUE(resp.ok());
+                                        load_finished.Notify();
+                                      });
+    EXPECT_TRUE(status.ok());
   }
 
   {
@@ -312,16 +203,15 @@ TEST(SandboxedServiceTest, ExecuteCodeWithStringViewInput) {
             .input = {input_str_view},
         });
 
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execute_request),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               EXPECT_TRUE(resp.ok());
-                               if (resp.ok()) {
-                                 result = std::move(resp->resp);
-                               }
-                               execute_finished.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(std::move(execute_request),
+                                  [&](absl::StatusOr<ResponseObject> resp) {
+                                    EXPECT_TRUE(resp.ok());
+                                    if (resp.ok()) {
+                                      result = std::move(resp->resp);
+                                    }
+                                    execute_finished.Notify();
+                                  });
+    EXPECT_TRUE(status.ok());
   }
 
   ASSERT_TRUE(load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
@@ -329,14 +219,16 @@ TEST(SandboxedServiceTest, ExecuteCodeWithStringViewInput) {
       execute_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   EXPECT_THAT(result, StrEq(R"("Hello world! \"Foobar\"")"));
 
-  EXPECT_TRUE(roma_service.Stop().ok());
+  status = roma_service.Stop();
+  EXPECT_TRUE(status.ok());
 }
 
 TEST(SandboxedServiceTest, ShouldFailWithInvalidHandlerName) {
   Config config;
   config.number_of_workers = 2;
   RomaService<> roma_service(std::move(config));
-  ASSERT_TRUE(roma_service.Init().ok());
+  auto status = roma_service.Init();
+  ASSERT_TRUE(status.ok());
 
   std::string result;
   absl::Notification load_finished;
@@ -354,13 +246,12 @@ TEST(SandboxedServiceTest, ShouldFailWithInvalidHandlerName) {
     )JS_CODE",
     });
 
-    EXPECT_TRUE(roma_service
-                    .LoadCodeObj(std::move(code_obj),
-                                 [&](absl::StatusOr<ResponseObject> resp) {
-                                   EXPECT_TRUE(resp.ok());
-                                   load_finished.Notify();
-                                 })
-                    .ok());
+    status = roma_service.LoadCodeObj(std::move(code_obj),
+                                      [&](absl::StatusOr<ResponseObject> resp) {
+                                        EXPECT_TRUE(resp.ok());
+                                        load_finished.Notify();
+                                      });
+    EXPECT_TRUE(status.ok());
   }
 
   {
@@ -372,16 +263,15 @@ TEST(SandboxedServiceTest, ShouldFailWithInvalidHandlerName) {
             .input = {R"("Foobar")"},
         });
 
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execution_obj),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               EXPECT_TRUE(resp.ok());
-                               if (resp.ok()) {
-                                 result = std::move(resp->resp);
-                               }
-                               execute_finished.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(std::move(execution_obj),
+                                  [&](absl::StatusOr<ResponseObject> resp) {
+                                    EXPECT_TRUE(resp.ok());
+                                    if (resp.ok()) {
+                                      result = std::move(resp->resp);
+                                    }
+                                    execute_finished.Notify();
+                                  });
+    EXPECT_TRUE(status.ok());
   }
 
   {
@@ -393,14 +283,12 @@ TEST(SandboxedServiceTest, ShouldFailWithInvalidHandlerName) {
             .input = {R"("Foobar")"},
         });
 
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execution_obj),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               EXPECT_EQ(resp.status().code(),
-                                         absl::StatusCode::kInternal);
-                               failed_finished.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(
+        std::move(execution_obj), [&](absl::StatusOr<ResponseObject> resp) {
+          EXPECT_EQ(resp.status().code(), absl::StatusCode::kInternal);
+          failed_finished.Notify();
+        });
+    EXPECT_TRUE(status.ok());
   }
 
   ASSERT_TRUE(load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
@@ -410,14 +298,16 @@ TEST(SandboxedServiceTest, ShouldFailWithInvalidHandlerName) {
       failed_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   EXPECT_THAT(result, StrEq(R"("Hello world! \"Foobar\"")"));
 
-  EXPECT_TRUE(roma_service.Stop().ok());
+  status = roma_service.Stop();
+  EXPECT_TRUE(status.ok());
 }
 
 TEST(SandboxedServiceTest, ExecuteCodeWithEmptyId) {
   Config config;
   config.number_of_workers = 2;
   RomaService<> roma_service(std::move(config));
-  ASSERT_TRUE(roma_service.Init().ok());
+  auto status = roma_service.Init();
+  ASSERT_TRUE(status.ok());
 
   std::string result;
   absl::Notification load_finished;
@@ -432,13 +322,12 @@ TEST(SandboxedServiceTest, ExecuteCodeWithEmptyId) {
   )JS_CODE",
     });
 
-    EXPECT_TRUE(roma_service
-                    .LoadCodeObj(std::move(code_obj),
-                                 [&](absl::StatusOr<ResponseObject> resp) {
-                                   EXPECT_TRUE(resp.ok());
-                                   load_finished.Notify();
-                                 })
-                    .ok());
+    status = roma_service.LoadCodeObj(std::move(code_obj),
+                                      [&](absl::StatusOr<ResponseObject> resp) {
+                                        EXPECT_TRUE(resp.ok());
+                                        load_finished.Notify();
+                                      });
+    EXPECT_TRUE(status.ok());
   }
 
   {
@@ -449,30 +338,31 @@ TEST(SandboxedServiceTest, ExecuteCodeWithEmptyId) {
             .input = {R"("Foobar")"},
         });
 
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execution_obj),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               EXPECT_TRUE(resp.ok());
-                               if (resp.ok()) {
-                                 result = std::move(resp->resp);
-                               }
-                               execute_finished.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(std::move(execution_obj),
+                                  [&](absl::StatusOr<ResponseObject> resp) {
+                                    EXPECT_TRUE(resp.ok());
+                                    if (resp.ok()) {
+                                      result = std::move(resp->resp);
+                                    }
+                                    execute_finished.Notify();
+                                  });
+    EXPECT_TRUE(status.ok());
   }
   ASSERT_TRUE(load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   ASSERT_TRUE(
       execute_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   EXPECT_THAT(result, StrEq(R"("Hello world! \"Foobar\"")"));
 
-  EXPECT_TRUE(roma_service.Stop().ok());
+  status = roma_service.Stop();
+  EXPECT_TRUE(status.ok());
 }
 
 TEST(SandboxedServiceTest, ShouldAllowEmptyInputs) {
   Config config;
   config.number_of_workers = 2;
   RomaService<> roma_service(std::move(config));
-  ASSERT_TRUE(roma_service.Init().ok());
+  auto status = roma_service.Init();
+  ASSERT_TRUE(status.ok());
 
   std::string result;
   absl::Notification load_finished;
@@ -487,13 +377,12 @@ TEST(SandboxedServiceTest, ShouldAllowEmptyInputs) {
   )JS_CODE",
     });
 
-    EXPECT_TRUE(roma_service
-                    .LoadCodeObj(std::move(code_obj),
-                                 [&](absl::StatusOr<ResponseObject> resp) {
-                                   EXPECT_TRUE(resp.ok());
-                                   load_finished.Notify();
-                                 })
-                    .ok());
+    status = roma_service.LoadCodeObj(std::move(code_obj),
+                                      [&](absl::StatusOr<ResponseObject> resp) {
+                                        EXPECT_TRUE(resp.ok());
+                                        load_finished.Notify();
+                                      });
+    EXPECT_TRUE(status.ok());
   }
 
   {
@@ -503,30 +392,31 @@ TEST(SandboxedServiceTest, ShouldAllowEmptyInputs) {
             .version_string = "v1",
             .handler_name = "Handler",
         });
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execution_obj),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               EXPECT_TRUE(resp.ok());
-                               if (resp.ok()) {
-                                 result = std::move(resp->resp);
-                               }
-                               execute_finished.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(std::move(execution_obj),
+                                  [&](absl::StatusOr<ResponseObject> resp) {
+                                    EXPECT_TRUE(resp.ok());
+                                    if (resp.ok()) {
+                                      result = std::move(resp->resp);
+                                    }
+                                    execute_finished.Notify();
+                                  });
+    EXPECT_TRUE(status.ok());
   }
   ASSERT_TRUE(load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   ASSERT_TRUE(
       execute_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   EXPECT_THAT(result, StrEq("undefined"));
 
-  EXPECT_TRUE(roma_service.Stop().ok());
+  status = roma_service.Stop();
+  EXPECT_TRUE(status.ok());
 }
 
 TEST(SandboxedServiceTest, ShouldGetIdInResponse) {
   Config config;
   config.number_of_workers = 2;
   RomaService<> roma_service(std::move(config));
-  ASSERT_TRUE(roma_service.Init().ok());
+  auto status = roma_service.Init();
+  ASSERT_TRUE(status.ok());
 
   std::string result;
   absl::Notification load_finished;
@@ -534,6 +424,7 @@ TEST(SandboxedServiceTest, ShouldGetIdInResponse) {
 
   {
     auto code_obj = std::make_unique<CodeObject>(CodeObject{
+        .id = "foo",
         .id = "my_cool_id",
         .version_string = "v1",
         .js = R"JS_CODE(
@@ -542,14 +433,13 @@ TEST(SandboxedServiceTest, ShouldGetIdInResponse) {
   )JS_CODE",
     });
 
-    EXPECT_TRUE(roma_service
-                    .LoadCodeObj(std::move(code_obj),
-                                 [&](absl::StatusOr<ResponseObject> resp) {
-                                   EXPECT_TRUE(resp.ok());
-                                   EXPECT_THAT(resp->id, StrEq("my_cool_id"));
-                                   load_finished.Notify();
-                                 })
-                    .ok());
+    status = roma_service.LoadCodeObj(
+        std::move(code_obj), [&](absl::StatusOr<ResponseObject> resp) {
+          EXPECT_TRUE(resp.ok());
+          EXPECT_THAT(resp->id, StrEq("my_cool_id"));
+          load_finished.Notify();
+        });
+    EXPECT_TRUE(status.ok());
   }
 
   {
@@ -561,23 +451,23 @@ TEST(SandboxedServiceTest, ShouldGetIdInResponse) {
             .input = {R"("Foobar")"},
         });
 
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execution_obj),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               EXPECT_TRUE(resp.ok());
-                               if (resp.ok()) {
-                                 result = std::move(resp->resp);
-                               }
-                               execute_finished.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(std::move(execution_obj),
+                                  [&](absl::StatusOr<ResponseObject> resp) {
+                                    EXPECT_TRUE(resp.ok());
+                                    if (resp.ok()) {
+                                      result = std::move(resp->resp);
+                                    }
+                                    execute_finished.Notify();
+                                  });
+    EXPECT_TRUE(status.ok());
   }
   ASSERT_TRUE(load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   ASSERT_TRUE(
       execute_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   EXPECT_THAT(result, StrEq(R"("Hello world! \"Foobar\"")"));
 
-  EXPECT_TRUE(roma_service.Stop().ok());
+  status = roma_service.Stop();
+  EXPECT_TRUE(status.ok());
 }
 
 TEST(SandboxedServiceTest,
@@ -585,7 +475,8 @@ TEST(SandboxedServiceTest,
   Config config;
   config.number_of_workers = 2;
   RomaService<> roma_service(std::move(config));
-  ASSERT_TRUE(roma_service.Init().ok());
+  auto status = roma_service.Init();
+  ASSERT_TRUE(status.ok());
 
   // We don't load any code, just try to execute some version
   absl::Notification execute_finished;
@@ -599,26 +490,27 @@ TEST(SandboxedServiceTest,
             .input = {R"("Foobar")"},
         });
 
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execution_obj),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               // Execute should fail.
-                               EXPECT_FALSE(resp.ok());
-                               execute_finished.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(std::move(execution_obj),
+                                  [&](absl::StatusOr<ResponseObject> resp) {
+                                    // Execute should fail.
+                                    EXPECT_FALSE(resp.ok());
+                                    execute_finished.Notify();
+                                  });
+    EXPECT_TRUE(status.ok());
   }
   ASSERT_TRUE(
       execute_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
 
-  EXPECT_TRUE(roma_service.Stop().ok());
+  status = roma_service.Stop();
+  EXPECT_TRUE(status.ok());
 }
 
 TEST(SandboxedServiceTest, CanRunAsyncJsCode) {
   Config config;
   config.number_of_workers = 2;
   RomaService<> roma_service(std::move(config));
-  ASSERT_TRUE(roma_service.Init().ok());
+  auto status = roma_service.Init();
+  ASSERT_TRUE(status.ok());
 
   std::string result;
   absl::Notification load_finished;
@@ -661,13 +553,12 @@ TEST(SandboxedServiceTest, CanRunAsyncJsCode) {
     )JS_CODE",
     });
 
-    EXPECT_TRUE(roma_service
-                    .LoadCodeObj(std::move(code_obj),
-                                 [&](absl::StatusOr<ResponseObject> resp) {
-                                   EXPECT_TRUE(resp.ok());
-                                   load_finished.Notify();
-                                 })
-                    .ok());
+    status = roma_service.LoadCodeObj(std::move(code_obj),
+                                      [&](absl::StatusOr<ResponseObject> resp) {
+                                        EXPECT_TRUE(resp.ok());
+                                        load_finished.Notify();
+                                      });
+    EXPECT_TRUE(status.ok());
   }
 
   {
@@ -678,30 +569,31 @@ TEST(SandboxedServiceTest, CanRunAsyncJsCode) {
             .handler_name = "Handler",
         });
 
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execution_obj),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               EXPECT_TRUE(resp.ok());
-                               if (resp.ok()) {
-                                 result = std::move(resp->resp);
-                               }
-                               execute_finished.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(std::move(execution_obj),
+                                  [&](absl::StatusOr<ResponseObject> resp) {
+                                    EXPECT_TRUE(resp.ok());
+                                    if (resp.ok()) {
+                                      result = std::move(resp->resp);
+                                    }
+                                    execute_finished.Notify();
+                                  });
+    EXPECT_TRUE(status.ok());
   }
   ASSERT_TRUE(load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   ASSERT_TRUE(
       execute_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   EXPECT_THAT(result, StrEq(R"("some cool string1 string2")"));
 
-  EXPECT_TRUE(roma_service.Stop().ok());
+  status = roma_service.Stop();
+  EXPECT_TRUE(status.ok());
 }
 
 TEST(SandboxedServiceTest, BatchExecute) {
   Config config;
   config.number_of_workers = 2;
   RomaService<> roma_service(std::move(config));
-  ASSERT_TRUE(roma_service.Init().ok());
+  auto status = roma_service.Init();
+  ASSERT_TRUE(status.ok());
 
   int res_count = 0;
   constexpr size_t kBatchSize = 5;
@@ -717,13 +609,12 @@ TEST(SandboxedServiceTest, BatchExecute) {
   )JS_CODE",
     });
 
-    EXPECT_TRUE(roma_service
-                    .LoadCodeObj(std::move(code_obj),
-                                 [&](absl::StatusOr<ResponseObject> resp) {
-                                   EXPECT_TRUE(resp.ok());
-                                   load_finished.Notify();
-                                 })
-                    .ok());
+    status = roma_service.LoadCodeObj(std::move(code_obj),
+                                      [&](absl::StatusOr<ResponseObject> resp) {
+                                        EXPECT_TRUE(resp.ok());
+                                        load_finished.Notify();
+                                      });
+    EXPECT_TRUE(status.ok());
   }
 
   {
@@ -735,27 +626,25 @@ TEST(SandboxedServiceTest, BatchExecute) {
     });
 
     std::vector<InvocationStrRequest<>> batch(kBatchSize, execution_obj);
-    EXPECT_TRUE(roma_service
-                    .BatchExecute(
-                        batch,
-                        [&](const std::vector<absl::StatusOr<ResponseObject>>&
-                                batch_resp) {
-                          for (auto resp : batch_resp) {
-                            EXPECT_TRUE(resp.ok());
-                            EXPECT_THAT(resp->resp,
-                                        StrEq(R"("Hello world! \"Foobar\"")"));
-                          }
-                          res_count = batch_resp.size();
-                          execute_finished.Notify();
-                        })
-                    .ok());
+    status = roma_service.BatchExecute(
+        batch,
+        [&](const std::vector<absl::StatusOr<ResponseObject>>& batch_resp) {
+          for (auto resp : batch_resp) {
+            EXPECT_TRUE(resp.ok());
+            EXPECT_THAT(resp->resp, StrEq(R"("Hello world! \"Foobar\"")"));
+          }
+          res_count = batch_resp.size();
+          execute_finished.Notify();
+        });
+    EXPECT_TRUE(status.ok());
   }
 
   load_finished.WaitForNotification();
   execute_finished.WaitForNotification();
   EXPECT_EQ(res_count, kBatchSize);
 
-  EXPECT_TRUE(roma_service.Stop().ok());
+  status = roma_service.Stop();
+  EXPECT_TRUE(status.ok());
 }
 
 TEST(SandboxedServiceTest,
@@ -766,7 +655,8 @@ TEST(SandboxedServiceTest,
   config.worker_queue_max_items = 1;
   config.number_of_workers = 10;
   RomaService<> roma_service(std::move(config));
-  ASSERT_TRUE(roma_service.Init().ok());
+  auto status = roma_service.Init();
+  ASSERT_TRUE(status.ok());
 
   absl::Mutex mu;
   int res_count = 0;
@@ -784,13 +674,12 @@ TEST(SandboxedServiceTest,
   )JS_CODE",
     });
 
-    EXPECT_TRUE(roma_service
-                    .LoadCodeObj(std::move(code_obj),
-                                 [&](absl::StatusOr<ResponseObject> resp) {
-                                   EXPECT_TRUE(resp.ok());
-                                   load_finished.Notify();
-                                 })
-                    .ok());
+    status = roma_service.LoadCodeObj(std::move(code_obj),
+                                      [&](absl::StatusOr<ResponseObject> resp) {
+                                        EXPECT_TRUE(resp.ok());
+                                        load_finished.Notify();
+                                      });
+    EXPECT_TRUE(status.ok());
   }
 
   {
@@ -803,7 +692,7 @@ TEST(SandboxedServiceTest,
 
     std::vector<InvocationStrRequest<>> batch(kBatchSize, execution_obj);
 
-    auto status = absl::InternalError("fail");
+    status = absl::InternalError("fail");
     while (!status.ok()) {
       status = roma_service.BatchExecute(
           batch,
@@ -823,7 +712,8 @@ TEST(SandboxedServiceTest,
   execute_finished.WaitForNotification();
   EXPECT_EQ(res_count, kBatchSize);
 
-  EXPECT_TRUE(roma_service.Stop().ok());
+  status = roma_service.Stop();
+  EXPECT_TRUE(status.ok());
 }
 
 TEST(SandboxedServiceTest, MultiThreadedBatchExecuteSmallQueue) {
@@ -831,7 +721,8 @@ TEST(SandboxedServiceTest, MultiThreadedBatchExecuteSmallQueue) {
   config.worker_queue_max_items = 1;
   config.number_of_workers = 10;
   RomaService<> roma_service(std::move(config));
-  ASSERT_TRUE(roma_service.Init().ok());
+  auto status = roma_service.Init();
+  ASSERT_TRUE(status.ok());
   {
     absl::Notification load_finished;
     auto code_obj = std::make_unique<CodeObject>(CodeObject{
@@ -843,13 +734,12 @@ TEST(SandboxedServiceTest, MultiThreadedBatchExecuteSmallQueue) {
   )JS_CODE",
     });
 
-    ASSERT_TRUE(roma_service
-                    .LoadCodeObj(std::move(code_obj),
-                                 [&](absl::StatusOr<ResponseObject> resp) {
-                                   EXPECT_TRUE(resp.ok());
-                                   load_finished.Notify();
-                                 })
-                    .ok());
+    status = roma_service.LoadCodeObj(std::move(code_obj),
+                                      [&](absl::StatusOr<ResponseObject> resp) {
+                                        EXPECT_TRUE(resp.ok());
+                                        load_finished.Notify();
+                                      });
+    ASSERT_TRUE(status.ok());
     load_finished.WaitForNotification();
   }
 
@@ -906,14 +796,16 @@ TEST(SandboxedServiceTest, MultiThreadedBatchExecuteSmallQueue) {
     EXPECT_EQ(res_count, kBatchSize * kNumThreads);
   }
 
-  EXPECT_TRUE(roma_service.Stop().ok());
+  status = roma_service.Stop();
+  EXPECT_TRUE(status.ok());
 }
 
 TEST(SandboxedServiceTest, ExecuteCodeConcurrently) {
   Config config;
   config.number_of_workers = 2;
   RomaService<> roma_service(std::move(config));
-  ASSERT_TRUE(roma_service.Init().ok());
+  auto status = roma_service.Init();
+  ASSERT_TRUE(status.ok());
 
   absl::Notification load_finished;
   size_t total_runs = 10;
@@ -929,13 +821,12 @@ TEST(SandboxedServiceTest, ExecuteCodeConcurrently) {
   )JS_CODE",
     });
 
-    EXPECT_TRUE(roma_service
-                    .LoadCodeObj(std::move(code_obj),
-                                 [&](absl::StatusOr<ResponseObject> resp) {
-                                   EXPECT_TRUE(resp.ok());
-                                   load_finished.Notify();
-                                 })
-                    .ok());
+    status = roma_service.LoadCodeObj(std::move(code_obj),
+                                      [&](absl::StatusOr<ResponseObject> resp) {
+                                        EXPECT_TRUE(resp.ok());
+                                        load_finished.Notify();
+                                      });
+    EXPECT_TRUE(status.ok());
   }
 
   {
@@ -949,16 +840,15 @@ TEST(SandboxedServiceTest, ExecuteCodeConcurrently) {
                   R"("Foobar)" + std::to_string(i) + R"(")")},
           });
 
-      EXPECT_TRUE(roma_service
-                      .Execute(std::move(code_obj),
-                               [&, i](absl::StatusOr<ResponseObject> resp) {
-                                 EXPECT_TRUE(resp.ok());
-                                 if (resp.ok()) {
-                                   results[i] = resp->resp;
-                                 }
-                                 finished[i].Notify();
-                               })
-                      .ok());
+      status = roma_service.Execute(
+          std::move(code_obj), [&, i](absl::StatusOr<ResponseObject> resp) {
+            EXPECT_TRUE(resp.ok());
+            if (resp.ok()) {
+              results[i] = resp->resp;
+            }
+            finished[i].Notify();
+          });
+      EXPECT_TRUE(status.ok());
     }
   }
 
@@ -971,14 +861,16 @@ TEST(SandboxedServiceTest, ExecuteCodeConcurrently) {
     EXPECT_THAT(results[i], StrEq(expected_result));
   }
 
-  EXPECT_TRUE(roma_service.Stop().ok());
+  status = roma_service.Stop();
+  EXPECT_TRUE(status.ok());
 }
 
 TEST(SandboxedServiceTest, ShouldReturnCorrectErrorForDifferentException) {
   Config config;
   config.number_of_workers = 1;
   RomaService<> roma_service(std::move(config));
-  ASSERT_TRUE(roma_service.Init().ok());
+  auto status = roma_service.Init();
+  ASSERT_TRUE(status.ok());
 
   std::string result;
   absl::Notification load_finished;
@@ -1009,13 +901,12 @@ TEST(SandboxedServiceTest, ShouldReturnCorrectErrorForDifferentException) {
     )""",
     });
 
-    EXPECT_TRUE(roma_service
-                    .LoadCodeObj(std::move(code_obj),
-                                 [&](absl::StatusOr<ResponseObject> resp) {
-                                   EXPECT_TRUE(resp.ok());
-                                   load_finished.Notify();
-                                 })
-                    .ok());
+    status = roma_service.LoadCodeObj(std::move(code_obj),
+                                      [&](absl::StatusOr<ResponseObject> resp) {
+                                        EXPECT_TRUE(resp.ok());
+                                        load_finished.Notify();
+                                      });
+    EXPECT_TRUE(status.ok());
   }
 
   // The execution should timeout as the kTimeoutDurationTag value is too small.
@@ -1028,14 +919,12 @@ TEST(SandboxedServiceTest, ShouldReturnCorrectErrorForDifferentException) {
             .tags = {{std::string(kTimeoutDurationTag), "100ms"}},
         });
 
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execution_obj),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               EXPECT_EQ(resp.status().code(),
-                                         absl::StatusCode::kInternal);
-                               execute_timeout.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(
+        std::move(execution_obj), [&](absl::StatusOr<ResponseObject> resp) {
+          EXPECT_EQ(resp.status().code(), absl::StatusCode::kInternal);
+          execute_timeout.Notify();
+        });
+    EXPECT_TRUE(status.ok());
   }
 
   // The execution should return invoking error as it try to get value from
@@ -1048,14 +937,12 @@ TEST(SandboxedServiceTest, ShouldReturnCorrectErrorForDifferentException) {
             .handler_name = "hello_js",
         });
 
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execution_obj),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               EXPECT_EQ(resp.status().code(),
-                                         absl::StatusCode::kInternal);
-                               execute_failed.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(
+        std::move(execution_obj), [&](absl::StatusOr<ResponseObject> resp) {
+          EXPECT_EQ(resp.status().code(), absl::StatusCode::kInternal);
+          execute_failed.Notify();
+        });
+    EXPECT_TRUE(status.ok());
   }
 
   // The execution should success.
@@ -1065,19 +952,17 @@ TEST(SandboxedServiceTest, ShouldReturnCorrectErrorForDifferentException) {
             .id = "foo",
             .version_string = "v1",
             .handler_name = "hello_js",
-            .tags = {{std::string(kTimeoutDurationTag), "300ms"}},
             .input = {R"("0")"},
+            .tags = {{std::string(kTimeoutDurationTag), "300ms"}},
         });
 
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execution_obj),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               ASSERT_TRUE(resp.ok());
-                               EXPECT_THAT(resp->resp,
-                                           StrEq(R"("Hello world!")"));
-                               execute_success.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(
+        std::move(execution_obj), [&](absl::StatusOr<ResponseObject> resp) {
+          ASSERT_TRUE(resp.ok());
+          EXPECT_THAT(resp->resp, StrEq(R"("Hello world!")"));
+          execute_success.Notify();
+        });
+    EXPECT_TRUE(status.ok());
   }
 
   ASSERT_TRUE(load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
@@ -1087,7 +972,8 @@ TEST(SandboxedServiceTest, ShouldReturnCorrectErrorForDifferentException) {
   ASSERT_TRUE(
       execute_success.WaitForNotificationWithTimeout(absl::Seconds(10)));
 
-  EXPECT_TRUE(roma_service.Stop().ok());
+  status = roma_service.Stop();
+  EXPECT_TRUE(status.ok());
 }
 
 void EchoFunction(FunctionBindingPayload<>& wrapper) {
@@ -1105,14 +991,13 @@ TEST(SandboxedServiceTest,
                                               15 /*maximum_heap_size_in_mb*/);
   // We register a hook to make sure it continues to work when the worker is
   // restarted
-  config.RegisterFunctionBinding(
-      std::make_unique<FunctionBindingObjectV2<>>(FunctionBindingObjectV2<>{
-          .function_name = "echo_function",
-          .function = EchoFunction,
-      }));
-
+  auto function_binding_object = std::make_unique<FunctionBindingObjectV2<>>();
+  function_binding_object->function = EchoFunction;
+  function_binding_object->function_name = "echo_function";
+  config.RegisterFunctionBinding(std::move(function_binding_object));
   RomaService<> roma_service(std::move(config));
-  ASSERT_TRUE(roma_service.Init().ok());
+  auto status = roma_service.Init();
+  ASSERT_TRUE(status.ok());
 
   {
     absl::Notification load_finished;
@@ -1135,13 +1020,12 @@ TEST(SandboxedServiceTest,
       )",
     });
 
-    EXPECT_TRUE(roma_service
-                    .LoadCodeObj(std::move(code_obj),
-                                 [&](absl::StatusOr<ResponseObject> resp) {
-                                   EXPECT_TRUE(resp.ok());
-                                   load_finished.Notify();
-                                 })
-                    .ok());
+    status = roma_service.LoadCodeObj(std::move(code_obj),
+                                      [&](absl::StatusOr<ResponseObject> resp) {
+                                        EXPECT_TRUE(resp.ok());
+                                        load_finished.Notify();
+                                      });
+    EXPECT_TRUE(status.ok());
     ASSERT_TRUE(
         load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   }
@@ -1159,13 +1043,12 @@ TEST(SandboxedServiceTest,
       )",
     });
 
-    EXPECT_TRUE(roma_service
-                    .LoadCodeObj(std::move(code_obj),
-                                 [&](absl::StatusOr<ResponseObject> resp) {
-                                   EXPECT_TRUE(resp.ok());
-                                   load_finished.Notify();
-                                 })
-                    .ok());
+    status = roma_service.LoadCodeObj(std::move(code_obj),
+                                      [&](absl::StatusOr<ResponseObject> resp) {
+                                        EXPECT_TRUE(resp.ok());
+                                        load_finished.Notify();
+                                      });
+    EXPECT_TRUE(status.ok());
     ASSERT_TRUE(
         load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   }
@@ -1181,17 +1064,15 @@ TEST(SandboxedServiceTest,
             .input = {R"("10")"},
         });
 
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execution_obj),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               EXPECT_FALSE(resp.ok());
-                               EXPECT_THAT(
-                                   resp.status().message(),
-                                   StrEq("Sandbox worker crashed during "
-                                         "execution of request."));
-                               execute_finished.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(
+        std::move(execution_obj), [&](absl::StatusOr<ResponseObject> resp) {
+          EXPECT_FALSE(resp.ok());
+          EXPECT_THAT(
+              resp.status().message(),
+              StrEq("Sandbox worker crashed during execution of request."));
+          execute_finished.Notify();
+        });
+    EXPECT_TRUE(status.ok());
     ASSERT_TRUE(
         execute_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   }
@@ -1209,16 +1090,15 @@ TEST(SandboxedServiceTest,
             .input = {R"("1")"},
         });
 
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execution_obj),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               EXPECT_TRUE(resp.ok());
-                               if (resp.ok()) {
-                                 result = std::move(resp->resp);
-                               }
-                               execute_finished.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(std::move(execution_obj),
+                                  [&](absl::StatusOr<ResponseObject> resp) {
+                                    EXPECT_TRUE(resp.ok());
+                                    if (resp.ok()) {
+                                      result = std::move(resp->resp);
+                                    }
+                                    execute_finished.Notify();
+                                  });
+    EXPECT_TRUE(status.ok());
 
     ASSERT_TRUE(
         execute_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
@@ -1239,16 +1119,15 @@ TEST(SandboxedServiceTest,
             .input = {R"("Hello, World!")"},
         });
 
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execution_obj),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               EXPECT_TRUE(resp.ok());
-                               if (resp.ok()) {
-                                 result = std::move(resp->resp);
-                               }
-                               execute_finished.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(std::move(execution_obj),
+                                  [&](absl::StatusOr<ResponseObject> resp) {
+                                    EXPECT_TRUE(resp.ok());
+                                    if (resp.ok()) {
+                                      result = std::move(resp->resp);
+                                    }
+                                    execute_finished.Notify();
+                                  });
+    EXPECT_TRUE(status.ok());
 
     ASSERT_TRUE(
         execute_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
@@ -1256,14 +1135,16 @@ TEST(SandboxedServiceTest,
     EXPECT_THAT(result, StrEq(R"("Hello, World!")"));
   }
 
-  EXPECT_TRUE(roma_service.Stop().ok());
+  status = roma_service.Stop();
+  EXPECT_TRUE(status.ok());
 }
 
 TEST(SandboxedServiceTest, ShouldGetMetricsInResponse) {
   Config config;
   config.number_of_workers = 2;
   RomaService<> roma_service(std::move(config));
-  ASSERT_TRUE(roma_service.Init().ok());
+  auto status = roma_service.Init();
+  ASSERT_TRUE(status.ok());
 
   std::string result;
   absl::Notification load_finished;
@@ -1279,13 +1160,12 @@ TEST(SandboxedServiceTest, ShouldGetMetricsInResponse) {
   )JS_CODE",
     });
 
-    EXPECT_TRUE(roma_service
-                    .LoadCodeObj(std::move(code_obj),
-                                 [&](absl::StatusOr<ResponseObject> resp) {
-                                   EXPECT_TRUE(resp.ok());
-                                   load_finished.Notify();
-                                 })
-                    .ok());
+    status = roma_service.LoadCodeObj(std::move(code_obj),
+                                      [&](absl::StatusOr<ResponseObject> resp) {
+                                        EXPECT_TRUE(resp.ok());
+                                        load_finished.Notify();
+                                      });
+    EXPECT_TRUE(status.ok());
   }
 
   {
@@ -1297,49 +1177,46 @@ TEST(SandboxedServiceTest, ShouldGetMetricsInResponse) {
             .input = {R"("Foobar")"},
         });
 
-    EXPECT_TRUE(
-        roma_service
-            .Execute(
-                std::move(execution_obj),
-                [&](absl::StatusOr<ResponseObject> resp) {
-                  EXPECT_TRUE(resp.ok());
-                  if (resp.ok()) {
-                    result = std::move(resp->resp);
-                  }
+    status = roma_service.Execute(
+        std::move(execution_obj), [&](absl::StatusOr<ResponseObject> resp) {
+          EXPECT_TRUE(resp.ok());
+          if (resp.ok()) {
+            result = std::move(resp->resp);
+          }
 
-                  EXPECT_GT(
-                      resp->metrics["roma.metric.sandboxed_code_run_duration"],
-                      absl::Duration());
-                  EXPECT_GT(resp->metrics["roma.metric.code_run_duration"],
-                            absl::Duration());
-                  EXPECT_GT(
-                      resp->metrics["roma.metric.json_input_parsing_duration"],
-                      absl::Duration());
-                  EXPECT_GT(resp->metrics
-                                ["roma.metric.js_engine_handler_call_duration"],
-                            absl::Duration());
-                  std::cout << "Metrics:" << std::endl;
-                  for (const auto& pair : resp->metrics) {
-                    std::cout << pair.first << ": " << pair.second << std::endl;
-                  }
+          EXPECT_GT(resp->metrics["roma.metric.sandboxed_code_run_duration"],
+                    absl::Duration());
+          EXPECT_GT(resp->metrics["roma.metric.code_run_duration"],
+                    absl::Duration());
+          EXPECT_GT(resp->metrics["roma.metric.json_input_parsing_duration"],
+                    absl::Duration());
+          EXPECT_GT(
+              resp->metrics["roma.metric.js_engine_handler_call_duration"],
+              absl::Duration());
+          std::cout << "Metrics:" << std::endl;
+          for (const auto& pair : resp->metrics) {
+            std::cout << pair.first << ": " << pair.second << std::endl;
+          }
 
-                  execute_finished.Notify();
-                })
-            .ok());
+          execute_finished.Notify();
+        });
+    EXPECT_TRUE(status.ok());
   }
   ASSERT_TRUE(load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   ASSERT_TRUE(
       execute_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   EXPECT_THAT(result, StrEq(R"("Hello world! \"Foobar\"")"));
 
-  EXPECT_TRUE(roma_service.Stop().ok());
+  status = roma_service.Stop();
+  EXPECT_TRUE(status.ok());
 }
 
 TEST(SandboxedServiceTest, ShouldAllowLoadingVersionWhileDispatching) {
   Config config;
   config.number_of_workers = 2;
   RomaService<> roma_service(std::move(config));
-  ASSERT_TRUE(roma_service.Init().ok());
+  auto status = roma_service.Init();
+  ASSERT_TRUE(status.ok());
 
   std::string result;
 
@@ -1355,13 +1232,12 @@ TEST(SandboxedServiceTest, ShouldAllowLoadingVersionWhileDispatching) {
   )JS_CODE",
     });
 
-    EXPECT_TRUE(roma_service
-                    .LoadCodeObj(std::move(code_obj),
-                                 [&](absl::StatusOr<ResponseObject> resp) {
-                                   EXPECT_TRUE(resp.ok());
-                                   load_finished.Notify();
-                                 })
-                    .ok());
+    status = roma_service.LoadCodeObj(std::move(code_obj),
+                                      [&](absl::StatusOr<ResponseObject> resp) {
+                                        EXPECT_TRUE(resp.ok());
+                                        load_finished.Notify();
+                                      });
+    EXPECT_TRUE(status.ok());
     ASSERT_TRUE(
         load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   }
@@ -1405,13 +1281,12 @@ TEST(SandboxedServiceTest, ShouldAllowLoadingVersionWhileDispatching) {
   )JS_CODE",
       });
 
-      EXPECT_TRUE(roma_service
-                      .LoadCodeObj(std::move(code_obj),
-                                   [&](absl::StatusOr<ResponseObject> resp) {
-                                     EXPECT_TRUE(resp.ok());
-                                     load_finished.Notify();
-                                   })
-                      .ok());
+      status = roma_service.LoadCodeObj(
+          std::move(code_obj), [&](absl::StatusOr<ResponseObject> resp) {
+            EXPECT_TRUE(resp.ok());
+            load_finished.Notify();
+          });
+      EXPECT_TRUE(status.ok());
     }
     ASSERT_TRUE(
         load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
@@ -1421,14 +1296,16 @@ TEST(SandboxedServiceTest, ShouldAllowLoadingVersionWhileDispatching) {
 
   EXPECT_THAT(result, StrEq(R"("Hello world1! \"Foobar\"")"));
 
-  EXPECT_TRUE(roma_service.Stop().ok());
+  status = roma_service.Stop();
+  EXPECT_TRUE(status.ok());
 }
 
 TEST(SandboxedServiceTest, ShouldTimeOutIfExecutionExceedsDeadline) {
   Config config;
   config.number_of_workers = 1;
   RomaService<> roma_service(std::move(config));
-  ASSERT_TRUE(roma_service.Init().ok());
+  auto status = roma_service.Init();
+  ASSERT_TRUE(status.ok());
 
   std::string result;
 
@@ -1454,13 +1331,12 @@ TEST(SandboxedServiceTest, ShouldTimeOutIfExecutionExceedsDeadline) {
   )JS_CODE",
     });
 
-    EXPECT_TRUE(roma_service
-                    .LoadCodeObj(std::move(code_obj),
-                                 [&](absl::StatusOr<ResponseObject> resp) {
-                                   EXPECT_TRUE(resp.ok());
-                                   load_finished.Notify();
-                                 })
-                    .ok());
+    status = roma_service.LoadCodeObj(std::move(code_obj),
+                                      [&](absl::StatusOr<ResponseObject> resp) {
+                                        EXPECT_TRUE(resp.ok());
+                                        load_finished.Notify();
+                                      });
+    EXPECT_TRUE(status.ok());
     ASSERT_TRUE(
         load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   }
@@ -1476,20 +1352,19 @@ TEST(SandboxedServiceTest, ShouldTimeOutIfExecutionExceedsDeadline) {
             .id = "foo",
             .version_string = "v1",
             .handler_name = "Handler",
-            .tags = {{std::string(kTimeoutDurationTag), "10000ms"}},
             .input = {R"("9000")"},
+            .tags = {{std::string(kTimeoutDurationTag), "10000ms"}},
         });
 
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execution_obj),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               EXPECT_TRUE(resp.ok());
-                               if (resp.ok()) {
-                                 result = std::move(resp->resp);
-                               }
-                               execute_finished.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(std::move(execution_obj),
+                                  [&](absl::StatusOr<ResponseObject> resp) {
+                                    EXPECT_TRUE(resp.ok());
+                                    if (resp.ok()) {
+                                      result = std::move(resp->resp);
+                                    }
+                                    execute_finished.Notify();
+                                  });
+    EXPECT_TRUE(status.ok());
     ASSERT_TRUE(
         execute_finished.WaitForNotificationWithTimeout(absl::Seconds(30)));
   }
@@ -1513,17 +1388,16 @@ TEST(SandboxedServiceTest, ShouldTimeOutIfExecutionExceedsDeadline) {
             .id = "foo",
             .version_string = "v1",
             .handler_name = "Handler",
-            .tags = {{std::string(kTimeoutDurationTag), "10000ms"}},
             .input = {R"("11000")"},
+            .tags = {{std::string(kTimeoutDurationTag), "10000ms"}},
         });
 
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execution_obj),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               EXPECT_FALSE(resp.ok());
-                               execute_finished.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(std::move(execution_obj),
+                                  [&](absl::StatusOr<ResponseObject> resp) {
+                                    EXPECT_FALSE(resp.ok());
+                                    execute_finished.Notify();
+                                  });
+    EXPECT_TRUE(status.ok());
     ASSERT_TRUE(
         execute_finished.WaitForNotificationWithTimeout(absl::Seconds(30)));
   }
@@ -1536,14 +1410,16 @@ TEST(SandboxedServiceTest, ShouldTimeOutIfExecutionExceedsDeadline) {
   EXPECT_LE(elapsed_time_ms, 11000);
   EXPECT_THAT(result, IsEmpty());
 
-  EXPECT_TRUE(roma_service.Stop().ok());
+  status = roma_service.Stop();
+  EXPECT_TRUE(status.ok());
 }
 
 TEST(SandboxedServiceTest, ShouldGetCompileErrorForBadJsCode) {
   Config config;
   config.number_of_workers = 2;
   RomaService<> roma_service(std::move(config));
-  ASSERT_TRUE(roma_service.Init().ok());
+  auto status = roma_service.Init();
+  ASSERT_TRUE(status.ok());
 
   absl::Notification load_finished;
 
@@ -1557,26 +1433,26 @@ TEST(SandboxedServiceTest, ShouldGetCompileErrorForBadJsCode) {
   )JS_CODE",
     });
 
-    EXPECT_TRUE(roma_service
-                    .LoadCodeObj(std::move(code_obj),
-                                 [&](absl::StatusOr<ResponseObject> resp) {
-                                   EXPECT_EQ(resp.status().code(),
-                                             absl::StatusCode::kInternal);
-                                   load_finished.Notify();
-                                 })
-                    .ok());
+    status = roma_service.LoadCodeObj(
+        std::move(code_obj), [&](absl::StatusOr<ResponseObject> resp) {
+          EXPECT_EQ(resp.status().code(), absl::StatusCode::kInternal);
+          load_finished.Notify();
+        });
+    EXPECT_TRUE(status.ok());
   }
 
   ASSERT_TRUE(load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
 
-  EXPECT_TRUE(roma_service.Stop().ok());
+  status = roma_service.Stop();
+  EXPECT_TRUE(status.ok());
 }
 
 TEST(SandboxedServiceTest, ShouldGetExecutionErrorWhenJsCodeThrowError) {
   Config config;
   config.number_of_workers = 2;
   RomaService<> roma_service(std::move(config));
-  ASSERT_TRUE(roma_service.Init().ok());
+  auto status = roma_service.Init();
+  ASSERT_TRUE(status.ok());
 
   absl::Notification load_finished;
   absl::Notification execute_finished;
@@ -1596,13 +1472,12 @@ TEST(SandboxedServiceTest, ShouldGetExecutionErrorWhenJsCodeThrowError) {
     )JS_CODE",
     });
 
-    EXPECT_TRUE(roma_service
-                    .LoadCodeObj(std::move(code_obj),
-                                 [&](absl::StatusOr<ResponseObject> resp) {
-                                   EXPECT_TRUE(resp.ok());
-                                   load_finished.Notify();
-                                 })
-                    .ok());
+    status = roma_service.LoadCodeObj(std::move(code_obj),
+                                      [&](absl::StatusOr<ResponseObject> resp) {
+                                        EXPECT_TRUE(resp.ok());
+                                        load_finished.Notify();
+                                      });
+    EXPECT_TRUE(status.ok());
   }
 
   {
@@ -1614,15 +1489,13 @@ TEST(SandboxedServiceTest, ShouldGetExecutionErrorWhenJsCodeThrowError) {
             .input = {"9000"},
         });
 
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execution_obj),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               ASSERT_TRUE(resp.ok());
-                               EXPECT_THAT(resp->resp,
-                                           StrEq(R"("Hello world! 9000")"));
-                               execute_finished.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(
+        std::move(execution_obj), [&](absl::StatusOr<ResponseObject> resp) {
+          ASSERT_TRUE(resp.ok());
+          EXPECT_THAT(resp->resp, StrEq(R"("Hello world! 9000")"));
+          execute_finished.Notify();
+        });
+    EXPECT_TRUE(status.ok());
   }
 
   {
@@ -1634,14 +1507,12 @@ TEST(SandboxedServiceTest, ShouldGetExecutionErrorWhenJsCodeThrowError) {
             .input = {R"("0")"},
         });
 
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execution_obj),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               ASSERT_EQ(resp.status().code(),
-                                         absl::StatusCode::kInternal);
-                               execute_failed.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(
+        std::move(execution_obj), [&](absl::StatusOr<ResponseObject> resp) {
+          ASSERT_EQ(resp.status().code(), absl::StatusCode::kInternal);
+          execute_failed.Notify();
+        });
+    EXPECT_TRUE(status.ok());
   }
 
   ASSERT_TRUE(load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
@@ -1649,14 +1520,16 @@ TEST(SandboxedServiceTest, ShouldGetExecutionErrorWhenJsCodeThrowError) {
       execute_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   ASSERT_TRUE(execute_failed.WaitForNotificationWithTimeout(absl::Seconds(10)));
 
-  EXPECT_TRUE(roma_service.Stop().ok());
+  status = roma_service.Stop();
+  EXPECT_TRUE(status.ok());
 }
 
 TEST(SandboxedServiceTest, ShouldGetExecutionErrorWhenJsCodeReturnUndefined) {
   Config config;
   config.number_of_workers = 2;
   RomaService<> roma_service(std::move(config));
-  ASSERT_TRUE(roma_service.Init().ok());
+  auto status = roma_service.Init();
+  ASSERT_TRUE(status.ok());
 
   absl::Notification load_finished;
   absl::Notification execute_finished;
@@ -1677,13 +1550,12 @@ TEST(SandboxedServiceTest, ShouldGetExecutionErrorWhenJsCodeReturnUndefined) {
     )JS_CODE",
     });
 
-    EXPECT_TRUE(roma_service
-                    .LoadCodeObj(std::move(code_obj),
-                                 [&](absl::StatusOr<ResponseObject> resp) {
-                                   EXPECT_TRUE(resp.ok());
-                                   load_finished.Notify();
-                                 })
-                    .ok());
+    status = roma_service.LoadCodeObj(std::move(code_obj),
+                                      [&](absl::StatusOr<ResponseObject> resp) {
+                                        EXPECT_TRUE(resp.ok());
+                                        load_finished.Notify();
+                                      });
+    EXPECT_TRUE(status.ok());
   }
 
   {
@@ -1695,15 +1567,13 @@ TEST(SandboxedServiceTest, ShouldGetExecutionErrorWhenJsCodeReturnUndefined) {
             .input = {"9000"},
         });
 
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execution_obj),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               ASSERT_TRUE(resp.ok());
-                               EXPECT_THAT(resp->resp,
-                                           StrEq(R"("Hello world! 9000")"));
-                               execute_finished.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(
+        std::move(execution_obj), [&](absl::StatusOr<ResponseObject> resp) {
+          ASSERT_TRUE(resp.ok());
+          EXPECT_THAT(resp->resp, StrEq(R"("Hello world! 9000")"));
+          execute_finished.Notify();
+        });
+    EXPECT_TRUE(status.ok());
   }
 
   {
@@ -1715,14 +1585,12 @@ TEST(SandboxedServiceTest, ShouldGetExecutionErrorWhenJsCodeReturnUndefined) {
             .input = {R"("0")"},
         });
 
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execution_obj),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               EXPECT_EQ(resp.status().code(),
-                                         absl::StatusCode::kInternal);
-                               execute_failed.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(
+        std::move(execution_obj), [&](absl::StatusOr<ResponseObject> resp) {
+          EXPECT_EQ(resp.status().code(), absl::StatusCode::kInternal);
+          execute_failed.Notify();
+        });
+    EXPECT_TRUE(status.ok());
   }
 
   ASSERT_TRUE(load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
@@ -1730,14 +1598,16 @@ TEST(SandboxedServiceTest, ShouldGetExecutionErrorWhenJsCodeReturnUndefined) {
       execute_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   ASSERT_TRUE(execute_failed.WaitForNotificationWithTimeout(absl::Seconds(10)));
 
-  EXPECT_TRUE(roma_service.Stop().ok());
+  status = roma_service.Stop();
+  EXPECT_TRUE(status.ok());
 }
 
 TEST(SandboxedServiceTest, CanHandleMultipleInputs) {
   Config config;
   config.number_of_workers = 2;
   RomaService<> roma_service(std::move(config));
-  ASSERT_TRUE(roma_service.Init().ok());
+  auto status = roma_service.Init();
+  ASSERT_TRUE(status.ok());
 
   std::string result;
   absl::Notification load_finished;
@@ -1754,13 +1624,12 @@ TEST(SandboxedServiceTest, CanHandleMultipleInputs) {
   )JS_CODE",
     });
 
-    EXPECT_TRUE(roma_service
-                    .LoadCodeObj(std::move(code_obj),
-                                 [&](absl::StatusOr<ResponseObject> resp) {
-                                   EXPECT_TRUE(resp.ok());
-                                   load_finished.Notify();
-                                 })
-                    .ok());
+    status = roma_service.LoadCodeObj(std::move(code_obj),
+                                      [&](absl::StatusOr<ResponseObject> resp) {
+                                        EXPECT_TRUE(resp.ok());
+                                        load_finished.Notify();
+                                      });
+    EXPECT_TRUE(status.ok());
   }
 
   {
@@ -1772,30 +1641,31 @@ TEST(SandboxedServiceTest, CanHandleMultipleInputs) {
             .input = {R"("Foobar1")", R"(" Barfoo2")"},
         });
 
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execution_obj),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               EXPECT_TRUE(resp.ok());
-                               if (resp.ok()) {
-                                 result = std::move(resp->resp);
-                               }
-                               execute_finished.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(std::move(execution_obj),
+                                  [&](absl::StatusOr<ResponseObject> resp) {
+                                    EXPECT_TRUE(resp.ok());
+                                    if (resp.ok()) {
+                                      result = std::move(resp->resp);
+                                    }
+                                    execute_finished.Notify();
+                                  });
+    EXPECT_TRUE(status.ok());
   }
   ASSERT_TRUE(load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   ASSERT_TRUE(
       execute_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   EXPECT_THAT(result, StrEq(R"("Foobar1 Barfoo2")"));
 
-  EXPECT_TRUE(roma_service.Stop().ok());
+  status = roma_service.Stop();
+  EXPECT_TRUE(status.ok());
 }
 
 TEST(SandboxedServiceTest, ErrorShouldBeExplicitWhenInputCannotBeParsed) {
   Config config;
   config.number_of_workers = 2;
   RomaService<> roma_service(std::move(config));
-  ASSERT_TRUE(roma_service.Init().ok());
+  auto status = roma_service.Init();
+  ASSERT_TRUE(status.ok());
 
   std::string result;
   absl::Notification load_finished;
@@ -1812,13 +1682,12 @@ TEST(SandboxedServiceTest, ErrorShouldBeExplicitWhenInputCannotBeParsed) {
   )JS_CODE",
     });
 
-    EXPECT_TRUE(roma_service
-                    .LoadCodeObj(std::move(code_obj),
-                                 [&](absl::StatusOr<ResponseObject> resp) {
-                                   EXPECT_TRUE(resp.ok());
-                                   load_finished.Notify();
-                                 })
-                    .ok());
+    status = roma_service.LoadCodeObj(std::move(code_obj),
+                                      [&](absl::StatusOr<ResponseObject> resp) {
+                                        EXPECT_TRUE(resp.ok());
+                                        load_finished.Notify();
+                                      });
+    EXPECT_TRUE(status.ok());
   }
 
   {
@@ -1831,20 +1700,19 @@ TEST(SandboxedServiceTest, ErrorShouldBeExplicitWhenInputCannotBeParsed) {
             .input = {"Foobar1"},
         });
 
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execution_obj),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               EXPECT_EQ(resp.status().code(),
-                                         absl::StatusCode::kInternal);
-                               execute_finished.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(
+        std::move(execution_obj), [&](absl::StatusOr<ResponseObject> resp) {
+          EXPECT_EQ(resp.status().code(), absl::StatusCode::kInternal);
+          execute_finished.Notify();
+        });
+    EXPECT_TRUE(status.ok());
   }
   ASSERT_TRUE(load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   ASSERT_TRUE(
       execute_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
 
-  EXPECT_TRUE(roma_service.Stop().ok());
+  status = roma_service.Stop();
+  EXPECT_TRUE(status.ok());
 }
 
 TEST(SandboxedServiceTest,
@@ -1852,7 +1720,8 @@ TEST(SandboxedServiceTest,
   Config config;
   config.number_of_workers = 2;
   RomaService<> roma_service(std::move(config));
-  ASSERT_TRUE(roma_service.Init().ok());
+  auto status = roma_service.Init();
+  ASSERT_TRUE(status.ok());
 
   std::string result;
 
@@ -1867,14 +1736,13 @@ TEST(SandboxedServiceTest,
     )JS_CODE",
     });
 
-    EXPECT_TRUE(roma_service
-                    .LoadCodeObj(std::move(code_obj),
-                                 [&](absl::StatusOr<ResponseObject> resp) {
-                                   // Load should have failed
-                                   EXPECT_FALSE(resp.ok());
-                                   load_finished.Notify();
-                                 })
-                    .ok());
+    status = roma_service.LoadCodeObj(std::move(code_obj),
+                                      [&](absl::StatusOr<ResponseObject> resp) {
+                                        // Load should have failed
+                                        EXPECT_FALSE(resp.ok());
+                                        load_finished.Notify();
+                                      });
+    EXPECT_TRUE(status.ok());
     ASSERT_TRUE(
         load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   }
@@ -1889,16 +1757,14 @@ TEST(SandboxedServiceTest,
             .input = {R"("Foobar")"},
         });
 
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execution_obj),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               // Execution should fail since load didn't work
-                               // for this code version
-                               EXPECT_EQ(resp.status().code(),
-                                         absl::StatusCode::kInternal);
-                               execute_finished.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(
+        std::move(execution_obj), [&](absl::StatusOr<ResponseObject> resp) {
+          // Execution should fail since load didn't work for this
+          // code version
+          EXPECT_EQ(resp.status().code(), absl::StatusCode::kInternal);
+          execute_finished.Notify();
+        });
+    EXPECT_TRUE(status.ok());
     ASSERT_TRUE(
         execute_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   }
@@ -1909,16 +1775,17 @@ TEST(SandboxedServiceTest,
     auto code_obj = std::make_unique<CodeObject>(CodeObject{
         .id = "foo",
         .version_string = "v1",
-        .js = R"(function Handler() { return "Hello there"; })",
+        .js = R"JS_CODE(
+    function Handler() { return "Hello there";}
+    )JS_CODE",
     });
 
-    EXPECT_TRUE(roma_service
-                    .LoadCodeObj(std::move(code_obj),
-                                 [&](absl::StatusOr<ResponseObject> resp) {
-                                   EXPECT_TRUE(resp.ok());
-                                   load_finished.Notify();
-                                 })
-                    .ok());
+    status = roma_service.LoadCodeObj(std::move(code_obj),
+                                      [&](absl::StatusOr<ResponseObject> resp) {
+                                        EXPECT_TRUE(resp.ok());
+                                        load_finished.Notify();
+                                      });
+    EXPECT_TRUE(status.ok());
     ASSERT_TRUE(
         load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   }
@@ -1933,27 +1800,27 @@ TEST(SandboxedServiceTest,
             .handler_name = "Handler",
         });
 
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execution_obj),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               EXPECT_TRUE(resp.ok());
-                               EXPECT_THAT(resp->resp,
-                                           StrEq(R"("Hello there")"));
-                               execute_finished.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(
+        std::move(execution_obj), [&](absl::StatusOr<ResponseObject> resp) {
+          EXPECT_TRUE(resp.ok());
+          EXPECT_THAT(resp->resp, StrEq(R"("Hello there")"));
+          execute_finished.Notify();
+        });
+    EXPECT_TRUE(status.ok());
     ASSERT_TRUE(
         execute_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   }
 
-  EXPECT_TRUE(roma_service.Stop().ok());
+  status = roma_service.Stop();
+  EXPECT_TRUE(status.ok());
 }
 
 TEST(SandboxedServiceTest, ShouldBeAbleToOverwriteVersion) {
   Config config;
   config.number_of_workers = 2;
   RomaService<> roma_service(std::move(config));
-  ASSERT_TRUE(roma_service.Init().ok());
+  auto status = roma_service.Init();
+  ASSERT_TRUE(status.ok());
 
   std::string result;
 
@@ -1968,13 +1835,12 @@ TEST(SandboxedServiceTest, ShouldBeAbleToOverwriteVersion) {
     )JS_CODE",
     });
 
-    EXPECT_TRUE(roma_service
-                    .LoadCodeObj(std::move(code_obj),
-                                 [&](absl::StatusOr<ResponseObject> resp) {
-                                   EXPECT_TRUE(resp.ok());
-                                   load_finished.Notify();
-                                 })
-                    .ok());
+    status = roma_service.LoadCodeObj(std::move(code_obj),
+                                      [&](absl::StatusOr<ResponseObject> resp) {
+                                        EXPECT_TRUE(resp.ok());
+                                        load_finished.Notify();
+                                      });
+    EXPECT_TRUE(status.ok());
     ASSERT_TRUE(
         load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   }
@@ -1990,14 +1856,13 @@ TEST(SandboxedServiceTest, ShouldBeAbleToOverwriteVersion) {
             .input = {R"("Foobar")"},
         });
 
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execution_obj),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               EXPECT_TRUE(resp.ok());
-                               EXPECT_THAT(resp->resp, StrEq(R"("version 1")"));
-                               execute_finished.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(
+        std::move(execution_obj), [&](absl::StatusOr<ResponseObject> resp) {
+          EXPECT_TRUE(resp.ok());
+          EXPECT_THAT(resp->resp, StrEq(R"("version 1")"));
+          execute_finished.Notify();
+        });
+    EXPECT_TRUE(status.ok());
     ASSERT_TRUE(
         execute_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   }
@@ -2013,13 +1878,12 @@ TEST(SandboxedServiceTest, ShouldBeAbleToOverwriteVersion) {
     )JS_CODE",
     });
 
-    EXPECT_TRUE(roma_service
-                    .LoadCodeObj(std::move(code_obj),
-                                 [&](absl::StatusOr<ResponseObject> resp) {
-                                   EXPECT_TRUE(resp.ok());
-                                   load_finished.Notify();
-                                 })
-                    .ok());
+    status = roma_service.LoadCodeObj(std::move(code_obj),
+                                      [&](absl::StatusOr<ResponseObject> resp) {
+                                        EXPECT_TRUE(resp.ok());
+                                        load_finished.Notify();
+                                      });
+    EXPECT_TRUE(status.ok());
     ASSERT_TRUE(
         load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   }
@@ -2034,21 +1898,19 @@ TEST(SandboxedServiceTest, ShouldBeAbleToOverwriteVersion) {
             .handler_name = "Handler",
         });
 
-    EXPECT_TRUE(roma_service
-                    .Execute(std::move(execution_obj),
-                             [&](absl::StatusOr<ResponseObject> resp) {
-                               EXPECT_TRUE(resp.ok());
-                               EXPECT_THAT(resp->resp,
-                                           StrEq(R"("version 1 but updated")"));
-                               execute_finished.Notify();
-                             })
-                    .ok());
+    status = roma_service.Execute(
+        std::move(execution_obj), [&](absl::StatusOr<ResponseObject> resp) {
+          EXPECT_TRUE(resp.ok());
+          EXPECT_THAT(resp->resp, StrEq(R"("version 1 but updated")"));
+          execute_finished.Notify();
+        });
+    EXPECT_TRUE(status.ok());
     ASSERT_TRUE(
         execute_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
   }
 
-  EXPECT_TRUE(roma_service.Stop().ok());
+  status = roma_service.Stop();
+  EXPECT_TRUE(status.ok());
 }
-
 }  // namespace
 }  // namespace google::scp::roma::test

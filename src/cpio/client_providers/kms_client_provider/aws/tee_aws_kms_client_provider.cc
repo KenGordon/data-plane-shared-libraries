@@ -94,7 +94,27 @@ std::vector<std::string> BuildDecryptArgs(std::string region,
 
 }  // namespace
 
-absl::Status TeeAwsKmsClientProvider::Decrypt(
+ExecutionResult TeeAwsKmsClientProvider::Init() noexcept {
+  if (!credential_provider_) {
+    auto execution_result = FailureExecutionResult(
+        SC_TEE_AWS_KMS_CLIENT_PROVIDER_CREDENTIAL_PROVIDER_NOT_FOUND);
+    SCP_ERROR(kTeeAwsKmsClientProvider, kZeroUuid, execution_result,
+              "Failed to get credential provider.");
+    return execution_result;
+  }
+
+  return SuccessExecutionResult();
+}
+
+ExecutionResult TeeAwsKmsClientProvider::Run() noexcept {
+  return SuccessExecutionResult();
+}
+
+ExecutionResult TeeAwsKmsClientProvider::Stop() noexcept {
+  return SuccessExecutionResult();
+}
+
+ExecutionResult TeeAwsKmsClientProvider::Decrypt(
     core::AsyncContext<DecryptRequest, DecryptResponse>&
         decrypt_context) noexcept {
   const auto& ciphertext = decrypt_context.request->ciphertext();
@@ -105,9 +125,7 @@ absl::Status TeeAwsKmsClientProvider::Decrypt(
                       execution_result,
                       "Failed to get cipher text from decryption request.");
     decrypt_context.Finish(execution_result);
-    return absl::InvalidArgumentError(
-        google::scp::core::errors::GetErrorMessage(
-            execution_result.status_code));
+    return decrypt_context.result;
   }
 
   const auto& assume_role_arn = decrypt_context.request->account_identity();
@@ -117,9 +135,7 @@ absl::Status TeeAwsKmsClientProvider::Decrypt(
     SCP_ERROR_CONTEXT(kTeeAwsKmsClientProvider, decrypt_context,
                       execution_result, "Failed to get AssumeRole Arn.");
     decrypt_context.Finish(execution_result);
-    return absl::InvalidArgumentError(
-        google::scp::core::errors::GetErrorMessage(
-            execution_result.status_code));
+    return execution_result;
   }
 
   const auto& kms_region = decrypt_context.request->kms_region();
@@ -129,9 +145,7 @@ absl::Status TeeAwsKmsClientProvider::Decrypt(
     SCP_ERROR_CONTEXT(kTeeAwsKmsClientProvider, decrypt_context,
                       execution_result, "Failed to get region.");
     decrypt_context.Finish(execution_result);
-    return absl::InvalidArgumentError(
-        google::scp::core::errors::GetErrorMessage(
-            execution_result.status_code));
+    return execution_result;
   }
 
   auto get_credentials_request = std::make_shared<GetRoleCredentialsRequest>();
@@ -223,7 +237,7 @@ TeeAwsKmsClientProvider::DecryptUsingEnclavesKmstoolCli(
 
 std::unique_ptr<KmsClientProviderInterface> KmsClientProviderFactory::Create(
     KmsClientOptions options,
-    absl::Nonnull<RoleCredentialsProviderInterface*> role_credentials_provider,
+    RoleCredentialsProviderInterface* role_credentials_provider,
     core::AsyncExecutorInterface* io_async_executor) noexcept {
   return std::make_unique<TeeAwsKmsClientProvider>(role_credentials_provider);
 }

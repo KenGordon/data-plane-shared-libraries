@@ -31,15 +31,24 @@
 using google::scp::core::common::TimeProvider;
 
 namespace google::scp::core {
-SingleThreadPriorityAsyncExecutor::SingleThreadPriorityAsyncExecutor(
-    size_t queue_cap, std::optional<size_t> affinity_cpu_number)
-    : is_running_(true),
-      worker_thread_started_(false),
-      worker_thread_stopped_(false),
-      update_wait_time_(false),
-      next_scheduled_task_timestamp_(UINT64_MAX),
-      queue_cap_(queue_cap),
-      affinity_cpu_number_(affinity_cpu_number) {
+ExecutionResult SingleThreadPriorityAsyncExecutor::Init() noexcept {
+  if (queue_cap_ <= 0 || queue_cap_ > kMaxQueueCap) {
+    return FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_INVALID_QUEUE_CAP);
+  }
+  absl::MutexLock l(&mutex_);
+  queue_.emplace();
+  return SuccessExecutionResult();
+};
+
+ExecutionResult SingleThreadPriorityAsyncExecutor::Run() noexcept {
+  absl::MutexLock l(&mutex_);
+  if (is_running_) {
+    return FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_ALREADY_RUNNING);
+  }
+  if (!queue_) {
+    return FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_NOT_INITIALIZED);
+  }
+  is_running_ = true;
   working_thread_.emplace(
       [affinity_cpu_number =
            affinity_cpu_number_](SingleThreadPriorityAsyncExecutor* ptr) {
@@ -60,6 +69,7 @@ SingleThreadPriorityAsyncExecutor::SingleThreadPriorityAsyncExecutor(
       this);
   working_thread_id_ = working_thread_->get_id();
   working_thread_->detach();
+  return SuccessExecutionResult();
 }
 
 void SingleThreadPriorityAsyncExecutor::StartWorker() noexcept {
@@ -81,11 +91,11 @@ void SingleThreadPriorityAsyncExecutor::StartWorker() noexcept {
 
       // Discard any cancelled tasks on top of the queue as an optimization to
       // avoid waiting for the future to arrive on an already cancelled task
-      while (!queue_.empty() && queue_.top()->IsCancelled()) {
-        queue_.pop();
+      while (!queue_->empty() && queue_->top()->IsCancelled()) {
+        queue_->pop();
       }
 
-      if (queue_.size() == 0) {
+      if (queue_->size() == 0) {
         if (!is_running_) {
           break;
         }
@@ -94,22 +104,25 @@ void SingleThreadPriorityAsyncExecutor::StartWorker() noexcept {
         continue;
       }
 
-      next_scheduled_task_timestamp_ = queue_.top()->GetExecutionTimestamp();
+      next_scheduled_task_timestamp_ = queue_->top()->GetExecutionTimestamp();
       wait_timeout_duration = absl::ZeroDuration();
       if (current_timestamp < next_scheduled_task_timestamp_) {
         wait_timeout_duration = absl::Nanoseconds(
             next_scheduled_task_timestamp_ - current_timestamp);
         continue;
       }
-      top = queue_.top();
-      queue_.pop();
+      top = queue_->top();
+      queue_->pop();
     }
     top->Execute();
   }
 }
 
-SingleThreadPriorityAsyncExecutor::~SingleThreadPriorityAsyncExecutor() {
+ExecutionResult SingleThreadPriorityAsyncExecutor::Stop() noexcept {
   absl::MutexLock l(&mutex_);
+  if (!is_running_) {
+    return FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_NOT_RUNNING);
+  }
   is_running_ = false;
 
   // To ensure stop can happen cleanly, it is required to wait for the thread to
@@ -121,7 +134,8 @@ SingleThreadPriorityAsyncExecutor::~SingleThreadPriorityAsyncExecutor() {
     return worker_thread_started_ && worker_thread_stopped_;
   };
   mutex_.Await(absl::Condition(&fn));
-}
+  return SuccessExecutionResult();
+};
 
 ExecutionResult SingleThreadPriorityAsyncExecutor::ScheduleFor(
     AsyncOperation work, Timestamp timestamp) noexcept {
@@ -133,12 +147,15 @@ ExecutionResult SingleThreadPriorityAsyncExecutor::ScheduleFor(
     AsyncOperation work, Timestamp timestamp,
     std::function<bool()>& cancellation_callback) noexcept {
   absl::MutexLock l(&mutex_);
-  if (queue_.size() >= queue_cap_) {
+  if (!is_running_) {
+    return FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_NOT_RUNNING);
+  }
+  if (queue_->size() >= queue_cap_) {
     return RetryExecutionResult(errors::SC_ASYNC_EXECUTOR_EXCEEDING_QUEUE_CAP);
   }
   auto task = std::make_shared<AsyncTask>(std::move(work), timestamp);
   cancellation_callback = [task]() mutable { return task->Cancel(); };
-  queue_.push(task);
+  queue_->push(task);
   if (timestamp < next_scheduled_task_timestamp_) {
     next_scheduled_task_timestamp_ = timestamp;
     update_wait_time_ = true;
@@ -146,7 +163,11 @@ ExecutionResult SingleThreadPriorityAsyncExecutor::ScheduleFor(
   return SuccessExecutionResult();
 };
 
-std::thread::id SingleThreadPriorityAsyncExecutor::GetThreadId() const {
+ExecutionResultOr<std::thread::id>
+SingleThreadPriorityAsyncExecutor::GetThreadId() const {
+  if (absl::MutexLock l(&mutex_); !is_running_) {
+    return FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_NOT_RUNNING);
+  }
   return working_thread_id_;
 }
 

@@ -46,15 +46,20 @@ class NonteeAwsKmsClientProvider : public KmsClientProviderInterface {
    * @param io_async_executor the thread pool for batch recording.
    */
   explicit NonteeAwsKmsClientProvider(
-      absl::Nonnull<RoleCredentialsProviderInterface*>
-          role_credentials_provider,
+      RoleCredentialsProviderInterface* role_credentials_provider,
       core::AsyncExecutorInterface* io_async_executor)
       : role_credentials_provider_(role_credentials_provider),
         io_async_executor_(io_async_executor) {}
 
   NonteeAwsKmsClientProvider() = delete;
 
-  absl::Status Decrypt(
+  core::ExecutionResult Init() noexcept override;
+
+  core::ExecutionResult Run() noexcept override;
+
+  core::ExecutionResult Stop() noexcept override;
+
+  core::ExecutionResult Decrypt(
       core::AsyncContext<cmrt::sdk::kms_service::v1::DecryptRequest,
                          cmrt::sdk::kms_service::v1::DecryptResponse>&
           decrypt_context) noexcept override;

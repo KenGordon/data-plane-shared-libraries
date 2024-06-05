@@ -70,7 +70,9 @@ class HttpClient : public HttpClientInterface {
   explicit HttpClient(AsyncExecutorInterface* async_executor,
                       HttpClientOptions options = HttpClientOptions());
 
-  ExecutionResult Stop() noexcept;
+  ExecutionResult Init() noexcept override;
+  ExecutionResult Run() noexcept override;
+  ExecutionResult Stop() noexcept override;
 
   ExecutionResult PerformRequest(
       AsyncContext<HttpRequest, HttpResponse>& http_context) noexcept override;

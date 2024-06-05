@@ -32,7 +32,7 @@ namespace google::scp::cpio::client_providers {
 /**
  * @brief Interface responsible for fetching instance data.
  */
-class InstanceClientProviderInterface {
+class InstanceClientProviderInterface : public core::ServiceInterface {
  public:
   virtual ~InstanceClientProviderInterface() = default;
 
@@ -40,9 +40,9 @@ class InstanceClientProviderInterface {
    * @brief Get the Current Instance Resource Name object
    *
    * @param context context of the operation.
-   * @return absl::Status result of the operation.
+   * @return core::ExecutionResult result of the operation.
    */
-  virtual absl::Status GetCurrentInstanceResourceName(
+  virtual core::ExecutionResult GetCurrentInstanceResourceName(
       core::AsyncContext<cmrt::sdk::instance_service::v1::
                              GetCurrentInstanceResourceNameRequest,
                          cmrt::sdk::instance_service::v1::
@@ -53,18 +53,18 @@ class InstanceClientProviderInterface {
    * @brief Get the Current Instance Resource  object synchronously.
    *
    * @param resource_name[out] the resource name of current instance.
-   * @return absl::Status
+   * @return core::ExecutionResult
    */
-  virtual absl::Status GetCurrentInstanceResourceNameSync(
+  virtual core::ExecutionResult GetCurrentInstanceResourceNameSync(
       std::string& resource_name) noexcept = 0;
 
   /**
    * @brief Get the Tags By Resource Name object
    *
    * @param context context of the operation.
-   * @return absl::Status result of the operation.
+   * @return core::ExecutionResult result of the operation.
    */
-  virtual absl::Status GetTagsByResourceName(
+  virtual core::ExecutionResult GetTagsByResourceName(
       core::AsyncContext<
           cmrt::sdk::instance_service::v1::GetTagsByResourceNameRequest,
           cmrt::sdk::instance_service::v1::GetTagsByResourceNameResponse>&
@@ -74,9 +74,9 @@ class InstanceClientProviderInterface {
    * @brief Get the Instance Details By Resource Name object
    *
    * @param context context of the operation.
-   * @return absl::Status result of the operation.
+   * @return core::ExecutionResult result of the operation.
    */
-  virtual absl::Status GetInstanceDetailsByResourceName(
+  virtual core::ExecutionResult GetInstanceDetailsByResourceName(
       core::AsyncContext<cmrt::sdk::instance_service::v1::
                              GetInstanceDetailsByResourceNameRequest,
                          cmrt::sdk::instance_service::v1::
@@ -87,9 +87,9 @@ class InstanceClientProviderInterface {
    * @brief List Instances By Environment
    *
    * @param context context of the operation.
-   * @return absl::Status result of the operation.
+   * @return core::ExecutionResult result of the operation.
    */
-  virtual absl::Status ListInstanceDetailsByEnvironment(
+  virtual core::ExecutionResult ListInstanceDetailsByEnvironment(
       core::AsyncContext<cmrt::sdk::instance_service::v1::
                              ListInstanceDetailsByEnvironmentRequest,
                          cmrt::sdk::instance_service::v1::
@@ -101,9 +101,9 @@ class InstanceClientProviderInterface {
    *
    * @param resource_name the given resource name
    * @param instance_details the details of the given instance.
-   * @return absl::Status
+   * @return core::ExecutionResult
    */
-  virtual absl::Status GetInstanceDetailsByResourceNameSync(
+  virtual core::ExecutionResult GetInstanceDetailsByResourceNameSync(
       std::string_view resource_name,
       cmrt::sdk::instance_service::v1::InstanceDetails&
           instance_details) noexcept = 0;

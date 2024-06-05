@@ -75,7 +75,16 @@ class AsyncExecutor : public AsyncExecutorInterface {
    */
   AsyncExecutor(size_t thread_count, size_t queue_cap,
                 TaskLoadBalancingScheme task_load_balancing_scheme =
-                    TaskLoadBalancingScheme::RoundRobinGlobal);
+                    TaskLoadBalancingScheme::RoundRobinGlobal)
+      : thread_count_(thread_count),
+        queue_cap_(queue_cap),
+        task_load_balancing_scheme_(task_load_balancing_scheme) {}
+
+  ExecutionResult Init() noexcept override;
+
+  ExecutionResult Run() noexcept override;
+
+  ExecutionResult Stop() noexcept override;
 
   ExecutionResult Schedule(AsyncOperation work,
                            AsyncPriority priority) noexcept override;

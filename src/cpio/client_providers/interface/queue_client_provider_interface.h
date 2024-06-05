@@ -20,8 +20,6 @@
 #include <memory>
 #include <string>
 
-#include "absl/status/status.h"
-#include "absl/status/statusor.h"
 #include "src/core/interface/async_context.h"
 #include "src/core/interface/service_interface.h"
 #include "src/public/core/interface/execution_result.h"
@@ -34,33 +32,33 @@ namespace google::scp::cpio::client_providers {
 /**
  * @brief Interface responsible for queuing messages.
  */
-class QueueClientProviderInterface {
+class QueueClientProviderInterface : public core::ServiceInterface {
  public:
   virtual ~QueueClientProviderInterface() = default;
   /**
    * @brief Enqueue a message to the queue.
    * @param enqueue_message_context context of the operation.
-   * @return absl::Status status of the operation.
+   * @return ExecutionResult result of the operation.
    */
-  virtual absl::Status EnqueueMessage(
+  virtual core::ExecutionResult EnqueueMessage(
       core::AsyncContext<cmrt::sdk::queue_service::v1::EnqueueMessageRequest,
                          cmrt::sdk::queue_service::v1::EnqueueMessageResponse>&
           enqueue_message_context) noexcept = 0;
   /**
    * @brief Get top message from the queue.
    * @param get_top_message_context context of the operation.
-   * @return absl::Status status of the operation.
+   * @return ExecutionResult result of the operation.
    */
-  virtual absl::Status GetTopMessage(
+  virtual core::ExecutionResult GetTopMessage(
       core::AsyncContext<cmrt::sdk::queue_service::v1::GetTopMessageRequest,
                          cmrt::sdk::queue_service::v1::GetTopMessageResponse>&
           get_top_message_context) noexcept = 0;
   /**
    * @brief Update visibility timeout of a message from the queue.
    * @param update_message_visibility_timeout_context context of the operation.
-   * @return absl::Status status of the operation.
+   * @return ExecutionResult result of the operation.
    */
-  virtual absl::Status UpdateMessageVisibilityTimeout(
+  virtual core::ExecutionResult UpdateMessageVisibilityTimeout(
       core::AsyncContext<
           cmrt::sdk::queue_service::v1::UpdateMessageVisibilityTimeoutRequest,
           cmrt::sdk::queue_service::v1::UpdateMessageVisibilityTimeoutResponse>&
@@ -68,9 +66,9 @@ class QueueClientProviderInterface {
   /**
    * @brief Delete a message from the queue.
    * @param delete_message_context context of the operation.
-   * @return absl::Status status of the operation.
+   * @return ExecutionResult result of the operation.
    */
-  virtual absl::Status DeleteMessage(
+  virtual core::ExecutionResult DeleteMessage(
       core::AsyncContext<cmrt::sdk::queue_service::v1::DeleteMessageRequest,
                          cmrt::sdk::queue_service::v1::DeleteMessageResponse>&
           delete_message_context) noexcept = 0;
@@ -101,7 +99,7 @@ class QueueClientProviderFactory {
    * @return std::unique_ptr<QueueClientProviderInterface> created
    * QueueClientProviderProvider.
    */
-  static absl::StatusOr<std::unique_ptr<QueueClientProviderInterface>> Create(
+  static std::unique_ptr<QueueClientProviderInterface> Create(
       QueueClientOptions options,
       InstanceClientProviderInterface* instance_client,
       core::AsyncExecutorInterface* cpu_async_executor,

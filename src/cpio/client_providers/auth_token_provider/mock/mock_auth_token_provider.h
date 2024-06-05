@@ -28,6 +28,10 @@ namespace google::scp::cpio::client_providers::mock {
 
 class MockAuthTokenProvider : public AuthTokenProviderInterface {
  public:
+  MOCK_METHOD(core::ExecutionResult, Init, (), (override, noexcept));
+  MOCK_METHOD(core::ExecutionResult, Run, (), (override, noexcept));
+  MOCK_METHOD(core::ExecutionResult, Stop, (), (override, noexcept));
+
   MOCK_METHOD(
       core::ExecutionResult, GetSessionToken,
       ((core::AsyncContext<GetSessionTokenRequest, GetSessionTokenResponse>&)),

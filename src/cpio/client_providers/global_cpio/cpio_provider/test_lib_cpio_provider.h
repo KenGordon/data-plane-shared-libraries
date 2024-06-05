@@ -32,9 +32,8 @@ class TestLibCpioProvider : public LibCpioProvider {
   explicit TestLibCpioProvider(TestCpioOptions test_options);
 
  private:
-  absl::StatusOr<std::unique_ptr<RoleCredentialsProviderInterface>>
+  std::unique_ptr<RoleCredentialsProviderInterface>
   CreateRoleCredentialsProvider(
-      RoleCredentialsProviderOptions options,
       InstanceClientProviderInterface* instance_client_provider,
       core::AsyncExecutorInterface* cpu_async_executor,
       core::AsyncExecutorInterface* io_async_executor) noexcept override;

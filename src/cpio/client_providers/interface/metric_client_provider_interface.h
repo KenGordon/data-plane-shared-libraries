@@ -20,7 +20,6 @@
 #include <memory>
 #include <string>
 
-#include "absl/status/status.h"
 #include "src/core/interface/async_context.h"
 #include "src/core/interface/async_executor_interface.h"
 #include "src/core/interface/service_interface.h"
@@ -59,39 +58,15 @@ struct MetricBatchingOptions {
       std::chrono::milliseconds(30000);
 };
 
-/**
- * @brief Interface responsible for recording custom metrics.
- */
-class MetricClientProviderInterface {
- public:
-  virtual ~MetricClientProviderInterface() = default;
-
-  virtual absl::Status Init() noexcept = 0;
-  virtual absl::Status Run() noexcept = 0;
-  virtual absl::Status Stop() noexcept = 0;
-
-  /**
-   * @brief Records custom metrics on Cloud.
-   *
-   * @param context put metric operation context.
-   * @return absl::Status scheduling result returned synchronously.
-   */
-  virtual absl::Status PutMetrics(
-      core::AsyncContext<
-          google::cmrt::sdk::metric_service::v1::PutMetricsRequest,
-          google::cmrt::sdk::metric_service::v1::PutMetricsResponse>
-          context) noexcept = 0;
-};
-
 class MetricClientProviderFactory {
  public:
   /**
    * @brief Factory to create MetricClientProvider.
    *
-   * @return std::unique_ptr<MetricClientProviderInterface> created
+   * @return std::unique_ptr<MetricClientInterface> created
    * MetricClientProvider.
    */
-  static std::unique_ptr<MetricClientProviderInterface> Create(
+  static std::unique_ptr<MetricClientInterface> Create(
       MetricClientOptions options,
       InstanceClientProviderInterface* instance_client_provider,
       core::AsyncExecutorInterface* async_executor,

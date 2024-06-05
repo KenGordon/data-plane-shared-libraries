@@ -150,6 +150,12 @@ class GcpCloudStorageClientAsyncTests : public testing::Test {
             std::make_shared<AsyncExecutor>(kThreadCount, kQueueSize)),
         config_provider_(std::make_shared<MockConfigProvider>()) {
     config_provider_->Set(std::string(kGcpProjectId), std::string(kProject));
+
+    async_executor_->Init();
+    async_executor_->Run();
+    io_async_executor_->Init();
+    io_async_executor_->Run();
+
     GcpCloudStorageProvider provider(async_executor_, io_async_executor_,
                                      config_provider_, AsyncPriority::Normal,
                                      AsyncPriority::Normal);
@@ -161,7 +167,11 @@ class GcpCloudStorageClientAsyncTests : public testing::Test {
     InsertDefaultBlob();
   }
 
-  ~GcpCloudStorageClientAsyncTests() { ClearBucket(); }
+  ~GcpCloudStorageClientAsyncTests() {
+    ClearBucket();
+    async_executor_->Stop();
+    io_async_executor_->Stop();
+  }
 
   std::shared_ptr<AsyncExecutor> async_executor_, io_async_executor_;
   std::shared_ptr<MockConfigProvider> config_provider_;

@@ -62,13 +62,12 @@ class MockMetricClientWithOverrides : public MetricClientProvider {
     return MetricClientProvider::RunMetricsBatchPush();
   }
 
-  absl::Status PutMetrics(
+  core::ExecutionResult PutMetrics(
       core::AsyncContext<cmrt::sdk::metric_service::v1::PutMetricsRequest,
                          cmrt::sdk::metric_service::v1::PutMetricsResponse>
           context) noexcept override {
-    core::ExecutionResult result = core::SuccessExecutionResult();
     if (record_metric_mock) {
-      result = record_metric_mock(context);
+      return record_metric_mock(context);
     }
     if (record_metric_result_mock) {
       if (record_metric_result_mock == core::SuccessExecutionResult()) {
@@ -76,12 +75,9 @@ class MockMetricClientWithOverrides : public MetricClientProvider {
             cmrt::sdk::metric_service::v1::PutMetricsResponse>();
       }
       context.Finish(record_metric_result_mock);
-      result = record_metric_result_mock;
+      return record_metric_result_mock;
     }
-    if (!result.Successful()) {
-      return absl::UnknownError(
-          google::scp::core::errors::GetErrorMessage(result.status_code));
-    }
+
     return MetricClientProvider::PutMetrics(context);
   }
 
