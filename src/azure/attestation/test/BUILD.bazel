@@ -1,4 +1,4 @@
-# Copyright 2023 Google LLC
+# Portions Copyright (c) Microsoft Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,18 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:defs.bzl", "cc_test")
+
 package(default_visibility = ["//visibility:public"])
 
-exports_files(["buf.yaml"])
-
-package_group(
-    name = "scp_internal_pkg",
-    packages = [
-        "//src/aws/...",
-        "//src/azure/...",
-        "//src/core/...",
-        "//src/cpio/...",
-        "//src/public/...",
-        "//src/roma/...",
+cc_test(
+    name = "attestation",
+    srcs = ["attestation_test.cc"],
+    deps = [
+        "//src/azure:attestation",
+        "@com_google_googletest//:gtest_main",
     ],
 )
