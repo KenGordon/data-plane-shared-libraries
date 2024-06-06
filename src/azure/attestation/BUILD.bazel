@@ -1,4 +1,4 @@
-# Copyright 2023 Google LLC
+# Portions Copyright (c) Microsoft Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,16 +14,17 @@
 
 package(default_visibility = ["//visibility:public"])
 
-exports_files(["buf.yaml"])
+alias(
+    name = "src",
+    actual = "//src/azure/attestation/src:attestation",
+)
 
-package_group(
-    name = "scp_internal_pkg",
-    packages = [
-        "//src/aws/...",
-        "//src/azure/...",
-        "//src/core/...",
-        "//src/cpio/...",
-        "//src/public/...",
-        "//src/roma/...",
-    ],
+alias(
+    name = "utils",
+    actual = "//src/azure/attestation/src/utils:attestation_utils",
+)
+
+alias(
+    name = "print_report",
+    actual = "//src/azure/attestation/src:print_report",
 )
