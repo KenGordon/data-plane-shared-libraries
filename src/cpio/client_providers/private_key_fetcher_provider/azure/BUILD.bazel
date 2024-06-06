@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Portions Copyright (c) Microsoft Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,56 +17,49 @@ load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 package(default_visibility = ["//src:scp_internal_pkg"])
 
 cc_library(
-    name = "private_key_fetcher_provider_select",
-    deps = select(
-        {
-            "//:aws_platform": [
-                "//src/cpio/client_providers/private_key_fetcher_provider/aws:aws_private_key_fetcher_provider",
-            ],
-            "//:azure_platform": [
-                "//src/cpio/client_providers/private_key_fetcher_provider/azure:azure_private_key_fetcher_provider",
-            ],
-            "//:gcp_platform": [
-                "//src/cpio/client_providers/private_key_fetcher_provider/gcp:gcp_private_key_fetcher_provider",
-            ],
-        },
-        no_match_error = "Please build for AWS or GCP",
-    ),
-)
-
-cc_library(
-    name = "private_key_fetcher_provider",
+    name = "azure_private_key_fetcher_provider",
     srcs = [
-        "private_key_fetcher_provider.cc",
-        "private_key_fetcher_provider_utils.cc",
-    ],
-    hdrs = [
-        "error_codes.h",
-        "private_key_fetcher_provider.h",
-        "private_key_fetcher_provider_utils.h",
+        ":azure_private_key_fetcher_provider_srcs",
     ],
     deps = [
+        "//src/azure:attestation",
         "//src/core/http2_client",
+        "//src/cpio/client_providers/auth_token_provider/azure:azure_auth_token_provider",
         "//src/cpio/client_providers/interface:cpio_client_providers_interface",
         "//src/cpio/client_providers/interface:type_def",
-        "//src/public/cpio/interface:cpio_errors",
+        "//src/cpio/client_providers/private_key_fetcher_provider",
         "//src/public/cpio/interface/private_key_client:type_def",
-        "@com_google_absl//absl/strings",
-        "@nlohmann_json//:lib",
+    ],
+)
+
+exports_files([
+    "error_codes.h",
+    "azure_private_key_fetcher_provider.cc",
+    "azure_private_key_fetcher_provider.h",
+])
+
+filegroup(
+    name = "azure_private_key_fetcher_provider_srcs",
+    srcs = [
+        ":azure_private_key_fetcher_provider.cc",
+        ":azure_private_key_fetcher_provider.h",
+        ":azure_private_key_fetcher_provider_utils.cc",
+        ":azure_private_key_fetcher_provider_utils.h",
+        ":error_codes.h",
     ],
 )
 
 cc_test(
-    name = "private_key_fetcher_provider_test",
+    name = "azure_private_key_fetcher_provider_test",
     size = "small",
-    srcs = ["private_key_fetcher_provider_test.cc"],
+    srcs = ["azure_private_key_fetcher_provider_test.cc"],
     deps = [
-        ":private_key_fetcher_provider",
         "//src/core/async_executor/mock:core_async_executor_mock",
         "//src/core/http2_client/mock:http2_client_mock",
         "//src/core/interface",
         "//src/core/test/utils",
-        "//src/cpio/client_providers/private_key_fetcher_provider/mock:private_key_fetcher_provider_mock",
+        "//src/cpio/client_providers/auth_token_provider/mock:auth_token_provider_mock",
+        "//src/cpio/client_providers/private_key_fetcher_provider/azure:azure_private_key_fetcher_provider",
         "//src/public/core:test_execution_result_matchers",
         "@com_google_absl//absl/synchronization",
         "@com_google_googletest//:gtest_main",
@@ -74,15 +67,15 @@ cc_test(
 )
 
 cc_test(
-    name = "private_key_fetcher_provider_utils_test",
+    name = "azure_private_key_fetcher_provider_utils_test",
     size = "small",
-    srcs = ["private_key_fetcher_provider_utils_test.cc"],
+    srcs = ["azure_private_key_fetcher_provider_utils_test.cc"],
     deps = [
-        ":private_key_fetcher_provider",
         "//src/core/async_executor/mock:core_async_executor_mock",
         "//src/core/http2_client/mock:http2_client_mock",
         "//src/core/interface",
         "//src/core/test/utils",
+        "//src/cpio/client_providers/private_key_fetcher_provider/azure:azure_private_key_fetcher_provider",
         "//src/cpio/client_providers/private_key_fetcher_provider/mock:private_key_fetcher_provider_mock",
         "//src/public/core:test_execution_result_matchers",
         "@com_google_absl//absl/strings",

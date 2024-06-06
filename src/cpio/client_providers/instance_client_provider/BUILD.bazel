@@ -23,6 +23,9 @@ cc_library(
             "//:aws_platform": [
                 "//src/cpio/client_providers/instance_client_provider/aws:aws_instance_client_provider",
             ],
+            "//:azure_platform": [
+                "//src/cpio/client_providers/instance_client_provider/azure:azure_instance_client_provider",
+            ],
             "//:gcp_platform": [
                 "//src/cpio/client_providers/instance_client_provider/gcp:gcp_instance_client_provider",
             ],
