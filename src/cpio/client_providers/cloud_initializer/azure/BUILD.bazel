@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Portions Copyright (c) Microsoft Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,19 +17,25 @@ load("@rules_cc//cc:defs.bzl", "cc_library")
 package(default_visibility = ["//src:scp_internal_pkg"])
 
 cc_library(
-    name = "role_credentials_provider_select",
-    deps = select(
-        {
-            "//:aws_platform": [
-                "//src/cpio/client_providers/role_credentials_provider/aws:aws_role_credentials_provider",
-            ],
-            "//:azure_platform": [
-                "//src/cpio/client_providers/role_credentials_provider/azure:azure_role_credentials_provider",
-            ],
-            "//:gcp_platform": [
-                "//src/cpio/client_providers/role_credentials_provider/gcp:gcp_role_credentials_provider",
-            ],
-        },
-        no_match_error = "Please build for AWS or GCP",
-    ),
+    name = "no_op_initializer",
+    srcs = [
+        ":no_op_initializer_srcs",
+    ],
+    deps = [
+        "//src/cpio/client_providers/interface:cpio_client_providers_interface",
+        "//src/public/core/interface:execution_result",
+    ],
+)
+
+exports_files([
+    "no_op_initializer.h",
+    "no_op_initializer.cc",
+])
+
+filegroup(
+    name = "no_op_initializer_srcs",
+    srcs = [
+        ":no_op_initializer.cc",
+        ":no_op_initializer.h",
+    ],
 )
