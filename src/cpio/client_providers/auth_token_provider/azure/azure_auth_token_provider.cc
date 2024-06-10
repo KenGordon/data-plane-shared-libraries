@@ -128,7 +128,8 @@ ExecutionResult AzureAuthTokenProvider::Stop() noexcept {
 ExecutionResult AzureAuthTokenProvider::GetSessionToken(
     AsyncContext<GetSessionTokenRequest, GetSessionTokenResponse>&
         get_token_context) noexcept {
-  std::cout << "===============>AzureAuthTokenProvider::GetSessionToken" << std::endl;
+  std::cout << "===============>AzureAuthTokenProvider::GetSessionToken"
+            << std::endl;
   // Create request body
   AsyncContext<HttpRequest, HttpResponse> http_context;
 
@@ -136,7 +137,9 @@ ExecutionResult AzureAuthTokenProvider::GetSessionToken(
 
   http_context.request->method = google::scp::core::HttpMethod::GET;
   http_context.request->path = std::make_shared<Uri>(get_token_url_);
-  std::cout << "===============>AzureAuthTokenProvider::GetSessionToken get_token_url_: " << get_token_url_ << std::endl;
+  std::cout << "===============>AzureAuthTokenProvider::GetSessionToken "
+               "get_token_url_: "
+            << get_token_url_ << std::endl;
   http_context.request->headers = std::make_shared<HttpHeaders>();
   http_context.request->headers->insert(
       std::make_pair(kMetadataHeader, kMetadataHeaderValue));
@@ -146,7 +149,9 @@ ExecutionResult AzureAuthTokenProvider::GetSessionToken(
 
   auto execution_result = http_client_->PerformRequest(http_context);
   if (!execution_result.Successful()) {
-  std::cout << "===============>AzureAuthTokenProvider::GetSessionToken failed: " << execution_result.status_code << std::endl;
+    std::cout
+        << "===============>AzureAuthTokenProvider::GetSessionToken failed: "
+        << execution_result.status_code << std::endl;
     SCP_ERROR_CONTEXT(kAzureAuthTokenProvider, get_token_context,
                       execution_result,
                       "Failed to perform http request to fetch access token.");
@@ -155,7 +160,8 @@ ExecutionResult AzureAuthTokenProvider::GetSessionToken(
     get_token_context.Finish();
     return execution_result;
   }
-  std::cout << "===============>AzureAuthTokenProvider::GetSessionToken success" << std::endl;
+  std::cout << "===============>AzureAuthTokenProvider::GetSessionToken success"
+            << std::endl;
 
   return SuccessExecutionResult();
 }
@@ -164,7 +170,9 @@ void AzureAuthTokenProvider::OnGetSessionTokenCallback(
     AsyncContext<GetSessionTokenRequest, GetSessionTokenResponse>&
         get_token_context,
     AsyncContext<HttpRequest, HttpResponse>& http_client_context) noexcept {
-  std::cout << "===============>AzureAuthTokenProvider::OnGetSessionTokenCallback" << std::endl;
+  std::cout
+      << "===============>AzureAuthTokenProvider::OnGetSessionTokenCallback"
+      << std::endl;
   if (!http_client_context.result.Successful()) {
     SCP_ERROR_CONTEXT(
         kAzureAuthTokenProvider, get_token_context, http_client_context.result,
@@ -180,9 +188,11 @@ void AzureAuthTokenProvider::OnGetSessionTokenCallback(
     json_response =
         json::parse(http_client_context.response->body.bytes->begin(),
                     http_client_context.response->body.bytes->end());
-    std::cout << "===============>AzureAuthTokenProvider::OnGetSessionTokenCallback response: " << std::string(http_client_context.response->body.bytes->begin(),
-                    http_client_context.response->body.bytes->end()) << std::endl;
-
+    std::cout << "===============>AzureAuthTokenProvider::"
+                 "OnGetSessionTokenCallback response: "
+              << std::string(http_client_context.response->body.bytes->begin(),
+                             http_client_context.response->body.bytes->end())
+              << std::endl;
   } catch (...) {
     auto result = RetryExecutionResult(
         SC_AZURE_INSTANCE_AUTHORIZER_PROVIDER_BAD_SESSION_TOKEN);
@@ -193,7 +203,9 @@ void AzureAuthTokenProvider::OnGetSessionTokenCallback(
     get_token_context.Finish();
     return;
   }
-  std::cout << "===============>AzureAuthTokenProvider::OnGetSessionTokenCallback token retrieved" << std::endl;
+  std::cout << "===============>AzureAuthTokenProvider::"
+               "OnGetSessionTokenCallback token retrieved"
+            << std::endl;
 
   if (!std::all_of(GetRequiredJWTComponents().first,
                    GetRequiredJWTComponents().second,
@@ -209,7 +221,9 @@ void AzureAuthTokenProvider::OnGetSessionTokenCallback(
     get_token_context.Finish();
     return;
   }
-  std::cout << "===============>AzureAuthTokenProvider::OnGetSessionTokenCallback token validated" << std::endl;
+  std::cout << "===============>AzureAuthTokenProvider::"
+               "OnGetSessionTokenCallback token validated"
+            << std::endl;
 
   get_token_context.response = std::make_shared<GetSessionTokenResponse>();
 
@@ -219,7 +233,9 @@ void AzureAuthTokenProvider::OnGetSessionTokenCallback(
   auto access_token = json_response[kJsonAccessTokenKey].get<std::string>();
   get_token_context.response->session_token =
       std::make_shared<std::string>(std::move(access_token));
-  std::cout << "===============>AzureAuthTokenProvider::OnGetSessionTokenCallback token fields" << std::endl;
+  std::cout << "===============>AzureAuthTokenProvider::"
+               "OnGetSessionTokenCallback token fields"
+            << std::endl;
 
   get_token_context.result = SuccessExecutionResult();
   get_token_context.Finish();

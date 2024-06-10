@@ -81,7 +81,7 @@ class AzureKmsClientProvider : public KmsClientProviderInterface {
       core::AsyncContext<cmrt::sdk::kms_service::v1::DecryptRequest,
                          cmrt::sdk::kms_service::v1::DecryptResponse>&
           decrypt_context,
-          std::shared_ptr<EvpPkeyWrapper> ephemeral_private_key,
+      std::shared_ptr<EvpPkeyWrapper> ephemeral_private_key,
       core::AsyncContext<core::HttpRequest, core::HttpResponse>&
           http_client_context) noexcept;
 

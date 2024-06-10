@@ -51,14 +51,15 @@ using google::scp::core::HttpResponse;
 using google::scp::core::RetryExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::Uri;
+using google::scp::core::common::kZeroUuid;
 using google::scp::core::errors::SC_AZURE_KMS_CLIENT_PROVIDER_BAD_UNWRAPPED_KEY;
 using google::scp::core::errors::
     SC_AZURE_KMS_CLIENT_PROVIDER_CIPHER_TEXT_NOT_FOUND;
+using google::scp::core::errors::
+    SC_AZURE_KMS_CLIENT_PROVIDER_CREDENTIALS_PROVIDER_NOT_FOUND;
 using google::scp::core::errors::SC_AZURE_KMS_CLIENT_PROVIDER_KEY_ID_NOT_FOUND;
 using google::scp::core::errors::
     SC_AZURE_KMS_CLIENT_PROVIDER_WRAPPING_KEY_GENERATION_ERROR;
-using google::scp::core::errors::
-    SC_AZURE_KMS_CLIENT_PROVIDER_CREDENTIALS_PROVIDER_NOT_FOUND;
 using google::scp::core::utils::Base64Decode;
 using google::scp::core::utils::Base64Encode;
 using google::scp::cpio::client_providers::AzurePrivateKeyFetchingClientUtils;
@@ -72,7 +73,6 @@ using std::make_shared;
 using std::pair;
 using std::shared_ptr;
 using std::placeholders::_1;
-using google::scp::core::common::kZeroUuid;
 
 namespace google::scp::cpio::client_providers {
 
@@ -382,7 +382,6 @@ void AzureKmsClientProvider::OnDecryptCallback(
   decrypt_context.result = SuccessExecutionResult();
   decrypt_context.Finish();
 }
-
 
 #ifndef TEST_CPIO
 std::unique_ptr<KmsClientProviderInterface> KmsClientProviderFactory::Create(
