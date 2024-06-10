@@ -54,32 +54,7 @@ constexpr std::string_view kPrivateKeyClientProvider =
 }
 
 namespace google::scp::cpio::client_providers {
-<<<<<<< HEAD
-ExecutionResult PrivateKeyClientProvider::Init() noexcept {
-  endpoint_list_.push_back(
-      private_key_client_options_.primary_private_key_vending_endpoint);
-  for (const auto& endpoint :
-       private_key_client_options_.secondary_private_key_vending_endpoints) {
-    if (!endpoint.private_key_vending_service_endpoint.empty())
-      endpoint_list_.push_back(endpoint);
-  }
-  endpoint_count_ = endpoint_list_.size();
-
-  return SuccessExecutionResult();
-}
-
-ExecutionResult PrivateKeyClientProvider::Run() noexcept {
-  return SuccessExecutionResult();
-}
-
-ExecutionResult PrivateKeyClientProvider::Stop() noexcept {
-  return SuccessExecutionResult();
-}
-
-ExecutionResult PrivateKeyClientProvider::ListPrivateKeys(
-=======
 absl::Status PrivateKeyClientProvider::ListPrivateKeys(
->>>>>>> upstream-1fbac46-3.4.0
     AsyncContext<ListPrivateKeysRequest, ListPrivateKeysResponse>&
         list_private_keys_context) noexcept {
   auto list_keys_status = std::make_shared<ListPrivateKeysStatus>();
