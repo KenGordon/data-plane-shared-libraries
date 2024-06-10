@@ -104,14 +104,17 @@ std::pair<std::shared_ptr<EvpPkeyWrapper>, std::shared_ptr<EvpPkeyWrapper>>
 AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey() {
   RsaWrapper rsa;
   BnWrapper e;
-
+  std::cout << "===============>AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey"  << std::endl;
   ERR_clear_error();
   BN_set_word(e.get(), RSA_F4);
+  std::cout << "===============>AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey after BN_set_word"  << std::endl;
+  
   RSA_generate_key_ex(rsa.get(), 4096, e.get(), NULL);
 
   std::shared_ptr<EvpPkeyWrapper> private_key =
       std::make_shared<EvpPkeyWrapper>();
   if (EVP_PKEY_set1_RSA(private_key->get(), rsa.get()) != 1) {
+    std::cout << "===============>AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey Getting private EVP_PKEY failed"  << std::endl;
     char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string = ERR_error_string(ERR_get_error(), errBuffer);
     ERR_clear_error();
@@ -123,6 +126,7 @@ AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey() {
   const RSA* rsa_pub = EVP_PKEY_get1_RSA(private_key->get());
   RsaWrapper rsa_pub_dup;
   if (!RSA_set0_key(rsa_pub_dup.get(), rsa_pub->n, rsa_pub->e, NULL)) {
+    std::cout << "===============>AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey Set RSA public key duplicate values failed"  << std::endl;
     char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string = ERR_error_string(ERR_get_error(), errBuffer);
     ERR_clear_error();
@@ -134,12 +138,14 @@ AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey() {
   std::shared_ptr<EvpPkeyWrapper> public_key =
       std::make_shared<EvpPkeyWrapper>();
   if (EVP_PKEY_set1_RSA(public_key->get(), rsa_pub_dup.get()) != 1) {
+    std::cout << "===============>AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey Set RSA public key failed"  << std::endl;
     char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string = ERR_error_string(ERR_get_error(), errBuffer);
     ERR_clear_error();
     throw std::runtime_error(std::string("Set RSA public key failed: ") +
                              std::string(error_string));
   }
+  std::cout << "===============>AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey return key"  << std::endl;
 
   return std::make_pair(private_key, public_key);
 }

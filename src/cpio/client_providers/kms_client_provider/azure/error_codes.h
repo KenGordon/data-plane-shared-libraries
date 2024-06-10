@@ -41,6 +41,11 @@ DEFINE_ERROR_CODE(SC_AZURE_KMS_CLIENT_PROVIDER_WRAPPING_KEY_GENERATION_ERROR,
                   "Error during generation of wrapping key.",
                   HttpStatusCode::INTERNAL_SERVER_ERROR)
 
+DEFINE_ERROR_CODE(SC_AZURE_KMS_CLIENT_PROVIDER_CREDENTIALS_PROVIDER_NOT_FOUND,
+                  SC_AZURE_KMS_CLIENT_PROVIDER, 0x0005,
+                  "Credential provider is not found.",
+                  HttpStatusCode::INTERNAL_SERVER_ERROR)
+                  
 MAP_TO_PUBLIC_ERROR_CODE(SC_AZURE_KMS_CLIENT_PROVIDER_CIPHER_TEXT_NOT_FOUND,
                          SC_CPIO_INVALID_REQUEST)
 
