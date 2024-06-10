@@ -61,7 +61,6 @@ TEST(AzurePrivateKeyFetchingClientUtilsTest, GenerateWrappingKey) {
   // Add the constant to avoid the key detection precommit
   auto toTest = std::string("-----") + std::string("BEGIN PRIVATE") +
                 std::string(" KEY-----");
-  std::cout << "======> PEM: " << pem << std::endl;
   ASSERT_EQ(pem.find(toTest) == 0, true);
 
   pem = AzurePrivateKeyFetchingClientUtils::EvpPkeyToPem(
