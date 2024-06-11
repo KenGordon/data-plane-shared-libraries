@@ -123,7 +123,6 @@ AzurePrivateKeyFetchingClientUtils::GenerateWrappingKey() {
   const RSA* rsa_pub = EVP_PKEY_get1_RSA(private_key->get());
   RsaWrapper rsa_pub_dup;
   if (!RSA_set0_key(rsa_pub_dup.get(), rsa_pub->n, rsa_pub->e, NULL)) {
-    std::cout
     char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string = ERR_error_string(ERR_get_error(), errBuffer);
     ERR_clear_error();
