@@ -26,6 +26,8 @@
 #include "src/azure/attestation/src/attestation.h"
 #include "src/core/interface/async_context.h"
 #include "src/cpio/client_providers/interface/kms_client_provider_interface.h"
+#include "src/cpio/client_providers/private_key_fetcher_provider/azure/azure_private_key_fetcher_provider_utils.h"
+#include "src/cpio/client_providers/private_key_fetcher_provider/private_key_fetcher_provider_utils.h"
 #include "src/public/core/interface/execution_result.h"
 
 namespace google::scp::cpio::client_providers {
@@ -41,13 +43,7 @@ class AzureKmsClientProvider : public KmsClientProviderInterface {
         auth_token_provider_(auth_token_provider),
         unwrap_url_() {}
 
-  core::ExecutionResult Init() noexcept override;
-
-  core::ExecutionResult Run() noexcept override;
-
-  core::ExecutionResult Stop() noexcept override;
-
-  core::ExecutionResult Decrypt(
+  absl::Status Decrypt(
       core::AsyncContext<cmrt::sdk::kms_service::v1::DecryptRequest,
                          cmrt::sdk::kms_service::v1::DecryptResponse>&
           decrypt_context) noexcept override;
@@ -79,6 +75,7 @@ class AzureKmsClientProvider : public KmsClientProviderInterface {
       core::AsyncContext<cmrt::sdk::kms_service::v1::DecryptRequest,
                          cmrt::sdk::kms_service::v1::DecryptResponse>&
           decrypt_context,
+      std::shared_ptr<EvpPkeyWrapper> ephemeral_private_key,
       core::AsyncContext<core::HttpRequest, core::HttpResponse>&
           http_client_context) noexcept;
 
