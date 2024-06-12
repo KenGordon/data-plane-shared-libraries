@@ -54,9 +54,7 @@ int main(int argc, char** argv) {
   cpio_options.log_option = google::scp::cpio::LogOption::kConsoleLog;
   CHECK(google::scp::cpio::Cpio::InitCpio(cpio_options).Successful())
       << "Failed to initialize CPIO library";
-  auto provider = GlobalCpio::GetGlobalCpio().GetAuthTokenProvider();
-  CHECK(provider.ok()) << "failed to get auth token provider";
-  auto auth_token_provider = *provider;
+  auto auth_token_provider = &GlobalCpio::GetGlobalCpio().GetAuthTokenProvider();
 
   // Fetch token
   auto request = std::make_shared<GetSessionTokenRequest>();
