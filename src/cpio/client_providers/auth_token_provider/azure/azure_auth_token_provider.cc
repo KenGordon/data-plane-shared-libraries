@@ -64,18 +64,16 @@ constexpr char kDefaultGetTokenUrl[] =
 constexpr char kGetTokenUrlEnvVar[] = "AZURE_BA_PARAM_GET_TOKEN_URL";
 constexpr char kJsonAccessTokenKey[] = "access_token";
 constexpr char kJsonTokenExpiryKey[] = "expires_in";
-constexpr char kJsonTokenExtendedExpiryKey[] = "ext_expires_in";
 constexpr char kJsonTokenTypeKey[] = "token_type";
 
 // Returns a pair of iterators - one to the beginning, one to the end.
 const auto& GetRequiredJWTComponents() {
-  static char const* components[4];
+  static char const* components[3];
   using iterator_type = decltype(std::cbegin(components));
   static std::pair<iterator_type, iterator_type> iterator_pair = []() {
     components[0] = kJsonAccessTokenKey;
     components[1] = kJsonTokenExpiryKey;
-    components[2] = kJsonTokenExtendedExpiryKey;
-    components[3] = kJsonTokenTypeKey;
+    components[2] = kJsonTokenTypeKey;
     return std::make_pair(std::cbegin(components), std::cend(components));
   }();
   return iterator_pair;
