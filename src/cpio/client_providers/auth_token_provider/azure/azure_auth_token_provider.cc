@@ -169,9 +169,10 @@ void AzureAuthTokenProvider::OnGetSessionTokenCallback(
   }
   get_token_context.response = std::make_shared<GetSessionTokenResponse>();
 
-  uint64_t expiry_seconds = json_response[kJsonTokenExpiryKey].get<uint64_t>();
+  std::string expiry_seconds =
+      json_response[kJsonTokenExpiryKey].get<std::string>();
   get_token_context.response->token_lifetime_in_seconds =
-      std::chrono::seconds(expiry_seconds);
+      std::chrono::seconds(std::stoi(expiry_seconds));
   auto access_token = json_response[kJsonAccessTokenKey].get<std::string>();
   get_token_context.response->session_token =
       std::make_shared<std::string>(std::move(access_token));
