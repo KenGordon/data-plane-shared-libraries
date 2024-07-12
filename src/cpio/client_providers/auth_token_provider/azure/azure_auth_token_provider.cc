@@ -59,8 +59,9 @@ constexpr char kMetadataHeaderValue[] = "true";
 // Local IDP for Managed Identity.
 // https://learn.microsoft.com/en-us/azure/container-instances/container-instances-managed-identity
 constexpr char kDefaultGetTokenUrl[] =
-    "http://169.254.169.254/metadata/identity/oauth2/"
-    "token?api-version=2018-02-01&resource=https%3A%2F%2Fmanagement.azure.com";
+    "http://169.254.169.254/metadata/identity/oauth2/token";
+constexpr char kGetTokenQuery[] =
+    "?api-version=2018-02-01&resource=https%3A%2F%2Fmanagement.azure.com%2F";
 constexpr char kGetTokenUrlEnvVar[] = "AZURE_BA_PARAM_GET_TOKEN_URL";
 constexpr char kJsonAccessTokenKey[] = "access_token";
 constexpr char kJsonTokenExpiryKey[] = "expires_in";
@@ -86,9 +87,10 @@ AzureAuthTokenProvider::AzureAuthTokenProvider(
     : http_client_(http_client), get_token_url_() {
   const char* value_from_env = std::getenv(kGetTokenUrlEnvVar);
   if (value_from_env) {
-    get_token_url_ = value_from_env;
+    get_token_url_ = std::string(value_from_env) + std::string(kGetTokenQuery);
   } else {
-    get_token_url_ = kDefaultGetTokenUrl;
+    get_token_url_ =
+        std::string(kDefaultGetTokenUrl) + std::string(kGetTokenQuery);
   }
 }
 
