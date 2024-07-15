@@ -186,7 +186,8 @@ void AzureAuthTokenProvider::OnGetSessionTokenCallback(
       auto result = RetryExecutionResult(
           SC_AZURE_INSTANCE_AUTHORIZER_PROVIDER_BAD_SESSION_TOKEN);
       SCP_ERROR_CONTEXT(kAzureAuthTokenProvider, get_token_context, result,
-                        "The value for filed expires_in is invalid.");
+                        "The string value for field expires_in cannot be "
+                        "parsed as an integer.");
       get_token_context.result = result;
       get_token_context.Finish();
       return;
@@ -195,7 +196,7 @@ void AzureAuthTokenProvider::OnGetSessionTokenCallback(
     auto result = RetryExecutionResult(
         SC_AZURE_INSTANCE_AUTHORIZER_PROVIDER_BAD_SESSION_TOKEN);
     SCP_ERROR_CONTEXT(kAzureAuthTokenProvider, get_token_context, result,
-                      "The value for filed expires_in is invalid.");
+                      "The value for field expires_in is invalid.");
     get_token_context.result = result;
     get_token_context.Finish();
     return;
