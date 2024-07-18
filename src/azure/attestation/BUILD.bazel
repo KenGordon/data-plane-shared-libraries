@@ -28,3 +28,9 @@ alias(
     name = "print_report",
     actual = "//src/azure/attestation/src:print_report",
 )
+
+alias(
+    name = "dpwrapper",
+    actual = "//src/azure/attestation/src:dpwrapper",
+)
+

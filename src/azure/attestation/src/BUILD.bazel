@@ -48,3 +48,13 @@ cc_binary(
         "attestation",
     ],
 )
+
+cc_library(
+    name = "dpwrapper",
+    srcs = [
+        "dpwrapper.cc",
+    ],
+    hdrs = [
+        "dpwrapper.h",
+    ],
+)
