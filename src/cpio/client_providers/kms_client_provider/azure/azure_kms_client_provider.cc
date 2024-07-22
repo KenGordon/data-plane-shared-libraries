@@ -57,6 +57,8 @@ using google::scp::core::errors::
     SC_AZURE_KMS_CLIENT_PROVIDER_CIPHER_TEXT_NOT_FOUND;
 using google::scp::core::errors::
     SC_AZURE_KMS_CLIENT_PROVIDER_CREDENTIALS_PROVIDER_NOT_FOUND;
+using google::scp::core::errors::
+    SC_AZURE_KMS_CLIENT_PROVIDER_KEY_HASH_CREATION_ERROR;
 using google::scp::core::errors::SC_AZURE_KMS_CLIENT_PROVIDER_KEY_ID_NOT_FOUND;
 using google::scp::core::errors::
     SC_AZURE_KMS_CLIENT_PROVIDER_WRAPPING_KEY_GENERATION_ERROR;
@@ -218,8 +220,20 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
   }
 
   // Calculate hash on publicKey
-  hexHashOnWrappingKey =
+  auto hexHashOnWrappingKeyOr =
       AzureKmsClientProviderUtils::CreateHexHashOnKey(publicKey);
+
+  if (!hexHashOnWrappingKeyOr.ok()) {
+    auto execution_result = FailureExecutionResult(
+        SC_AZURE_KMS_CLIENT_PROVIDER_KEY_HASH_CREATION_ERROR);
+    SCP_ERROR_CONTEXT(kAzureKmsClientProvider, decrypt_context,
+                      execution_result, "Failed to create hex hash on key: %s.",
+                      hexHashOnWrappingKeyOr.status().ToString().c_str());
+    decrypt_context.result = execution_result;
+    decrypt_context.Finish();
+    return;
+  }
+  hexHashOnWrappingKey = hexHashOnWrappingKeyOr.value();
 
   // Get Attestation Report
   const auto report = hasSnp() ? fetchSnpAttestation(hexHashOnWrappingKey)

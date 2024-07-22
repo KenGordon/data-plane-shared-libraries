@@ -27,6 +27,8 @@
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 
+#include "absl/status/statusor.h"
+
 // #include
 // "src/cpio/client_providers/private_key_fetcher_provider/private_key_fetcher_provider.h"
 
@@ -246,7 +248,7 @@ class AzureKmsClientProviderUtils {
   /**
    * @brief Generate hex hash on wrapping key
    */
-  static std::string CreateHexHashOnKey(
+  static absl::StatusOr<std::string> CreateHexHashOnKey(
       std::shared_ptr<EvpPkeyWrapper> publicKey);
 
   /**

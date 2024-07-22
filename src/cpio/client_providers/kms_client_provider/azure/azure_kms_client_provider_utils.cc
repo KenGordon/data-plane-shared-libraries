@@ -57,7 +57,7 @@ bool AzureKmsClientProviderUtils::isPrivate(
 /**
  * @brief Generate hex hash on wrapping key
  */
-std::string AzureKmsClientProviderUtils::CreateHexHashOnKey(
+absl::StatusOr<std::string> AzureKmsClientProviderUtils::CreateHexHashOnKey(
     std::shared_ptr<EvpPkeyWrapper> publicKey) {
   ERR_clear_error();
   CHECK(isPrivate(publicKey) == 0)
@@ -70,7 +70,7 @@ std::string AzureKmsClientProviderUtils::CreateHexHashOnKey(
     char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string =
         ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
-    throw std::runtime_error(
+    return absl::InternalError(
         std::string("PEM_write_bio_PUBKEY failed with result: ") +
         std::to_string(result) + " - " + error_string);
   }
@@ -82,8 +82,8 @@ std::string AzureKmsClientProviderUtils::CreateHexHashOnKey(
     char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string =
         ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
-    throw std::runtime_error(std::string("BIO_get_mem_data failed: ") +
-                             error_string);
+    return absl::InternalError(std::string("BIO_get_mem_data failed: ") +
+                               error_string);
   }
   if (pem_key == nullptr) {
     throw std::runtime_error("BIO_get_mem_data returned nullptr for pem_key");
@@ -98,8 +98,8 @@ std::string AzureKmsClientProviderUtils::CreateHexHashOnKey(
     char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string =
         ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
-    throw std::runtime_error(std::string("Creating hash failed: ") +
-                             std::string(error_string));
+    return absl::InternalError(std::string("Creating hash failed: ") +
+                               std::string(error_string));
   }
 
   // Convert the hash to a hexadecimal string
