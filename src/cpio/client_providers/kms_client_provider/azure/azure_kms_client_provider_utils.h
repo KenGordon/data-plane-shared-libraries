@@ -240,34 +240,34 @@ class AzureKmsClientProviderUtils {
   /**
    * @brief Convert a wrapping key in PEM
    *
-   * @param wrappingKey RSA public key used to wrap a key.
+   * @param wrapping_key RSA public key used to wrap a key.
    */
   static absl::StatusOr<std::string> EvpPkeyToPem(
-      std::shared_ptr<EvpPkeyWrapper> wrappingKey);
+      std::shared_ptr<EvpPkeyWrapper> wrapping_key);
 
   /**
    * @brief Generate hex hash on wrapping key
    */
   static absl::StatusOr<std::string> CreateHexHashOnKey(
-      std::shared_ptr<EvpPkeyWrapper> publicKey);
+      std::shared_ptr<EvpPkeyWrapper> public_key);
 
   /**
    * @brief Wrap a key using RSA OAEP
    *
-   * @param wrappingKey RSA public key used to wrap a key.
+   * @param wrapping_key RSA public key used to wrap a key.
    * @param key         Key in PEM format to wrap.
    */
   static absl::StatusOr<std::vector<unsigned char>> KeyWrap(
-      std::shared_ptr<EvpPkeyWrapper> wrappingKey, const std::string& key);
+      std::shared_ptr<EvpPkeyWrapper> wrapping_key, const std::string& key);
 
   /**
    * @brief Unwrap a key using RSA OAEP
    *
-   * @param wrappingKey RSA private key used to unwrap a key.
+   * @param wrapping_key RSA private key used to unwrap a key.
    * @param encrypted   Wrapped key to unwrap.
    */
   static absl::StatusOr<std::string> KeyUnwrap(
-      std::shared_ptr<EvpPkeyWrapper> wrappingKey,
+      std::shared_ptr<EvpPkeyWrapper> wrapping_key,
       const std::vector<unsigned char>& encrypted);
 
   // Declare the isPrivate function as private
@@ -276,27 +276,27 @@ class AzureKmsClientProviderUtils {
   /**
    * @brief Convert a PEM wrapping key to pkey
    *
-   * @param wrappingPemKey RSA PEM key used to wrap a key.
+   * @param wrapping_pem_key RSA PEM key used to wrap a key.
    */
   static absl::StatusOr<std::shared_ptr<EvpPkeyWrapper>> PemToEvpPkey(
-      std::string wrappingPemKey);
+      std::string wrapping_pem_key);
 
  private:
   /**
    * @brief Convert a public PEM wrapping key to pkey
    *
-   * @param wrappingPemKey RSA PEM key used to wrap a key.
+   * @param wrapping_pem_key RSA PEM key used to wrap a key.
    */
   static absl::StatusOr<std::shared_ptr<EvpPkeyWrapper>> GetPublicEvpPkey(
-      std::string wrappingPemKey);
+      std::string wrapping_pem_key);
 
   /**
    * @brief Convert a private PEM wrapping key to pkey
    *
-   * @param wrappingPemKey RSA PEM key used to wrap a key.
+   * @param wrapping_pem_key RSA PEM key used to wrap a key.
    */
   static absl::StatusOr<std::shared_ptr<EvpPkeyWrapper>> GetPrivateEvpPkey(
-      std::string wrappingPemKey);
+      std::string wrapping_pem_key);
 };
 }  // namespace google::scp::cpio::client_providers
 

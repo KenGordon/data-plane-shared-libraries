@@ -58,18 +58,18 @@ bool AzureKmsClientProviderUtils::isPrivate(
  * @brief Generate hex hash on wrapping key
  */
 absl::StatusOr<std::string> AzureKmsClientProviderUtils::CreateHexHashOnKey(
-    std::shared_ptr<EvpPkeyWrapper> publicKey) {
+    std::shared_ptr<EvpPkeyWrapper> public_key) {
   ERR_clear_error();
-  CHECK(isPrivate(publicKey) == 0)
+  CHECK(isPrivate(public_key) == 0)
       << "CreateHexHashOnKey only supports public keys";
 
   // Create a BIO to hold the public key in PEM format
-  BIOWrapper bioWrapper;
-  int result = PEM_write_bio_PUBKEY(bioWrapper.get(), publicKey->get());
+  BIOWrapper bio_wrapper;
+  int result = PEM_write_bio_PUBKEY(bio_wrapper.get(), public_key->get());
   if (result != 1) {
-    char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string =
-        ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
+        ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
     return absl::InternalError(
         std::string("PEM_write_bio_PUBKEY failed with result: ") +
         std::to_string(result) + " - " + error_string);
@@ -77,11 +77,11 @@ absl::StatusOr<std::string> AzureKmsClientProviderUtils::CreateHexHashOnKey(
 
   // Read the PEM key into a string
   char* pem_key;
-  int64 pem_key_length = BIO_get_mem_data(bioWrapper.get(), &pem_key);
+  int64 pem_key_length = BIO_get_mem_data(bio_wrapper.get(), &pem_key);
   if (pem_key_length == -1) {
-    char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string =
-        ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
+        ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
     return absl::InternalError(std::string("BIO_get_mem_data failed: ") +
                                error_string);
   }
@@ -95,9 +95,9 @@ absl::StatusOr<std::string> AzureKmsClientProviderUtils::CreateHexHashOnKey(
   unsigned int hash_length;
   if (EVP_Digest(pem_key_str.c_str(), pem_key_str.size(), hash, &hash_length,
                  EVP_sha256(), NULL) != 1) {
-    char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string =
-        ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
+        ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
     return absl::InternalError(std::string("Creating hash failed: ") +
                                std::string(error_string));
   }
@@ -124,17 +124,17 @@ AzureKmsClientProviderUtils::GenerateWrappingKey() {
     BnWrapper e;
     ERR_clear_error();
     if (!BN_set_word(e.get(), RSA_F4)) {
-      char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
+      char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
       char* error_string =
-          ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
+          ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
       return absl::InternalError(std::string("Failed to set RSA exponent: ") +
                                  std::string(error_string));
     }
 
     if (RSA_generate_key_ex(rsa.get(), 4096, e.get(), NULL) != 1) {
-      char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
+      char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
       char* error_string =
-          ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
+          ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
       return absl::InternalError(std::string("Failed to generate RSA key: ") +
                                  std::string(error_string));
     }
@@ -152,9 +152,9 @@ AzureKmsClientProviderUtils::GenerateWrappingKey() {
     }
 
     if (EVP_PKEY_set1_RSA(private_key->get(), rsa.get()) != 1) {
-      char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
+      char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
       char* error_string =
-          ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
+          ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
       return absl::InternalError(
           std::string("Setting RSA key in private EVP_PKEY failed: ") +
           std::string(error_string));
@@ -163,9 +163,9 @@ AzureKmsClientProviderUtils::GenerateWrappingKey() {
     // Duplicating the RSA public key
     RSA* rsa_pub = RSAPublicKey_dup(rsa.get());
     if (rsa_pub == nullptr) {
-      char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
+      char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
       char* error_string =
-          ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
+          ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
       return absl::InternalError(
           std::string("Duplicating RSA public key failed: ") +
           std::string(error_string));
@@ -179,9 +179,9 @@ AzureKmsClientProviderUtils::GenerateWrappingKey() {
     std::shared_ptr<EvpPkeyWrapper> public_key =
         std::make_shared<EvpPkeyWrapper>(EVP_PKEY_new());
     if (EVP_PKEY_set1_RSA(public_key->get(), rsa_pub_dup->get()) != 1) {
-      char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
+      char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
       char* error_string =
-          ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
+          ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
       return absl::InternalError(std::string("Set RSA public key failed: ") +
                                  std::string(error_string));
     }
@@ -196,38 +196,38 @@ AzureKmsClientProviderUtils::GenerateWrappingKey() {
 /**
  * @brief Convert a private PEM wrapping key to EVP_PKEY using private key
  *
- * @param wrappingPemKey RSA PEM key used to wrap a key.
+ * @param wrapping_pem_key RSA PEM key used to wrap a key.
  * @return std::shared_ptr<EvpPkeyWrapper> containing the EVP_PKEY.
  */
 absl::StatusOr<std::shared_ptr<EvpPkeyWrapper>>
-AzureKmsClientProviderUtils::GetPrivateEvpPkey(std::string wrappingPemKey) {
+AzureKmsClientProviderUtils::GetPrivateEvpPkey(std::string wrapping_pem_key) {
   ERR_clear_error();
 
   // Create a BIO wrapper to manage memory
-  BIOWrapper bioWrapper;
+  BIOWrapper bio_wrapper;
 
   // Ensure the bio is created successfully before using it
-  if (bioWrapper.get() == nullptr) {
+  if (bio_wrapper.get() == nullptr) {
     return absl::InternalError("Failed to create BIO");
   }
 
   // Write the PEM key data into the BIO
-  if (BIO_write(bioWrapper.get(), wrappingPemKey.c_str(),
-                wrappingPemKey.size()) <= 0) {
+  if (BIO_write(bio_wrapper.get(), wrapping_pem_key.c_str(),
+                wrapping_pem_key.size()) <= 0) {
     return absl::InternalError(
         "Failed to write PEM data to BIO in GetPrivateEvpPkey");
   }
 
   // Read the private key from the BIO
-  EVP_PKEY* pkey = PEM_read_bio_PrivateKey(bioWrapper.get(), NULL, NULL, NULL);
+  EVP_PKEY* pkey = PEM_read_bio_PrivateKey(bio_wrapper.get(), NULL, NULL, NULL);
   if (pkey == nullptr) {
-    char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string =
-        ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
+        ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
     return absl::InternalError(
         std::string(
             "GetPrivateEvpPkey: Failed to read private key from BIO: ") +
-        errBuffer);
+        err_buffer);
   }
 
   // Use EvpPkeyWrapper to manage the EVP_PKEY
@@ -237,37 +237,37 @@ AzureKmsClientProviderUtils::GetPrivateEvpPkey(std::string wrappingPemKey) {
 /**
  * @brief Convert a PEM wrapping key to EVP_PKEY using public key
  *
- * @param wrappingPemKey RSA PEM key used to wrap a key.
+ * @param wrapping_pem_key RSA PEM key used to wrap a key.
  * @return std::shared_ptr<EvpPkeyWrapper> containing the EVP_PKEY.
  */
 absl::StatusOr<std::shared_ptr<EvpPkeyWrapper>>
-AzureKmsClientProviderUtils::GetPublicEvpPkey(std::string wrappingPemKey) {
+AzureKmsClientProviderUtils::GetPublicEvpPkey(std::string wrapping_pem_key) {
   ERR_clear_error();
 
   // Create a BIO wrapper to manage memory
-  BIOWrapper bioWrapper;
+  BIOWrapper bio_wrapper;
 
   // Ensure the bio is created successfully before using it
-  if (bioWrapper.get() == nullptr) {
+  if (bio_wrapper.get() == nullptr) {
     return absl::InternalError("Failed to create BIO");
   }
 
   // Write the PEM key data into the BIO
-  if (BIO_write(bioWrapper.get(), wrappingPemKey.c_str(),
-                wrappingPemKey.size()) <= 0) {
+  if (BIO_write(bio_wrapper.get(), wrapping_pem_key.c_str(),
+                wrapping_pem_key.size()) <= 0) {
     return absl::InternalError(
         "Failed to write PEM data to BIO in GetPublicEvpPkey");
   }
 
   // Read the public key from the BIO
-  EVP_PKEY* pkey = PEM_read_bio_PUBKEY(bioWrapper.get(), NULL, NULL, NULL);
+  EVP_PKEY* pkey = PEM_read_bio_PUBKEY(bio_wrapper.get(), NULL, NULL, NULL);
   if (pkey == nullptr) {
-    char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string =
-        ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
+        ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
     return absl::InternalError(
         std::string("GetPublicEvpPkey: Failed to read PEM public key: ") +
-        errBuffer);
+        err_buffer);
   }
 
   // Return a shared pointer to manage the EVP_PKEY
@@ -277,17 +277,17 @@ AzureKmsClientProviderUtils::GetPublicEvpPkey(std::string wrappingPemKey) {
 /**
  * @brief Convert a PEM wrapping key to pkey
  *
- * @param wrappingPemKey RSA PEM key used to wrap a key.
+ * @param wrapping_pem_key RSA PEM key used to wrap a key.
  */
 absl::StatusOr<std::shared_ptr<EvpPkeyWrapper>>
-AzureKmsClientProviderUtils::PemToEvpPkey(std::string wrappingPemKey) {
+AzureKmsClientProviderUtils::PemToEvpPkey(std::string wrapping_pem_key) {
   ERR_clear_error();
 
   // check for public key or private key
-  bool isPrivate = wrappingPemKey.find(kPemToken) != std::string::npos;
+  bool isPrivate = wrapping_pem_key.find(kPemToken) != std::string::npos;
   std::shared_ptr<EvpPkeyWrapper> key;
   if (isPrivate) {
-    const auto key_or = GetPrivateEvpPkey(wrappingPemKey);
+    const auto key_or = GetPrivateEvpPkey(wrapping_pem_key);
     if (!key_or.ok()) {
       return absl::InternalError(
           std::string("Failed to read private PEM key: ") +
@@ -295,7 +295,7 @@ AzureKmsClientProviderUtils::PemToEvpPkey(std::string wrappingPemKey) {
     }
     key = key_or.value();
   } else {
-    const auto key_or = GetPublicEvpPkey(wrappingPemKey);
+    const auto key_or = GetPublicEvpPkey(wrapping_pem_key);
     if (!key_or.ok()) {
       return absl::InternalError(
           std::string("Failed to read private PEM key: ") +
@@ -305,9 +305,9 @@ AzureKmsClientProviderUtils::PemToEvpPkey(std::string wrappingPemKey) {
   }
 
   if (key->get() == NULL) {
-    char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string =
-        ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
+        ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
     ERR_clear_error();
     return absl::InternalError(
         std::string("Failed to read private and public PEM key: ") +
@@ -321,18 +321,18 @@ AzureKmsClientProviderUtils::PemToEvpPkey(std::string wrappingPemKey) {
 /**
  * @brief Convert a wrapping key to PEM
  *
- * @param wrappingKey RSA public key used to wrap a key.
+ * @param wrapping_key RSA public key used to wrap a key.
  */
 absl::StatusOr<std::string> AzureKmsClientProviderUtils::EvpPkeyToPem(
     std::shared_ptr<EvpPkeyWrapper> key) {
   ERR_clear_error();
-  BIOWrapper bioWrapper;
+  BIOWrapper bio_wrapper;
 
-  BIO* bio = bioWrapper.get();
+  BIO* bio = bio_wrapper.get();
   if (bio == nullptr) {
-    char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string =
-        ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
+        ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
     ERR_clear_error();
     return absl::InternalError(std::string("Failed to create BIO: ") +
                                error_string);
@@ -348,9 +348,9 @@ absl::StatusOr<std::string> AzureKmsClientProviderUtils::EvpPkeyToPem(
   }
 
   if (write_result != 1) {
-    char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string =
-        ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
+        ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
     ERR_clear_error();
     return absl::InternalError(std::string("Failed to write PEM: ") +
                                error_string);
@@ -370,25 +370,25 @@ absl::StatusOr<std::string> AzureKmsClientProviderUtils::EvpPkeyToPem(
 /**
  * @brief Wrap a key using RSA OAEP
  *
- * @param wrappingKey RSA public key used to wrap a key.
+ * @param wrapping_key RSA public key used to wrap a key.
  * @param key         Key  wrap.
  */
 absl::StatusOr<std::vector<unsigned char>> AzureKmsClientProviderUtils::KeyWrap(
-    std::shared_ptr<EvpPkeyWrapper> wrappingKey, const std::string& data) {
+    std::shared_ptr<EvpPkeyWrapper> wrapping_key, const std::string& data) {
   ERR_clear_error();
 
   // Ensure that the wrapping key is public
-  if (isPrivate(wrappingKey)) {
+  if (isPrivate(wrapping_key)) {
     ERR_clear_error();
     return absl::InternalError("Use public key for KeyWrap");
   }
 
   // Create a wrapper for the EVP_PKEY_CTX resource
-  EVPKeyCtxWrapper ctxWrapper(EVP_PKEY_CTX_new(wrappingKey->get(), NULL));
+  EVPKeyCtxWrapper ctxWrapper(EVP_PKEY_CTX_new(wrapping_key->get(), NULL));
   if (ctxWrapper.get() == nullptr) {
-    char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string =
-        ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
+        ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
     ERR_clear_error();
     return absl::InternalError("Failed to create EVP_PKEY_CTX: " +
                                std::string(error_string));
@@ -398,9 +398,9 @@ absl::StatusOr<std::vector<unsigned char>> AzureKmsClientProviderUtils::KeyWrap(
 
   // Initialize the context for encryption
   if (EVP_PKEY_encrypt_init(ctx) != 1) {
-    char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string =
-        ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
+        ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
     ERR_clear_error();
     return absl::InternalError("Failed to initialize encryption context: " +
                                std::string(error_string));
@@ -408,9 +408,9 @@ absl::StatusOr<std::vector<unsigned char>> AzureKmsClientProviderUtils::KeyWrap(
 
   // Set the OAEP padding
   if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) != 1) {
-    char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string =
-        ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
+        ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
     ERR_clear_error();
     return absl::InternalError("Failed to set OAEP padding: " +
                                std::string(error_string));
@@ -419,9 +419,9 @@ absl::StatusOr<std::vector<unsigned char>> AzureKmsClientProviderUtils::KeyWrap(
   // Set the OAEP parameters
   const EVP_MD* md = EVP_sha256();
   if (EVP_PKEY_CTX_set_rsa_oaep_md(ctx, md) != 1) {
-    char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string =
-        ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
+        ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
     ERR_clear_error();
     return absl::InternalError("Failed to set OAEP digest: " +
                                std::string(error_string));
@@ -432,9 +432,9 @@ absl::StatusOr<std::vector<unsigned char>> AzureKmsClientProviderUtils::KeyWrap(
   if (EVP_PKEY_encrypt(ctx, nullptr, &encrypted_len,
                        reinterpret_cast<const unsigned char*>(data.data()),
                        data.size()) != 1) {
-    char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string =
-        ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
+        ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
     ERR_clear_error();
     return absl::InternalError("Failed to get maximum encrypted data size: " +
                                std::string(error_string));
@@ -447,9 +447,9 @@ absl::StatusOr<std::vector<unsigned char>> AzureKmsClientProviderUtils::KeyWrap(
   if (EVP_PKEY_encrypt(ctx, encrypted.data(), &encrypted_len,
                        reinterpret_cast<const unsigned char*>(data.data()),
                        data.size()) != 1) {
-    char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string =
-        ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
+        ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
     ERR_clear_error();
     return absl::InternalError("Encryption failed: " +
                                std::string(error_string));
@@ -463,29 +463,29 @@ absl::StatusOr<std::vector<unsigned char>> AzureKmsClientProviderUtils::KeyWrap(
 /**
  * @brief Unwrap a key using RSA OAEP
  *
- * @param wrappingKey RSA private key used to unwrap a key.
+ * @param wrapping_key RSA private key used to unwrap a key.
  * @param encrypted   Wrapped key to unwrap.
  */
 absl::StatusOr<std::string> AzureKmsClientProviderUtils::KeyUnwrap(
-    std::shared_ptr<EvpPkeyWrapper> wrappingKey,
+    std::shared_ptr<EvpPkeyWrapper> wrapping_key,
     const std::vector<unsigned char>& encrypted) {
   ERR_clear_error();
   // Ensure that the wrapping key is private
-  if (!isPrivate(wrappingKey)) {
-    char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
+  if (!isPrivate(wrapping_key)) {
+    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string =
-        ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
+        ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
     ERR_clear_error();
     return absl::InternalError("Use private key for KeyUnwrap: " +
                                std::string(error_string));
   }
 
   // Create a wrapper for the EVP_PKEY_CTX resource
-  EVPKeyCtxWrapper ctxWrapper(EVP_PKEY_CTX_new(wrappingKey->get(), NULL));
+  EVPKeyCtxWrapper ctxWrapper(EVP_PKEY_CTX_new(wrapping_key->get(), NULL));
   if (ctxWrapper.get() == nullptr) {
-    char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string =
-        ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
+        ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
     ERR_clear_error();
     return absl::InternalError("Failed to create EVP_PKEY_CTX: " +
                                std::string(error_string));
@@ -495,9 +495,9 @@ absl::StatusOr<std::string> AzureKmsClientProviderUtils::KeyUnwrap(
 
   // Initialize the context for decryption
   if (EVP_PKEY_decrypt_init(ctx) != 1) {
-    char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string =
-        ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
+        ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
     ERR_clear_error();
     return absl::InternalError("Failed to initialize decryption context: " +
                                std::string(error_string));
@@ -505,9 +505,9 @@ absl::StatusOr<std::string> AzureKmsClientProviderUtils::KeyUnwrap(
 
   // Set the OAEP padding
   if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) != 1) {
-    char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string =
-        ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
+        ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
     ERR_clear_error();
     return absl::InternalError("Failed to set OAEP padding: " +
                                std::string(error_string));
@@ -516,9 +516,9 @@ absl::StatusOr<std::string> AzureKmsClientProviderUtils::KeyUnwrap(
   // Set the OAEP parameters
   const EVP_MD* md = EVP_sha256();
   if (EVP_PKEY_CTX_set_rsa_oaep_md(ctx, md) != 1) {
-    char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string =
-        ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
+        ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
     ERR_clear_error();
     return absl::InternalError("Failed to set OAEP digest: " +
                                std::string(error_string));
@@ -528,9 +528,9 @@ absl::StatusOr<std::string> AzureKmsClientProviderUtils::KeyUnwrap(
   size_t decrypted_len;
   if (EVP_PKEY_decrypt(ctx, nullptr, &decrypted_len, encrypted.data(),
                        encrypted.size()) != 1) {
-    char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string =
-        ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
+        ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
     ERR_clear_error();
     return absl::InternalError("Failed to get maximum decrypted data size: " +
                                std::string(error_string));
@@ -542,9 +542,9 @@ absl::StatusOr<std::string> AzureKmsClientProviderUtils::KeyUnwrap(
   // Decrypt the data
   if (EVP_PKEY_decrypt(ctx, decrypted.data(), &decrypted_len, encrypted.data(),
                        encrypted.size()) != 1) {
-    char errBuffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string =
-        ERR_error_string_n(ERR_get_error(), error_string, sizeof(errBuffer));
+        ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
     ERR_clear_error();
     return absl::InternalError("Decryption failed: " +
                                std::string(error_string));
