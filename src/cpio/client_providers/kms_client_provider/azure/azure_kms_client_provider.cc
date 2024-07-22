@@ -184,11 +184,11 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
   std::string hexHashOnWrappingKey = "";
   if (hasSnp()) {
     // Generate wrapping key
-    try {
-      wrappingKeyPair = AzureKmsClientProviderUtils::GenerateWrappingKey();
-    } catch (const std::runtime_error& e) {
+    const auto wrappingKeyPairOr =
+        AzureKmsClientProviderUtils::GenerateWrappingKey();
+    if (!wrappingKeyPairOr.ok()) {
       std::string errorMessage = "Failed to generate wrapping key : ";
-      errorMessage += e.what();
+      errorMessage += wrappingKeyPairOr.status().ToString().c_str();
       auto execution_result = FailureExecutionResult(
           SC_AZURE_KMS_CLIENT_PROVIDER_WRAPPING_KEY_GENERATION_ERROR);
 
@@ -197,6 +197,8 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
       decrypt_context.result = execution_result;
       decrypt_context.Finish();
       return;
+    } else {
+      wrappingKeyPair = wrappingKeyPairOr.value();
     }
 
     privateKey = wrappingKeyPair.first;
@@ -205,7 +207,11 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
     // Get test PEM public key
     auto publicPemKey =
         google::scp::cpio::client_providers::GetTestPemPublicWrapKey();
-    publicKey = AzureKmsClientProviderUtils::PemToEvpPkey(publicPemKey);
+    const auto publicKeyOr =
+        AzureKmsClientProviderUtils::PemToEvpPkey(publicPemKey);
+    CHECK(publicKeyOr.ok()) << "Failed to parse public PEM key: "
+                            << publicKeyOr.status().ToString().c_str();
+    publicKey = publicKeyOr.value();
 
     // Get test PEM private key and convert it to EVP_PKEY*
     auto privateKeyPem = GetTestPemPrivWrapKey();
@@ -214,13 +220,17 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
                   std::string(" KEY-----");
 
     CHECK(privateKeyPem.find(toTest) == 0) << "Failed to get private PEM key";
-    privateKey = AzureKmsClientProviderUtils::PemToEvpPkey(privateKeyPem);
+    const auto privateKeyOr =
+        AzureKmsClientProviderUtils::PemToEvpPkey(privateKeyPem);
+    CHECK(privateKeyOr.ok()) << "Failed to parse private PEM key: "
+                             << privateKeyOr.status().ToString().c_str();
+    privateKey = privateKeyOr.value();
 
     wrappingKeyPair = std::make_pair(privateKey, publicKey);
   }
 
   // Calculate hash on publicKey
-  auto hexHashOnWrappingKeyOr =
+  const auto hexHashOnWrappingKeyOr =
       AzureKmsClientProviderUtils::CreateHexHashOnKey(publicKey);
 
   if (!hexHashOnWrappingKeyOr.ok()) {
@@ -244,7 +254,20 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
   payload[kWrapped] = ciphertext;
   payload[kWrappedKid] = key_id;
   payload[kAttestation] = nlohmann::json(report.value());
-  payload[kWrappingKey] = AzureKmsClientProviderUtils::EvpPkeyToPem(publicKey);
+  const auto wrapping_key_or =
+      AzureKmsClientProviderUtils::EvpPkeyToPem(publicKey);
+  if (!wrapping_key_or.ok()) {
+    auto execution_result = FailureExecutionResult(
+        SC_AZURE_KMS_CLIENT_PROVIDER_KEY_HASH_CREATION_ERROR);  // MYTODO
+    SCP_ERROR_CONTEXT(kAzureKmsClientProvider, decrypt_context,
+                      execution_result,
+                      "Failed to convert public key to pem: %s.",
+                      wrapping_key_or.status().ToString().c_str());
+    decrypt_context.result = execution_result;
+    decrypt_context.Finish();
+    return;
+  }
+  payload[kWrappingKey] = wrapping_key_or.value();
   http_context.request->body = core::BytesBuffer(nlohmann::to_string(payload));
   http_context.request->headers = std::make_shared<core::HttpHeaders>();
   http_context.request->headers->insert(
@@ -306,8 +329,19 @@ void AzureKmsClientProvider::OnDecryptCallback(
   }
   std::vector<uint8_t> encrypted(decodedWrapped.begin(), decodedWrapped.end());
 
-  std::string decrypted =
+  const auto decrypted_or =
       AzureKmsClientProviderUtils::KeyUnwrap(ephemeral_private_key, encrypted);
+  if (!decrypted_or.ok()) {
+    auto execution_result = FailureExecutionResult(
+        SC_AZURE_KMS_CLIENT_PROVIDER_KEY_HASH_CREATION_ERROR);  // MYTODO
+    SCP_ERROR_CONTEXT(kAzureKmsClientProvider, decrypt_context,
+                      execution_result, "Failed to unwrap decrypted key: %s.",
+                      decrypted_or.status().ToString().c_str());
+    decrypt_context.result = execution_result;
+    decrypt_context.Finish();
+    return;
+  }
+  const auto decrypted = decrypted_or.value();
   decrypt_context.response = std::make_shared<DecryptResponse>();
 
   decrypt_context.response->set_plaintext(decrypted);

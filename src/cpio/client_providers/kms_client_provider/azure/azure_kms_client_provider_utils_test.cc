@@ -39,7 +39,7 @@ namespace google::scp::cpio::client_providers::test {
 TEST(AzureKmsClientProviderUtilsTest, GenerateWrappingKey) {
   std::cout << "Starting test GenerateWrappingKey..." << std::endl;
 
-  auto wrappingKey = AzureKmsClientProviderUtils::GenerateWrappingKey();
+  auto wrappingKey = AzureKmsClientProviderUtils::GenerateWrappingKey().value();
 
   ASSERT_NE(wrappingKey.first, nullptr) << "Private key is null";
   ASSERT_TRUE(AzureKmsClientProviderUtils::isPrivate(wrappingKey.first));
@@ -48,7 +48,7 @@ TEST(AzureKmsClientProviderUtilsTest, GenerateWrappingKey) {
   std::cout << "GenerateWrappingKey generated keys" << std::endl;
 
   std::string pem =
-      AzureKmsClientProviderUtils::EvpPkeyToPem(wrappingKey.first);
+      AzureKmsClientProviderUtils::EvpPkeyToPem(wrappingKey.first).value();
   std::cout << "GenerateWrappingKey PEM: " << pem << std::endl;
 
   // Add the constant to avoid the key detection precommit
@@ -57,7 +57,7 @@ TEST(AzureKmsClientProviderUtilsTest, GenerateWrappingKey) {
   ASSERT_EQ(pem.find(toTest), 0) << "Private key PEM header not found";
   std::cout << "Private key found" << std::endl;
 
-  pem = AzureKmsClientProviderUtils::EvpPkeyToPem(wrappingKey.second);
+  pem = AzureKmsClientProviderUtils::EvpPkeyToPem(wrappingKey.second).value();
   ASSERT_EQ(pem.find("-----BEGIN PUBLIC KEY-----"), 0)
       << "Public key PEM header not found";
   std::cout << "Public key found" << std::endl;
@@ -67,7 +67,8 @@ TEST(AzureKmsClientProviderUtilsTest, GenerateWrappingKey) {
 
 TEST(AzureKmsClientProviderUtilsTest, WrapUnwrap) {
   // Generate wrapping key
-  auto wrappingKeyPair = AzureKmsClientProviderUtils::GenerateWrappingKey();
+  auto wrappingKeyPair =
+      AzureKmsClientProviderUtils::GenerateWrappingKey().value();
   auto public_key = wrappingKeyPair.second;
   auto private_key = wrappingKeyPair.first;
   std::cout << "key pair generated" << std::endl;
@@ -75,12 +76,13 @@ TEST(AzureKmsClientProviderUtilsTest, WrapUnwrap) {
   const std::string payload = "payload";
 
   // Encrypt the payload
-  auto cipher = AzureKmsClientProviderUtils::KeyWrap(public_key, payload);
+  const auto cipher =
+      AzureKmsClientProviderUtils::KeyWrap(public_key, payload).value();
   ASSERT_FALSE(cipher.empty());
 
   // Decrypt the encrypted message
   std::string decrypted =
-      AzureKmsClientProviderUtils::KeyUnwrap(private_key, cipher);
+      AzureKmsClientProviderUtils::KeyUnwrap(private_key, cipher).value();
 
   // Assert that decrypted message matches original payload
   ASSERT_EQ(decrypted, payload);
@@ -92,9 +94,11 @@ TEST(AzureKmsClientProviderUtilsTest, GenerateWrappingKeyHash) {
       google::scp::cpio::client_providers::GetTestPemPublicWrapKey();
   std::cout << "Test GenerateWrappingKeyHash PEM key: " << publicPemKey
             << std::endl;
-  auto publicKey = AzureKmsClientProviderUtils::PemToEvpPkey(publicPemKey);
+  auto publicKey =
+      AzureKmsClientProviderUtils::PemToEvpPkey(publicPemKey).value();
 
-  auto hexHash = AzureKmsClientProviderUtils::CreateHexHashOnKey(publicKey);
+  auto hexHash =
+      AzureKmsClientProviderUtils::CreateHexHashOnKey(publicKey).value();
   std::cout << "##################HASH: " << hexHash << std::endl;
   ASSERT_EQ(hexHash.size(), 64);
   ASSERT_EQ(hexHash,

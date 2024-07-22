@@ -27,6 +27,7 @@
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 
+#include "absl/log/check.h"
 #include "absl/status/statusor.h"
 
 // #include
@@ -199,9 +200,7 @@ class EvpPkeyWrapper {
 class BIOWrapper {
  public:
   BIOWrapper() : bio_(BIO_new(BIO_s_mem())) {
-    if (!bio_) {
-      throw std::runtime_error("Failed to create BIO");
-    }
+    CHECK(bio_) << "Failed to create BIO";
   }
 
   ~BIOWrapper() { BIO_free(bio_); }
@@ -234,8 +233,8 @@ class AzureKmsClientProviderUtils {
   /**
    * @brief Generate a new wrapping key
    */
-  static std::pair<std::shared_ptr<EvpPkeyWrapper>,
-                   std::shared_ptr<EvpPkeyWrapper>>
+  static absl::StatusOr<std::pair<std::shared_ptr<EvpPkeyWrapper>,
+                                  std::shared_ptr<EvpPkeyWrapper>>>
   GenerateWrappingKey();
 
   /**
@@ -243,7 +242,8 @@ class AzureKmsClientProviderUtils {
    *
    * @param wrappingKey RSA public key used to wrap a key.
    */
-  static std::string EvpPkeyToPem(std::shared_ptr<EvpPkeyWrapper> wrappingKey);
+  static absl::StatusOr<std::string> EvpPkeyToPem(
+      std::shared_ptr<EvpPkeyWrapper> wrappingKey);
 
   /**
    * @brief Generate hex hash on wrapping key
@@ -257,7 +257,7 @@ class AzureKmsClientProviderUtils {
    * @param wrappingKey RSA public key used to wrap a key.
    * @param key         Key in PEM format to wrap.
    */
-  static std::vector<unsigned char> KeyWrap(
+  static absl::StatusOr<std::vector<unsigned char>> KeyWrap(
       std::shared_ptr<EvpPkeyWrapper> wrappingKey, const std::string& key);
 
   /**
@@ -266,8 +266,9 @@ class AzureKmsClientProviderUtils {
    * @param wrappingKey RSA private key used to unwrap a key.
    * @param encrypted   Wrapped key to unwrap.
    */
-  static std::string KeyUnwrap(std::shared_ptr<EvpPkeyWrapper> wrappingKey,
-                               const std::vector<unsigned char>& encrypted);
+  static absl::StatusOr<std::string> KeyUnwrap(
+      std::shared_ptr<EvpPkeyWrapper> wrappingKey,
+      const std::vector<unsigned char>& encrypted);
 
   // Declare the isPrivate function as private
   static bool isPrivate(std::shared_ptr<EvpPkeyWrapper> key);
@@ -277,7 +278,7 @@ class AzureKmsClientProviderUtils {
    *
    * @param wrappingPemKey RSA PEM key used to wrap a key.
    */
-  static std::shared_ptr<EvpPkeyWrapper> PemToEvpPkey(
+  static absl::StatusOr<std::shared_ptr<EvpPkeyWrapper>> PemToEvpPkey(
       std::string wrappingPemKey);
 
  private:
@@ -286,7 +287,7 @@ class AzureKmsClientProviderUtils {
    *
    * @param wrappingPemKey RSA PEM key used to wrap a key.
    */
-  static std::shared_ptr<EvpPkeyWrapper> GetPublicEvpPkey(
+  static absl::StatusOr<std::shared_ptr<EvpPkeyWrapper>> GetPublicEvpPkey(
       std::string wrappingPemKey);
 
   /**
@@ -294,7 +295,7 @@ class AzureKmsClientProviderUtils {
    *
    * @param wrappingPemKey RSA PEM key used to wrap a key.
    */
-  static std::shared_ptr<EvpPkeyWrapper> GetPrivateEvpPkey(
+  static absl::StatusOr<std::shared_ptr<EvpPkeyWrapper>> GetPrivateEvpPkey(
       std::string wrappingPemKey);
 };
 }  // namespace google::scp::cpio::client_providers
