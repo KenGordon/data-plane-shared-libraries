@@ -41,7 +41,7 @@ bool AzureKmsClientProviderUtils::isPrivate(
   ERR_clear_error();
   // Determine if the key is private or public
 
-  int key_type = EVP_PKEY_type(EVP_PKEY_id(key->get()));
+  const int key_type = EVP_PKEY_type(EVP_PKEY_id(key->get()));
   bool is_private = false;
   if (key_type == EVP_PKEY_RSA) {
     RSA* rsa_raw = EVP_PKEY_get1_RSA(key->get());
@@ -77,7 +77,7 @@ absl::StatusOr<std::string> AzureKmsClientProviderUtils::CreateHexHashOnKey(
 
   // Read the PEM key into a string
   char* pem_key;
-  int64 pem_key_length = BIO_get_mem_data(bio_wrapper.get(), &pem_key);
+  const int64 pem_key_length = BIO_get_mem_data(bio_wrapper.get(), &pem_key);
   if (pem_key_length == -1) {
     char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
     char* error_string =
@@ -88,7 +88,7 @@ absl::StatusOr<std::string> AzureKmsClientProviderUtils::CreateHexHashOnKey(
   if (pem_key == nullptr) {
     absl::InternalError("BIO_get_mem_data returned nullptr for pem_key");
   }
-  std::string pem_key_str(pem_key, pem_key_length);
+  const std::string pem_key_str(pem_key, pem_key_length);
 
   // Create a SHA-2 hash of the PEM key string
   unsigned char hash[EVP_MAX_MD_SIZE];
@@ -338,7 +338,7 @@ absl::StatusOr<std::string> AzureKmsClientProviderUtils::EvpPkeyToPem(
                                error_string);
   }
 
-  bool is_private = isPrivate(key);
+  const bool is_private = isPrivate(key);
   int write_result;
   if (is_private) {
     write_result = PEM_write_bio_PrivateKey(bio, key->get(), nullptr, nullptr,
