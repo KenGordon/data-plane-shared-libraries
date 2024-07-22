@@ -58,8 +58,12 @@ using google::scp::core::errors::
 using google::scp::core::errors::
     SC_AZURE_KMS_CLIENT_PROVIDER_CREDENTIALS_PROVIDER_NOT_FOUND;
 using google::scp::core::errors::
+    SC_AZURE_KMS_CLIENT_PROVIDER_EVP_TO_PEM_CONVERSION_ERROR;
+using google::scp::core::errors::
     SC_AZURE_KMS_CLIENT_PROVIDER_KEY_HASH_CREATION_ERROR;
 using google::scp::core::errors::SC_AZURE_KMS_CLIENT_PROVIDER_KEY_ID_NOT_FOUND;
+using google::scp::core::errors::
+    SC_AZURE_KMS_CLIENT_PROVIDER_UNWRAPPING_DECRYPTED_KEY_ERROR;
 using google::scp::core::errors::
     SC_AZURE_KMS_CLIENT_PROVIDER_WRAPPING_KEY_GENERATION_ERROR;
 using google::scp::core::utils::Base64Decode;
@@ -258,7 +262,7 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
       AzureKmsClientProviderUtils::EvpPkeyToPem(publicKey);
   if (!wrapping_key_or.ok()) {
     auto execution_result = FailureExecutionResult(
-        SC_AZURE_KMS_CLIENT_PROVIDER_KEY_HASH_CREATION_ERROR);  // MYTODO
+        SC_AZURE_KMS_CLIENT_PROVIDER_EVP_TO_PEM_CONVERSION_ERROR);
     SCP_ERROR_CONTEXT(kAzureKmsClientProvider, decrypt_context,
                       execution_result,
                       "Failed to convert public key to pem: %s.",
@@ -333,7 +337,7 @@ void AzureKmsClientProvider::OnDecryptCallback(
       AzureKmsClientProviderUtils::KeyUnwrap(ephemeral_private_key, encrypted);
   if (!decrypted_or.ok()) {
     auto execution_result = FailureExecutionResult(
-        SC_AZURE_KMS_CLIENT_PROVIDER_KEY_HASH_CREATION_ERROR);  // MYTODO
+        SC_AZURE_KMS_CLIENT_PROVIDER_UNWRAPPING_DECRYPTED_KEY_ERROR);
     SCP_ERROR_CONTEXT(kAzureKmsClientProvider, decrypt_context,
                       execution_result, "Failed to unwrap decrypted key: %s.",
                       decrypted_or.status().ToString().c_str());
