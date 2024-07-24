@@ -284,7 +284,7 @@ AzureKmsClientProviderUtils::PemToEvpPkey(std::string wrapping_pem_key) {
   ERR_clear_error();
 
   // check for public key or private key
-  bool isPrivate = wrapping_pem_key.find(kPemToken) != std::string::npos;
+  const bool isPrivate = wrapping_pem_key.find(kPemToken) != std::string::npos;
   std::shared_ptr<EvpPkeyWrapper> key;
   if (isPrivate) {
     const auto key_or = GetPrivateEvpPkey(wrapping_pem_key);
