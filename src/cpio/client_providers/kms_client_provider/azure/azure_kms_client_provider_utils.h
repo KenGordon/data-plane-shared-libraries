@@ -65,7 +65,7 @@ static constexpr char kPemEnd[] = "END ";
 static constexpr char kPemToken[] = "PRIVATE ";
 static constexpr char kPemKey[] = "KEY";
 static constexpr char kPemBegin[] = "BEGIN ";
-static std::string GetTestPemPublicWrapKey() {
+[[maybe_unused]] static std::string GetTestPemPublicWrapKey() {
   return R"(
 -----BEGIN PUBLIC KEY-----
 MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA0L9FDBjydkdstv7OKqkw
@@ -137,7 +137,7 @@ KoYbkERevKaeG3gqTs9xJeicglD+iJqbjoN4bvg66YqrWY6sXoF29ubryUyLbRX0
 /Kg7pJF1e2hkk3vxtCSlu9HfZ4q17vg=
 )";
 
-static std::string GetTestPemPrivWrapKey() {
+[[maybe_unused]] static std::string GetTestPemPrivWrapKey() {
   std::string result = std::string(kPemSeperator) + kPemBegin + kPemToken +
                        kPemKey + kPemSeperator + "\n" + kWrappingKp +
                        kPemSeperator + kPemEnd + kPemToken + kPemKey +

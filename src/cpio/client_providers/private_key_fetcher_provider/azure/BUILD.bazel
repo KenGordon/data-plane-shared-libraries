@@ -32,6 +32,7 @@ cc_library(
         "//src/cpio/client_providers/interface:type_def",
         "//src/cpio/client_providers/private_key_fetcher_provider",
         "//src/public/cpio/interface/private_key_client:type_def",
+        "@com_google_absl//absl/log:check",
     ],
 )
 

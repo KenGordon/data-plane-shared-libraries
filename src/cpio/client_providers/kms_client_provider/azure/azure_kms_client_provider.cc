@@ -356,9 +356,9 @@ void AzureKmsClientProvider::OnDecryptCallback(
 }
 
 std::unique_ptr<KmsClientProviderInterface> KmsClientProviderFactory::Create(
-    KmsClientOptions options,
-    RoleCredentialsProviderInterface* role_credentials_provider,
-    AsyncExecutorInterface* io_async_executor) noexcept {
+    absl::Nonnull<
+        RoleCredentialsProviderInterface*> /*role_credentials_provider*/,
+    AsyncExecutorInterface* /*io_async_executor*/) noexcept {
   // We uses GlobalCpio::GetGlobalCpio()->GetHttpClient() to get http_client
   // object instead of adding it to KmsClientProviderFactory::Create() as a new
   // parameter. This is to prevent the existing GCP and AWS implementations from
