@@ -212,7 +212,7 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
   } else {
     // Get test PEM public key
     const auto public_pem_key =
-        google::scp::cpio::client_providers::GetTestPemPublicWrapKey();
+        AzureKmsClientProviderUtils::GetTestPemPublicWrapKey();
     const auto public_key_or =
         AzureKmsClientProviderUtils::PemToEvpPkey(public_pem_key);
     CHECK(public_key_or.ok()) << "Failed to parse public PEM key: "
@@ -220,7 +220,8 @@ void AzureKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
     public_key = public_key_or.value();
 
     // Get test PEM private key and convert it to EVP_PKEY*
-    const auto private_key_pem = GetTestPemPrivWrapKey();
+    const auto private_key_pem =
+        AzureKmsClientProviderUtils::GetTestPemPrivWrapKey();
     // Add the constant to avoid the key detection precommit
     const auto to_test = std::string("-----") + std::string("BEGIN PRIVATE") +
                          std::string(" KEY-----");

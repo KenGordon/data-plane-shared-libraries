@@ -55,9 +55,6 @@ namespace google::scp::cpio::client_providers {
  * the hash of a test wrapping key.
  */
 
-std::string GetTestPemPublicWrapKey();
-std::string GetTestPemPrivWrapKey();
-
 // Define RAII memory allocation/deallocation classes
 class RsaWrapper {
  public:
@@ -193,6 +190,16 @@ class AzureKmsClientProviderUtils {
    */
   static absl::StatusOr<std::shared_ptr<EvpPkeyWrapper>> PemToEvpPkey(
       std::string wrapping_pem_key);
+
+  /**
+   * @brief Return public wrapping key for test
+   */
+  static std::string GetTestPemPublicWrapKey();
+
+  /**
+   * @brief Return private wrapping key for test
+   */
+  static std::string GetTestPemPrivWrapKey();
 
  private:
   /**
