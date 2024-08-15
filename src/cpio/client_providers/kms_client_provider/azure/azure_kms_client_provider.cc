@@ -21,17 +21,18 @@
 #include <vector>
 
 #include <nlohmann/json.hpp>
+#include <tink/aead.h>
 
 #include "absl/functional/bind_front.h"
 #include "absl/log/check.h"
 #include "proto/hpke.pb.h"
+#include "src/azure/attestation/src/attestation.h"
 #include "src/core/utils/base64.h"
 #include "src/cpio/client_providers/global_cpio/global_cpio.h"
 #include "src/cpio/client_providers/interface/auth_token_provider_interface.h"
 #include "src/cpio/client_providers/interface/kms_client_provider_interface.h"
 #include "src/public/cpio/interface/kms_client/type_def.h"
 
-#include "azure_kms_client_provider_utils.h"
 #include "error_codes.h"
 
 using google::cmrt::sdk::kms_service::v1::DecryptRequest;

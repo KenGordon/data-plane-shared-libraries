@@ -28,7 +28,6 @@ cc_library(
     deps = [
         ":azure_kms_client_provider_utils",
         "//src/azure:attestation",
-        "//src/core/common/uuid",
         "//src/core/interface",
         "//src/core/interface:async_context",
         "//src/core/utils:core_utils",
@@ -36,10 +35,8 @@ cc_library(
         "//src/cpio/client_providers/interface:cpio_client_providers_interface",
         "//src/public/cpio/interface:cpio_errors",
         "//src/public/cpio/interface/kms_client:type_def",
-        "@com_github_googleapis_google_cloud_cpp//:kms",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/strings",
-        "@nlohmann_json//:lib",
         "@tink_cc",
     ],
 )
@@ -75,7 +72,6 @@ cc_test(
         "//src/cpio/client_providers/auth_token_provider/mock:auth_token_provider_mock",
         "//src/cpio/client_providers/kms_client_provider/azure:azure_kms_client_provider",
         "//src/public/core:test_execution_result_matchers",
-        "@com_github_googleapis_google_cloud_cpp//:kms",
         "@com_google_googletest//:gtest_main",
     ],
 )
