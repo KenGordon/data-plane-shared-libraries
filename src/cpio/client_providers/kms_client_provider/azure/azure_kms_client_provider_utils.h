@@ -30,9 +30,6 @@
 #include "absl/log/check.h"
 #include "absl/status/statusor.h"
 
-// #include
-// "src/cpio/client_providers/private_key_fetcher_provider/private_key_fetcher_provider.h"
-
 namespace google::scp::cpio::client_providers {
 #define MAX_OPENSSL_ERROR_STRING_LEN 256
 
@@ -65,25 +62,8 @@ static constexpr char kPemEnd[] = "END ";
 static constexpr char kPemToken[] = "PRIVATE ";
 static constexpr char kPemKey[] = "KEY";
 static constexpr char kPemBegin[] = "BEGIN ";
-[[maybe_unused]] static std::string GetTestPemPublicWrapKey() {
-  return R"(
------BEGIN PUBLIC KEY-----
-MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA0L9FDBjydkdstv7OKqkw
-dMiugRqlSHC9Lchfd7jh5uCzv602LhlBJQeEFYchvaEquISLQFoZxEkpGEbEb15v
-N2dKwTCi0ioEGBidtFmuKiVZqf46Hbnw4OdinQHrlGO2PRsRE+DYPOy6xrZTKEnD
-K+OnHDsZ0U2qNJ80IjbxcC83lQpaMx8Ij8AddGY9Msv0TMMgaVsrDaQYLC8tmJih
-xVI2f5BHFbTy3pw4Sq9xp6se+S/ycOUF0M6RFArZcD9uR/NxJKFJJlGOKskgwLnT
-lhPck4sGeLhHUydRdqw0+h8EDsTIUysNxMOYtZETaVuBS+ISMy8+WQgVPs12Ujr3
-17kaHeZr8Lq0bwaFHruRBpNwqtUCBv57IBpe7hnEDDdvOvN/tPubf1dv3HxEt42T
-qqfozS+a9+1hcI8hpNlEjh+qcy1BmhSOXvmRzlhauX4xv6OLCNkRxo6x2Q/1moDC
-PgnaJJVIuESr07xnC8fk43i5qFzEXQO3hwNsjd7sqFBBTb6t5N6Nm37mMNTqsDky
-niAeFG+1gK/UD+cMPfbUIDaCqpCDwrTX0gMqqUTDG6eNPmQaOa+slici3h9WLaNy
-mEzfKqJMBggKib/+e4Eb/ENdvxeT1X2YXpZ3tjZE+bRoiDgN4FYqBzYtZ/ieRcsq
-4fPqgZPbh+ivT2o7QutzWH0CAwEAAQ==
------END PUBLIC KEY-----
+std::string GetTestPemPublicWrapKey();
 
-)";
-}
 static constexpr char kWrappingKp[] = R"(
 MIIJQwIBADANBgkqhkiG9w0BAQEFAASCCS0wggkpAgEAAoICAQDQv0UMGPJ2R2y2
 /s4qqTB0yK6BGqVIcL0tyF93uOHm4LO/rTYuGUElB4QVhyG9oSq4hItAWhnESSkY
@@ -137,13 +117,7 @@ KoYbkERevKaeG3gqTs9xJeicglD+iJqbjoN4bvg66YqrWY6sXoF29ubryUyLbRX0
 /Kg7pJF1e2hkk3vxtCSlu9HfZ4q17vg=
 )";
 
-[[maybe_unused]] static std::string GetTestPemPrivWrapKey() {
-  std::string result = std::string(kPemSeperator) + kPemBegin + kPemToken +
-                       kPemKey + kPemSeperator + "\n" + kWrappingKp +
-                       kPemSeperator + kPemEnd + kPemToken + kPemKey +
-                       kPemSeperator + "\n";
-  return result;
-}
+std::string GetTestPemPrivWrapKey();
 
 // Define RAII memory allocation/deallocation classes
 class RsaWrapper {

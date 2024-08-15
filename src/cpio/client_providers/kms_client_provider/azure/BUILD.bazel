@@ -20,15 +20,13 @@ cc_library(
     name = "azure_kms_client_provider",
     srcs = [
         ":azure_kms_client_provider.cc",
+    ],
+    hdrs = [
         ":azure_kms_client_provider.h",
-        ":azure_kms_client_provider_utils.cc",
-        ":azure_kms_client_provider_utils.h",
         ":error_codes.h",
     ],
-    copts = [
-        "-std=c++17",
-    ],
     deps = [
+        ":azure_kms_client_provider_utils",
         "//src/azure:attestation",
         "//src/core/common/uuid",
         "//src/core/interface",
@@ -43,6 +41,22 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@nlohmann_json//:lib",
         "@tink_cc",
+    ],
+)
+
+cc_library(
+    name = "azure_kms_client_provider_utils",
+    srcs = [
+        ":azure_kms_client_provider_utils.cc",
+    ],
+    hdrs = [
+        ":azure_kms_client_provider_utils.h",
+    ],
+    deps = [
+        "@boringssl//:crypto",
+        "@boringssl//:ssl",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/status:statusor",
     ],
 )
 
