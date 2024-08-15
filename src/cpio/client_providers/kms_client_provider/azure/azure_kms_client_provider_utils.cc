@@ -21,6 +21,70 @@
 
 using google::scp::cpio::client_providers::AzureKmsClientProviderUtils;
 
+namespace {
+
+constexpr unsigned int kMaxOpensslErrorStringLen = 256;
+
+constexpr char kPemSeperator[] = "-----";
+constexpr char kPemEnd[] = "END ";
+constexpr char kPemToken[] = "PRIVATE ";
+constexpr char kPemKey[] = "KEY";
+constexpr char kPemBegin[] = "BEGIN ";
+
+constexpr char kWrappingKp[] = R"(
+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
+/Kg7pJF1e2hkk3vxtCSlu9HfZ4q17vg=
+)";
+}  // namespace
+
 namespace google::scp::cpio::client_providers {
 
 std::string GetTestPemPublicWrapKey() {
@@ -85,7 +149,7 @@ absl::StatusOr<std::string> AzureKmsClientProviderUtils::CreateHexHashOnKey(
   BIOWrapper bio_wrapper;
   int result = PEM_write_bio_PUBKEY(bio_wrapper.get(), public_key->get());
   if (result != 1) {
-    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[kMaxOpensslErrorStringLen];
     char* error_string = nullptr;
     error_string =
         ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
@@ -98,7 +162,7 @@ absl::StatusOr<std::string> AzureKmsClientProviderUtils::CreateHexHashOnKey(
   char* pem_key;
   const auto pem_key_length = BIO_get_mem_data(bio_wrapper.get(), &pem_key);
   if (pem_key_length == -1) {
-    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[kMaxOpensslErrorStringLen];
     char* error_string = nullptr;
     error_string =
         ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
@@ -115,7 +179,7 @@ absl::StatusOr<std::string> AzureKmsClientProviderUtils::CreateHexHashOnKey(
   unsigned int hash_length;
   if (EVP_Digest(pem_key_str.c_str(), pem_key_str.size(), hash, &hash_length,
                  EVP_sha256(), NULL) != 1) {
-    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[kMaxOpensslErrorStringLen];
     char* error_string = nullptr;
     error_string =
         ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
@@ -145,7 +209,7 @@ AzureKmsClientProviderUtils::GenerateWrappingKey() {
     BnWrapper e;
     ERR_clear_error();
     if (!BN_set_word(e.get(), RSA_F4)) {
-      char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
+      char err_buffer[kMaxOpensslErrorStringLen];
       char* error_string = nullptr;
       error_string =
           ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
@@ -154,7 +218,7 @@ AzureKmsClientProviderUtils::GenerateWrappingKey() {
     }
 
     if (RSA_generate_key_ex(rsa.get(), 4096, e.get(), NULL) != 1) {
-      char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
+      char err_buffer[kMaxOpensslErrorStringLen];
       char* error_string = nullptr;
       error_string =
           ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
@@ -175,7 +239,7 @@ AzureKmsClientProviderUtils::GenerateWrappingKey() {
     }
 
     if (EVP_PKEY_set1_RSA(private_key->get(), rsa.get()) != 1) {
-      char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
+      char err_buffer[kMaxOpensslErrorStringLen];
       char* error_string = nullptr;
       error_string =
           ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
@@ -187,7 +251,7 @@ AzureKmsClientProviderUtils::GenerateWrappingKey() {
     // Duplicating the RSA public key
     RSA* rsa_pub = RSAPublicKey_dup(rsa.get());
     if (rsa_pub == nullptr) {
-      char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
+      char err_buffer[kMaxOpensslErrorStringLen];
       char* error_string = nullptr;
       error_string =
           ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
@@ -204,7 +268,7 @@ AzureKmsClientProviderUtils::GenerateWrappingKey() {
     std::shared_ptr<EvpPkeyWrapper> public_key =
         std::make_shared<EvpPkeyWrapper>(EVP_PKEY_new());
     if (EVP_PKEY_set1_RSA(public_key->get(), rsa_pub_dup->get()) != 1) {
-      char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
+      char err_buffer[kMaxOpensslErrorStringLen];
       char* error_string = nullptr;
       error_string =
           ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
@@ -247,7 +311,7 @@ AzureKmsClientProviderUtils::GetPrivateEvpPkey(std::string wrapping_pem_key) {
   // Read the private key from the BIO
   EVP_PKEY* pkey = PEM_read_bio_PrivateKey(bio_wrapper.get(), NULL, NULL, NULL);
   if (pkey == nullptr) {
-    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[kMaxOpensslErrorStringLen];
     char* error_string = nullptr;
     error_string =
         ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
@@ -289,7 +353,7 @@ AzureKmsClientProviderUtils::GetPublicEvpPkey(std::string wrapping_pem_key) {
   // Read the public key from the BIO
   EVP_PKEY* pkey = PEM_read_bio_PUBKEY(bio_wrapper.get(), NULL, NULL, NULL);
   if (pkey == nullptr) {
-    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[kMaxOpensslErrorStringLen];
     char* error_string = nullptr;
     error_string =
         ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
@@ -333,7 +397,7 @@ AzureKmsClientProviderUtils::PemToEvpPkey(std::string wrapping_pem_key) {
   }
 
   if (key->get() == NULL) {
-    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[kMaxOpensslErrorStringLen];
     char* error_string = nullptr;
     error_string =
         ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
@@ -359,7 +423,7 @@ absl::StatusOr<std::string> AzureKmsClientProviderUtils::EvpPkeyToPem(
 
   BIO* bio = bio_wrapper.get();
   if (bio == nullptr) {
-    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[kMaxOpensslErrorStringLen];
     char* error_string = nullptr;
     error_string =
         ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
@@ -378,7 +442,7 @@ absl::StatusOr<std::string> AzureKmsClientProviderUtils::EvpPkeyToPem(
   }
 
   if (write_result != 1) {
-    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[kMaxOpensslErrorStringLen];
     char* error_string = nullptr;
     error_string =
         ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
@@ -417,7 +481,7 @@ absl::StatusOr<std::vector<unsigned char>> AzureKmsClientProviderUtils::KeyWrap(
   // Create a wrapper for the EVP_PKEY_CTX resource
   EVPKeyCtxWrapper ctxWrapper(EVP_PKEY_CTX_new(wrapping_key->get(), NULL));
   if (ctxWrapper.get() == nullptr) {
-    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[kMaxOpensslErrorStringLen];
     char* error_string = nullptr;
     error_string =
         ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
@@ -430,7 +494,7 @@ absl::StatusOr<std::vector<unsigned char>> AzureKmsClientProviderUtils::KeyWrap(
 
   // Initialize the context for encryption
   if (EVP_PKEY_encrypt_init(ctx) != 1) {
-    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[kMaxOpensslErrorStringLen];
     char* error_string = nullptr;
     error_string =
         ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
@@ -441,7 +505,7 @@ absl::StatusOr<std::vector<unsigned char>> AzureKmsClientProviderUtils::KeyWrap(
 
   // Set the OAEP padding
   if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) != 1) {
-    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[kMaxOpensslErrorStringLen];
     char* error_string = nullptr;
     error_string =
         ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
@@ -453,7 +517,7 @@ absl::StatusOr<std::vector<unsigned char>> AzureKmsClientProviderUtils::KeyWrap(
   // Set the OAEP parameters
   const EVP_MD* md = EVP_sha256();
   if (EVP_PKEY_CTX_set_rsa_oaep_md(ctx, md) != 1) {
-    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[kMaxOpensslErrorStringLen];
     char* error_string = nullptr;
     error_string =
         ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
@@ -467,7 +531,7 @@ absl::StatusOr<std::vector<unsigned char>> AzureKmsClientProviderUtils::KeyWrap(
   if (EVP_PKEY_encrypt(ctx, nullptr, &encrypted_len,
                        reinterpret_cast<const unsigned char*>(data.data()),
                        data.size()) != 1) {
-    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[kMaxOpensslErrorStringLen];
     char* error_string = nullptr;
     error_string =
         ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
@@ -483,7 +547,7 @@ absl::StatusOr<std::vector<unsigned char>> AzureKmsClientProviderUtils::KeyWrap(
   if (EVP_PKEY_encrypt(ctx, encrypted.data(), &encrypted_len,
                        reinterpret_cast<const unsigned char*>(data.data()),
                        data.size()) != 1) {
-    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[kMaxOpensslErrorStringLen];
     char* error_string = nullptr;
     error_string =
         ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
@@ -509,7 +573,7 @@ absl::StatusOr<std::string> AzureKmsClientProviderUtils::KeyUnwrap(
   ERR_clear_error();
   // Ensure that the wrapping key is private
   if (!isPrivate(wrapping_key)) {
-    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[kMaxOpensslErrorStringLen];
     char* error_string = nullptr;
     error_string =
         ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
@@ -521,7 +585,7 @@ absl::StatusOr<std::string> AzureKmsClientProviderUtils::KeyUnwrap(
   // Create a wrapper for the EVP_PKEY_CTX resource
   EVPKeyCtxWrapper ctxWrapper(EVP_PKEY_CTX_new(wrapping_key->get(), NULL));
   if (ctxWrapper.get() == nullptr) {
-    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[kMaxOpensslErrorStringLen];
     char* error_string = nullptr;
     error_string =
         ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
@@ -534,7 +598,7 @@ absl::StatusOr<std::string> AzureKmsClientProviderUtils::KeyUnwrap(
 
   // Initialize the context for decryption
   if (EVP_PKEY_decrypt_init(ctx) != 1) {
-    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[kMaxOpensslErrorStringLen];
     char* error_string = nullptr;
     error_string =
         ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
@@ -545,7 +609,7 @@ absl::StatusOr<std::string> AzureKmsClientProviderUtils::KeyUnwrap(
 
   // Set the OAEP padding
   if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) != 1) {
-    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[kMaxOpensslErrorStringLen];
     char* error_string = nullptr;
     error_string =
         ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
@@ -557,7 +621,7 @@ absl::StatusOr<std::string> AzureKmsClientProviderUtils::KeyUnwrap(
   // Set the OAEP parameters
   const EVP_MD* md = EVP_sha256();
   if (EVP_PKEY_CTX_set_rsa_oaep_md(ctx, md) != 1) {
-    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[kMaxOpensslErrorStringLen];
     char* error_string = nullptr;
     error_string =
         ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
@@ -570,7 +634,7 @@ absl::StatusOr<std::string> AzureKmsClientProviderUtils::KeyUnwrap(
   size_t decrypted_len;
   if (EVP_PKEY_decrypt(ctx, nullptr, &decrypted_len, encrypted.data(),
                        encrypted.size()) != 1) {
-    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[kMaxOpensslErrorStringLen];
     char* error_string = nullptr;
     error_string =
         ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));
@@ -585,7 +649,7 @@ absl::StatusOr<std::string> AzureKmsClientProviderUtils::KeyUnwrap(
   // Decrypt the data
   if (EVP_PKEY_decrypt(ctx, decrypted.data(), &decrypted_len, encrypted.data(),
                        encrypted.size()) != 1) {
-    char err_buffer[MAX_OPENSSL_ERROR_STRING_LEN];
+    char err_buffer[kMaxOpensslErrorStringLen];
     char* error_string = nullptr;
     error_string =
         ERR_error_string_n(ERR_get_error(), error_string, sizeof(err_buffer));

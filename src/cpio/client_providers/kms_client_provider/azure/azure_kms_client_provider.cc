@@ -83,7 +83,8 @@ using std::placeholders::_1;
 
 namespace google::scp::cpio::client_providers {
 
-static constexpr char kAzureKmsClientProvider[] = "AzureKmsClientProvider";
+constexpr char kAttestation[] = "attestation";
+constexpr char kAzureKmsClientProvider[] = "AzureKmsClientProvider";
 
 constexpr char kDefaultKmsUnwrapPath[] =
     "https://127.0.0.1:8000/app/unwrapKey?fmt=tink";

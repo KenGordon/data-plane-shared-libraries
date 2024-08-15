@@ -30,6 +30,10 @@ using google::scp::core::HttpRequest;
 using google::scp::core::Uri;
 using google::scp::cpio::client_providers::AzurePrivateKeyFetchingClientUtils;
 
+namespace {
+constexpr char kAttestation[] = "attestation";
+}
+
 namespace google::scp::cpio::client_providers {
 void AzurePrivateKeyFetchingClientUtils::CreateHttpRequest(
     const PrivateKeyFetchingRequest& request, HttpRequest& http_request) {
