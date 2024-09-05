@@ -77,35 +77,41 @@ namespace google::scp::cpio::client_providers {
 
 absl::Status AzureBlobStorageClientProvider::GetBlob(
     AsyncContext<GetBlobRequest, GetBlobResponse>& get_blob_context) noexcept {
+  // Not implemented
   return absl::OkStatus();
 }
 
 absl::Status AzureBlobStorageClientProvider::GetBlobStream(
     ConsumerStreamingContext<GetBlobStreamRequest, GetBlobStreamResponse>&
         get_blob_stream_context) noexcept {
+  // Not implemented
   return absl::OkStatus();
 }
 
 absl::Status AzureBlobStorageClientProvider::ListBlobsMetadata(
     AsyncContext<ListBlobsMetadataRequest, ListBlobsMetadataResponse>&
         list_blobs_context) noexcept {
+  // Not implemented
   return absl::OkStatus();
 }
 
 absl::Status AzureBlobStorageClientProvider::PutBlob(
     AsyncContext<PutBlobRequest, PutBlobResponse>& put_blob_context) noexcept {
+  // Not implemented
   return absl::OkStatus();
 }
 
 absl::Status AzureBlobStorageClientProvider::PutBlobStream(
     ProducerStreamingContext<PutBlobStreamRequest, PutBlobStreamResponse>&
         put_blob_stream_context) noexcept {
+  // Not implemented
   return absl::OkStatus();
 }
 
 absl::Status AzureBlobStorageClientProvider::DeleteBlob(
     AsyncContext<DeleteBlobRequest, DeleteBlobResponse>&
         delete_blob_context) noexcept {
+  // Not implemented
   return absl::OkStatus();
 }
 
