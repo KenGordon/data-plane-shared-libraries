@@ -17,7 +17,7 @@ load("@rules_cc//cc:defs.bzl", "cc_library", "cc_proto_library", "cc_test")
 load("@rules_proto//proto:defs.bzl", "proto_library")
 
 package(default_visibility = [
-    "//src/roma/gvisor:__subpackages__",
+    "//src/roma/byob:__subpackages__",
     "//src/roma/native_function_grpc_server:__subpackages__",
     "//src/roma/roma_service:__subpackages__",
     "//src/roma/sandbox/js_engine/v8_engine:__subpackages__",
@@ -85,9 +85,11 @@ cc_library(
     deps = [
         ":native_function_table",
         ":rpc_wrapper_cc_proto",
+        "//src/roma/interface",
         "//src/roma/logging",
         "//src/roma/metadata_storage",
         "//src/roma/sandbox/constants",
+        "//src/util:execution_token",
         "@com_google_sandboxed_api//sandboxed_api/sandbox2:comms",
     ],
 )

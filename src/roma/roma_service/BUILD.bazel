@@ -32,6 +32,7 @@ cc_library(
         "//src/roma/sandbox/dispatcher",
         "//src/roma/sandbox/native_function_binding:native_function_handler_sapi_ipc",
         "//src/roma/sandbox/native_function_binding:native_function_table",
+        "//src/util:execution_token",
         "//src/util/status_macro:status_macros",
     ],
 )
@@ -295,6 +296,7 @@ cc_library(
         "//src/roma/config",
         "//src/roma/interface",
         "//src/util/status_macro:status_macros",
+        "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/synchronization",
@@ -314,6 +316,7 @@ cc_test(
         ":romav8_app_service",
         "//src/roma/config",
         "//src/roma/interface",
+        "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",

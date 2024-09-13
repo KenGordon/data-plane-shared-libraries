@@ -32,6 +32,7 @@
 #include "src/roma/interface/roma.h"
 #include "src/roma/sandbox/worker_api/sapi/worker_params.pb.h"
 #include "src/roma/sandbox/worker_api/sapi/worker_sandbox_api.h"
+#include "src/util/execution_token.h"
 #include "src/util/status_macro/status_macros.h"
 
 #include "request_converter.h"
@@ -82,6 +83,8 @@ class Dispatcher final {
     });
     return absl::OkStatus();
   }
+
+  void Cancel(const ExecutionToken& token);
 
  private:
   struct Request {

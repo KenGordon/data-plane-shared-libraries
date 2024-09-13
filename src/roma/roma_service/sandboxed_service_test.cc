@@ -294,6 +294,326 @@ TEST(SandboxedServiceTest, ExecuteCode) {
   ASSERT_TRUE(roma_service.Stop().ok());
 }
 
+TEST(SandboxedServiceTest, CanCancelPendingRequests) {
+  Config config;
+  // Both requests are handled by the same worker
+  config.number_of_workers = 1;
+  RomaService<> roma_service(std::move(config));
+  ASSERT_TRUE(roma_service.Init().ok());
+
+  std::string result;
+  absl::Notification load_hang_udf_finished;
+  absl::Notification load_cancel_udf_finished;
+  absl::Notification execute_hang_udf_finished;
+  absl::Notification execute_cancel_udf_finished;
+
+  {
+    auto code_obj = std::make_unique<CodeObject>(CodeObject{
+        .id = "foo",
+        .version_string = "v1",
+        .js = R"JS_CODE(
+    function Hang() {
+      const startTime = Date.now();
+      while (Date.now() - startTime < 1000) {}
+    }
+  )JS_CODE",
+    });
+
+    EXPECT_TRUE(roma_service
+                    .LoadCodeObj(std::move(code_obj),
+                                 [&](absl::StatusOr<ResponseObject> resp) {
+                                   EXPECT_TRUE(resp.ok());
+                                   load_hang_udf_finished.Notify();
+                                 })
+                    .ok());
+  }
+
+  {
+    auto code_obj = std::make_unique<CodeObject>(CodeObject{
+        .id = "foo",
+        .version_string = "v2",
+        .js = R"JS_CODE(
+    function Handler() { return "Hello world!"; }
+  )JS_CODE",
+    });
+
+    EXPECT_TRUE(roma_service
+                    .LoadCodeObj(std::move(code_obj),
+                                 [&](absl::StatusOr<ResponseObject> resp) {
+                                   EXPECT_TRUE(resp.ok());
+                                   load_cancel_udf_finished.Notify();
+                                 })
+                    .ok());
+  }
+
+  ASSERT_TRUE(
+      load_hang_udf_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
+  ASSERT_TRUE(load_cancel_udf_finished.WaitForNotificationWithTimeout(
+      absl::Seconds(10)));
+  {
+    auto execution_obj =
+        std::make_unique<InvocationStrRequest<>>(InvocationStrRequest<>{
+            .id = "foo",
+            .version_string = "v1",
+            .handler_name = "Hang",
+            .input = {},
+        });
+
+    EXPECT_TRUE(roma_service
+                    .Execute(std::move(execution_obj),
+                             [&execute_hang_udf_finished](
+                                 absl::StatusOr<ResponseObject> resp) {
+                               EXPECT_TRUE(resp.ok());
+                               execute_hang_udf_finished.Notify();
+                             })
+                    .ok());
+  }
+
+  {
+    auto execution_obj =
+        std::make_unique<InvocationStrRequest<>>(InvocationStrRequest<>{
+            .id = "foo",
+            .version_string = "v2",
+            .handler_name = "Handler",
+            .input = {},
+        });
+
+    // This Request will be pending until the worker finishes executing the
+    // above (Hang) request
+    auto execution_token = roma_service.Execute(
+        std::move(execution_obj),
+        [&execute_cancel_udf_finished](absl::StatusOr<ResponseObject> resp) {
+          EXPECT_FALSE(resp.ok());
+          EXPECT_EQ(resp.status().code(), absl::StatusCode::kCancelled);
+          execute_cancel_udf_finished.Notify();
+        });
+    EXPECT_TRUE(execution_token.ok());
+    // Cancel the request before it gets executed
+    roma_service.Cancel(*execution_token);
+  }
+
+  ASSERT_TRUE(execute_hang_udf_finished.WaitForNotificationWithTimeout(
+      absl::Seconds(10)));
+  ASSERT_TRUE(execute_cancel_udf_finished.WaitForNotificationWithTimeout(
+      absl::Seconds(10)));
+  EXPECT_TRUE(roma_service.Stop().ok());
+}
+
+// Hang should timeout if invoked
+void Hang(FunctionBindingPayload<>& wrapper) {
+  absl::Duration sleep_duration;
+  EXPECT_TRUE(absl::ParseDuration("10s", &sleep_duration));
+  absl::SleepFor(sleep_duration);
+}
+
+TEST(SandboxedServiceTest, CanCancelCurrentlyExecutingRequest) {
+  Config config;
+  config.number_of_workers = 2;
+  config.RegisterFunctionBinding(
+      std::make_unique<FunctionBindingObjectV2<>>(FunctionBindingObjectV2<>{
+          .function_name = "Hang",
+          .function = Hang,
+      }));
+  RomaService<> roma_service(std::move(config));
+  ASSERT_TRUE(roma_service.Init().ok());
+
+  std::string result;
+  absl::Notification load_finished;
+  absl::Notification execute_finished;
+
+  {
+    auto code_obj = std::make_unique<CodeObject>(CodeObject{
+        .id = "foo",
+        .version_string = "v1",
+        .js = R"JS_CODE(
+    function Handler() {
+      const startTime = Date.now();
+      while (Date.now() - startTime < 2000) {}
+      Hang();
+    }
+  )JS_CODE",
+    });
+
+    EXPECT_TRUE(roma_service
+                    .LoadCodeObj(std::move(code_obj),
+                                 [&](absl::StatusOr<ResponseObject> resp) {
+                                   EXPECT_TRUE(resp.ok());
+                                   load_finished.Notify();
+                                 })
+                    .ok());
+  }
+  ASSERT_TRUE(load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
+
+  {
+    auto execution_obj =
+        std::make_unique<InvocationStrRequest<>>(InvocationStrRequest<>{
+            .id = "foo",
+            .version_string = "v1",
+            .handler_name = "Handler",
+            .input = {},
+        });
+
+    auto execution_token = roma_service.Execute(
+        std::move(execution_obj),
+        [&result, &execute_finished](absl::StatusOr<ResponseObject> resp) {
+          EXPECT_FALSE(resp.ok());
+          result = resp.status().message();
+          execute_finished.Notify();
+        });
+    EXPECT_TRUE(execution_token.ok());
+    // Sleep for 1s to allow request to start but not finish
+    absl::SleepFor(absl::Seconds(1));
+    roma_service.Cancel(*execution_token);
+  }
+  ASSERT_TRUE(
+      execute_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
+  EXPECT_THAT(
+      result,
+      HasSubstr("ROMA: Error while executing native function binding."));
+
+  EXPECT_TRUE(roma_service.Stop().ok());
+}
+
+TEST(SandboxedServiceTest, CancellingRequestDuringCallbackIsNoOp) {
+  Config config;
+  config.number_of_workers = 2;
+  config.RegisterFunctionBinding(
+      std::make_unique<FunctionBindingObjectV2<>>(FunctionBindingObjectV2<>{
+          .function_name = "Hang",
+          .function = Hang,
+      }));
+  RomaService<> roma_service(std::move(config));
+  ASSERT_TRUE(roma_service.Init().ok());
+
+  std::string result;
+  absl::Notification load_finished;
+  absl::Notification execute_finished;
+  absl::Notification callback_started;
+
+  {
+    auto code_obj = std::make_unique<CodeObject>(CodeObject{
+        .id = "foo",
+        .version_string = "v1",
+        .js = R"JS_CODE(
+    function Handler() {
+      return "Hello World";
+    }
+  )JS_CODE",
+    });
+
+    EXPECT_TRUE(roma_service
+                    .LoadCodeObj(std::move(code_obj),
+                                 [&](absl::StatusOr<ResponseObject> resp) {
+                                   EXPECT_TRUE(resp.ok());
+                                   load_finished.Notify();
+                                 })
+                    .ok());
+  }
+  ASSERT_TRUE(load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
+
+  {
+    auto execution_obj =
+        std::make_unique<InvocationStrRequest<>>(InvocationStrRequest<>{
+            .id = "foo",
+            .version_string = "v1",
+            .handler_name = "Handler",
+            .input = {},
+        });
+
+    absl::Status response_status;
+    auto execution_token = roma_service.Execute(
+        std::move(execution_obj),
+        [&result, &execute_finished, &response_status,
+         &callback_started](absl::StatusOr<ResponseObject> resp) {
+          response_status = resp.status();
+          callback_started.Notify();
+          if (resp.ok()) {
+            result = std::move(resp->resp);
+          }
+          execute_finished.Notify();
+        });
+    EXPECT_TRUE(response_status.ok());
+    EXPECT_TRUE(execution_token.ok());
+    ASSERT_TRUE(
+        callback_started.WaitForNotificationWithTimeout(absl::Seconds(10)));
+    roma_service.Cancel(*execution_token);
+  }
+  ASSERT_TRUE(
+      execute_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
+  EXPECT_THAT(result, StrEq(R"("Hello World")"));
+
+  EXPECT_TRUE(roma_service.Stop().ok());
+}
+
+TEST(SandboxedServiceTest, CancellingFinishedRequestIsNoOp) {
+  Config config;
+  config.number_of_workers = 2;
+  config.RegisterFunctionBinding(
+      std::make_unique<FunctionBindingObjectV2<>>(FunctionBindingObjectV2<>{
+          .function_name = "Hang",
+          .function = Hang,
+      }));
+  RomaService<> roma_service(std::move(config));
+  ASSERT_TRUE(roma_service.Init().ok());
+
+  std::string result;
+  absl::Notification load_finished;
+  absl::Notification execute_finished;
+
+  {
+    auto code_obj = std::make_unique<CodeObject>(CodeObject{
+        .id = "foo",
+        .version_string = "v1",
+        .js = R"JS_CODE(
+    function Handler() {
+      return "Hello World";
+    }
+  )JS_CODE",
+    });
+
+    absl::Status response_status;
+    EXPECT_TRUE(roma_service
+                    .LoadCodeObj(std::move(code_obj),
+                                 [&](absl::StatusOr<ResponseObject> resp) {
+                                   response_status = resp.status();
+                                   load_finished.Notify();
+                                 })
+                    .ok());
+    ASSERT_TRUE(response_status.ok());
+  }
+  ASSERT_TRUE(load_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
+
+  {
+    auto execution_obj =
+        std::make_unique<InvocationStrRequest<>>(InvocationStrRequest<>{
+            .id = "foo",
+            .version_string = "v1",
+            .handler_name = "Handler",
+            .input = {},
+        });
+
+    absl::Status response_status;
+    auto execution_token =
+        roma_service.Execute(std::move(execution_obj),
+                             [&result, &execute_finished, &response_status](
+                                 absl::StatusOr<ResponseObject> resp) {
+                               response_status = resp.status();
+                               if (resp.ok()) {
+                                 result = std::move(resp->resp);
+                               }
+                               execute_finished.Notify();
+                             });
+    EXPECT_TRUE(execution_token.ok());
+    ASSERT_TRUE(
+        execute_finished.WaitForNotificationWithTimeout(absl::Seconds(10)));
+    roma_service.Cancel(*execution_token);
+  }
+
+  EXPECT_THAT(result, StrEq(R"("Hello World")"));
+
+  EXPECT_TRUE(roma_service.Stop().ok());
+}
+
 TEST(SandboxedServiceTest, CanRegisterGrpcServices) {
   Config config;
   config.number_of_workers = 2;

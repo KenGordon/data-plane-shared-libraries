@@ -308,7 +308,7 @@ def roma_host_api_cc_library(*, name, roma_host_api, **kwargs):
         **{k: v for (k, v) in kwargs.items() if k in _cc_attrs}
     )
 
-def roma_app_api_cc_library(*, name, roma_app_api, js_library, **kwargs):
+def roma_v8_app_api_cc_library(*, name, roma_app_api, js_library, **kwargs):
     """
     Top-level macro for the Roma Application API.
 
@@ -357,15 +357,15 @@ def roma_app_api_cc_library(*, name, roma_app_api, js_library, **kwargs):
         targets = [name_proto],
         suffixes = ["_roma_app.h.tmpl"],
     )
-    filter_files(
+    _filter_files_suffix(
         name = name + "_cc_hdrs",
-        target = name_proto,
-        extensions = ["h"],
+        targets = [name_proto],
+        suffixes = ["roma_app_service.h"],
     )
-    filter_files(
+    _filter_files_suffix(
         name = name + "_docs",
-        target = name_proto,
-        extensions = ["md"],
+        targets = [name_proto],
+        suffixes = ["cc_v8_app_api_client_sdk.md"],
     )
 
     service_h = "{}_romav8_app_service.h".format(roma_app_api.proto_basename)
@@ -391,8 +391,7 @@ def roma_app_api_cc_library(*, name, roma_app_api, js_library, **kwargs):
         includes = ["."],
         deps = kwargs.get("deps", []) + roma_app_api.cc_protos + [
             Label("//src/roma/roma_service:romav8_app_service"),
-            Label("//src/roma/gvisor/interface:roma_service"),
-            Label("//src/roma/gvisor/config"),
+            "@com_google_absl//absl/functional:any_invocable",
             "@com_google_absl//absl/status",
             "@com_google_absl//absl/strings",
         ],
@@ -413,7 +412,72 @@ def roma_app_api_cc_library(*, name, roma_app_api, js_library, **kwargs):
         **{k: v for (k, v) in kwargs.items() if k in _cc_attrs}
     )
 
-def roma_sdk(*, name, srcs, roma_app_api, app_api_cc_library, js_library, host_api_cc_libraries = [], **kwargs):
+def roma_byob_app_api_cc_library(*, name, roma_app_api, **kwargs):
+    """
+    Top-level macro for the Roma BYOB Application API.
+
+    Generates C++ and JavaScript library targets for the Roma BYOB Application API.
+    This includes C++ client APIs for invoking the Roma App and protobuf helper
+    functions for request/repsponse messages.
+
+    Args:
+        name: name of cc_library target, basename of ancillary targets.
+        roma_app_api: the roma_api struct
+        **kwargs: attributes for cc_library and those common to bazel build rules.
+
+    Generates:
+        <name>_cc_byob_app_api_client_sdk.md
+        <name>_roma_app_service.h
+        <name>_roma_byob_app_service.h
+
+    Targets:
+        <name> -- cc_library
+        <name>_srcs -- c++ source files
+        <name>_hdrs -- c++ header files
+
+    Returns:
+        Providers:
+            - ProtoPluginInfo
+            - DefaultInfo
+    """
+
+    name_proto = name + "_proto_cc_plugin"
+
+    app_api_cc_protoc(
+        name = name_proto,
+        roma_app_api = roma_app_api,
+    )
+
+    _filter_files_suffix(
+        name = "{}_roma_byob_app_header".format(name),
+        targets = [name_proto],
+        suffixes = ["app_service.h"],
+    )
+    _filter_files_suffix(
+        name = name + "_docs",
+        targets = [name_proto],
+        suffixes = ["cc_byob_app_api_client_sdk.md"],
+    )
+
+    cc_library(
+        name = name,
+        hdrs = [
+            "{}_roma_byob_app_header".format(name),
+        ],
+        includes = ["."],
+        deps = kwargs.get("deps", []) + roma_app_api.cc_protos + [
+            Label("//src/roma/roma_service:romav8_app_service"),
+            Label("//src/roma/byob/interface:roma_service"),
+            Label("//src/roma/byob/config"),
+            "@com_google_absl//absl/functional:any_invocable",
+            "@com_google_absl//absl/status",
+            "@com_google_absl//absl/strings",
+            "@com_google_protobuf//:protobuf",
+        ],
+        **{k: v for (k, v) in kwargs.items() if k in _cc_attrs}
+    )
+
+def roma_v8_sdk(*, name, srcs, roma_app_api, app_api_cc_library, js_library, host_api_cc_libraries = [], **kwargs):
     """
     Top-level macro for the Roma SDK.
 
@@ -448,4 +512,39 @@ def roma_sdk(*, name, srcs, roma_app_api, app_api_cc_library, js_library, host_a
             ":{}_doc_artifacts".format(name),
         ],
         package_dir = "/{}".format(name),
+        **{k: v for (k, v) in kwargs.items() if k in _cc_attrs}
+    )
+
+def roma_byob_sdk(*, name, srcs, byob_app_api_cc_library, **kwargs):
+    """
+    Top-level macro for the Roma BYOB SDK.
+
+    Generates a bundle of SDK artifacts for the specified Roma BYOB API.
+
+    Args:
+        name: name of sdk target, basename of ancillary targets.
+        srcs: label list of targets to include.
+        byob_app_api_cc_library: label of the associated byob_app_api_cc_library target.
+        **kwargs: attributes common to bazel build rules.
+
+    Targets:
+        <name>_doc_artifacts -- docs pkg_files
+        <name> -- sdk pkg_zip
+    """
+
+    pkg_files(
+        name = name + "_doc_artifacts",
+        srcs = ["{}_docs".format(byob_app_api_cc_library)],
+        prefix = "docs",
+    )
+
+    pkg_zip(
+        name = name,
+        srcs = srcs + [
+            "{}".format(byob_app_api_cc_library),
+            "{}_roma_byob_app_header".format(byob_app_api_cc_library),
+            ":{}_doc_artifacts".format(name),
+        ],
+        package_dir = "/{}".format(name),
+        **{k: v for (k, v) in kwargs.items() if k in _cc_attrs}
     )
