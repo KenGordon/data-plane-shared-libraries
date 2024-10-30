@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#ifndef AZURE_ATTESTATION_SEV_H
+#define AZURE_ATTESTATION_SEV_H
+
 #include <fcntl.h>
 #include <stdint.h>
 #include <sys/ioctl.h>
@@ -26,13 +29,22 @@
 #include <string_view>
 #include <vector>
 
-#include "sev5.h"
 #include "absl/log/check.h"
 #include "absl/strings/escaping.h"
 
-namespace google::scp::azure::attestation::sev5 {
+namespace google::scp::azure::attestation::sev {
 
-namespace {
+#define SEV_GUEST_IOC_TYPE 'S'
+#define SEV_SNP_GUEST_MSG_REQUEST \
+  _IOWR(SEV_GUEST_IOC_TYPE, 0x0,  \
+        struct google::scp::azure::attestation::sev::Request)
+#define SEV_SNP_GUEST_MSG_REPORT \
+  _IOWR(SEV_GUEST_IOC_TYPE, 0x1, \
+        struct google::scp::azure::attestation::sev::Request)
+#define SEV_SNP_GUEST_MSG_KEY    \
+  _IOWR(SEV_GUEST_IOC_TYPE, 0x2, \
+        struct google::scp::azure::attestation::sev::Request)
+
 /* linux kernel 5.15.* versions of the ioctls that talk to the PSP */
 
 /* From sev-snp driver include/uapi/linux/psp-sev-guest.h */
@@ -46,12 +58,6 @@ struct Request {
   uint64_t response_uaddr;
   uint32_t error; /* firmware error code on failure (see psp-sev.h) */
 };
-
-#define SEV_GUEST_IOC_TYPE 'S'
-#define SEV_SNP_GUEST_MSG_REQUEST _IOWR(SEV_GUEST_IOC_TYPE, 0x0, struct Request)
-#define SEV_SNP_GUEST_MSG_REPORT _IOWR(SEV_GUEST_IOC_TYPE, 0x1, struct Request)
-#define SEV_SNP_GUEST_MSG_KEY _IOWR(SEV_GUEST_IOC_TYPE, 0x2, struct Request)
-}  // namespace
 
 std::unique_ptr<SnpReport> getReport(const std::string report_data) {
   SnpRequest request = {};
@@ -82,5 +88,6 @@ std::unique_ptr<SnpReport> getReport(const std::string report_data) {
   return report;
 }
 
-}  // namespace google::scp::azure::attestation::sev5
+}  // namespace google::scp::azure::attestation::sev
 
+#endif  // AZURE_ATTESTATION_SEV_H

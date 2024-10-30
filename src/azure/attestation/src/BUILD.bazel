@@ -24,15 +24,13 @@ cc_library(
         "evidence.cc",
         "fake_report.cc",
         "report.cc",
-        "sev5.cc",
-        "sev6.cc",
         "snp.cc",
         "uvm_endorsements.cc",
     ],
     hdrs = [
         "attestation.h",
-        "sev5.h",
-        "sev6.h",
+        "sev.h",
+        "sev_guest.h",
     ],
     deps = [
         "//src/azure/attestation:utils",
