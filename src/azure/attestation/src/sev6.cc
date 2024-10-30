@@ -42,10 +42,16 @@ struct Request {
   uint64_t fw_err;  // firmware error code on failure (see psp-sev.h)
 };
 
+struct RequestWrapper {
+  /* response data, see SEV-SNP spec for the format */
+  uint8_t data[4000];
+};
+
 #define SNP_GUEST_REQ_IOC_TYPE 'S'
 #define SNP_GET_REPORT _IOWR(SNP_GUEST_REQ_IOC_TYPE, 0x0, struct Request)
 #define SNP_GET_DERIVED_KEY _IOWR(SNP_GUEST_REQ_IOC_TYPE, 0x1, struct Request)
 #define SNP_GET_EXT_REPORT _IOWR(SNP_GUEST_REQ_IOC_TYPE, 0x2, struct Request)
+
 }  // namespace
 
 std::unique_ptr<SnpReport> getReport(const std::string report_data) {
@@ -56,12 +62,12 @@ std::unique_ptr<SnpReport> getReport(const std::string report_data) {
   std::copy(decodedBytes.begin(), decodedBytes.begin() + numBytesToCopy,
             request.report_data);
 
-  SnpResponse response = {};
+  RequestWrapper resp_wrapper = {};
 
   Request payload = {
       .msg_version = 1,
       .req_data = (uint64_t)&request,
-      .resp_data = (uint64_t)&response,
+      .resp_data = (uint64_t)&resp_wrapper,
   };
 
   auto sev_guest_file = open("/dev/sev-guest", O_RDWR | O_CLOEXEC);
@@ -69,8 +75,10 @@ std::unique_ptr<SnpReport> getReport(const std::string report_data) {
   auto rc = ioctl(sev_guest_file, SNP_GET_REPORT, &payload);
   CHECK(rc >= 0) << "Failed to issue ioctl SNP_GET_REPORT";
 
+  SnpResponse* response = (SnpResponse*)&resp_wrapper.data;
+
   auto report = std::make_unique<SnpReport>();
-  *report = response.report;
+  *report = response->report;
   return report;
 }
 
