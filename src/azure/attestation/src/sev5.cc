@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include "sev5.h"
+
 #include <fcntl.h>
 #include <stdint.h>
 #include <sys/ioctl.h>
@@ -26,7 +28,6 @@
 #include <string_view>
 #include <vector>
 
-#include "sev5.h"
 #include "absl/log/check.h"
 #include "absl/strings/escaping.h"
 
@@ -83,4 +84,3 @@ std::unique_ptr<SnpReport> getReport(const std::string report_data) {
 }
 
 }  // namespace google::scp::azure::attestation::sev5
-

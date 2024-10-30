@@ -17,9 +17,10 @@
 #ifndef AZURE_ATTESTATION_SEV6_H
 #define AZURE_ATTESTATION_SEV6_H
 
-#include "attestation.h"
 #include <memory>
 #include <string>
+
+#include "attestation.h"
 
 namespace google::scp::azure::attestation::sev6 {
 std::unique_ptr<SnpReport> getReport(const std::string report_data);

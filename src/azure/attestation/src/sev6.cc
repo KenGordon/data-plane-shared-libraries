@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include "sev6.h"
+
 #include <fcntl.h>
 #include <stdint.h>
 #include <sys/ioctl.h>
@@ -23,7 +25,6 @@
 #include <memory>
 #include <string>
 
-#include "sev6.h"
 #include "absl/log/check.h"
 #include "absl/strings/escaping.h"
 
