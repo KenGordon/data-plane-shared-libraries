@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-#ifndef ATTESTATION_ENDORSEMENTS_H
-#define ATTESTATION_ENDORSEMENTS_H
-
 #include <string>
 
 #include "src/core/utils/base64.h"
@@ -59,5 +56,3 @@ std::string getSnpEndorsements() {
 }
 
 }  // namespace google::scp::azure::attestation
-
-#endif  // ATTESTATION_ENDORSEMENTS_H

@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-#ifndef ATTESTATION_EVIDENCE_H
-#define ATTESTATION_EVIDENCE_H
-
 #include <fcntl.h>
 
 #include <openssl/base64.h>
@@ -25,8 +22,8 @@
 #include "src/core/utils/base64.h"
 
 #include "attestation.h"
-#include "sev.h"
-#include "sev_guest.h"
+#include "sev5.h"
+#include "sev6.h"
 
 namespace google::scp::azure::attestation {
 
@@ -59,5 +56,3 @@ std::string getSnpEvidence(const std::string report_data) {
 }
 
 }  // namespace google::scp::azure::attestation
-
-#endif  // ATTESTATION_EVIDENCE_H

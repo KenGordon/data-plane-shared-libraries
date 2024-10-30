@@ -14,27 +14,16 @@
  * limitations under the License.
  */
 
+#ifndef AZURE_ATTESTATION_SEV6_H
+#define AZURE_ATTESTATION_SEV6_H
+
+#include "attestation.h"
+#include <memory>
 #include <string>
 
-#include "utils/host_amd_certs.h"
+namespace google::scp::azure::attestation::sev6 {
+std::unique_ptr<SnpReport> getReport(const std::string report_data);
 
-using google::scp::azure::attestation::utils::getHostAmdCerts;
+}  // namespace google::scp::azure::attestation::sev6
 
-namespace google::scp::azure::attestation {
-
-std::string getSnpEndorsedTcb() {
-  auto host_certs_json = getHostAmdCerts();
-
-  // Extract the endorsed TCB from the JSON
-  std::string endorsed_tcb_reversed_endian = host_certs_json["tcbm"];
-
-  // Reverse the endianess of the endorsed TCB
-  std::string endorsed_tcb = "";
-  for (int i = endorsed_tcb_reversed_endian.length() - 2; i >= 0; i -= 2) {
-    endorsed_tcb += endorsed_tcb_reversed_endian.substr(i, 2);
-  }
-
-  return endorsed_tcb;
-}
-
-}  // namespace google::scp::azure::attestation
+#endif  // AZURE_ATTESTATION_SEV6_H

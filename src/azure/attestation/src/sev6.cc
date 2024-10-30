@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-#ifndef AZURE_ATTESTATION_SEV_GUEST_H
-#define AZURE_ATTESTATION_SEV_GUEST_H
-
 #include <fcntl.h>
 #include <stdint.h>
 #include <sys/ioctl.h>
@@ -26,6 +23,7 @@
 #include <memory>
 #include <string>
 
+#include "sev6.h"
 #include "absl/log/check.h"
 #include "absl/strings/escaping.h"
 
@@ -76,5 +74,3 @@ std::unique_ptr<SnpReport> getReport(const std::string report_data) {
 }
 
 }  // namespace google::scp::azure::attestation::sev6
-
-#endif  // AZURE_ATTESTATION_SEV_GUEST_H
