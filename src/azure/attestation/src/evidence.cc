@@ -44,11 +44,11 @@ std::string getSnpEvidence(const std::string report_data) {
   switch (getSnpType()) {
     case SnpType::SEV:
       std::cout << "Getting report from /dev/sev" << std::endl;
-      report = sev::getReport(report_data);
+      report = sev5::getReport(report_data);
       break;
     case SnpType::SEV_GUEST:
       std::cout << "Getting report from /dev/sev-guest" << std::endl;
-      report = sev_guest::getReport(report_data);
+      report = sev6::getReport(report_data);
       break;
     default:
       CHECK(false) << "Unsupported or no SNP type";

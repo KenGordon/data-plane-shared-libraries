@@ -29,19 +29,9 @@
 #include "absl/log/check.h"
 #include "absl/strings/escaping.h"
 
-namespace google::scp::azure::attestation::sev_guest {
+namespace google::scp::azure::attestation::sev6 {
 
-#define SNP_GUEST_REQ_IOC_TYPE 'S'
-#define SNP_GET_REPORT               \
-  _IOWR(SNP_GUEST_REQ_IOC_TYPE, 0x0, \
-        struct google::scp::azure::attestation::sev::Request)
-#define SNP_GET_DERIVED_KEY          \
-  _IOWR(SNP_GUEST_REQ_IOC_TYPE, 0x1, \
-        struct google::scp::azure::attestation::sev::Request)
-#define SNP_GET_EXT_REPORT           \
-  _IOWR(SNP_GUEST_REQ_IOC_TYPE, 0x2, \
-        struct google::scp::azure::attestation::sev::Request)
-
+namespace {
 /* linux kernel 6.* versions of the ioctls that talk to the PSP */
 
 // aka/replaced by this from include/uapi/linux/sev-guest.h
@@ -52,6 +42,12 @@ struct Request {
   uint64_t resp_data;
   uint64_t fw_err;  // firmware error code on failure (see psp-sev.h)
 };
+
+#define SNP_GUEST_REQ_IOC_TYPE 'S'
+#define SNP_GET_REPORT _IOWR(SNP_GUEST_REQ_IOC_TYPE, 0x0, struct Request)
+#define SNP_GET_DERIVED_KEY _IOWR(SNP_GUEST_REQ_IOC_TYPE, 0x1, struct Request)
+#define SNP_GET_EXT_REPORT _IOWR(SNP_GUEST_REQ_IOC_TYPE, 0x2, struct Request)
+}  // namespace
 
 std::unique_ptr<SnpReport> getReport(const std::string report_data) {
   SnpRequest request = {};
@@ -79,6 +75,6 @@ std::unique_ptr<SnpReport> getReport(const std::string report_data) {
   return report;
 }
 
-}  // namespace google::scp::azure::attestation::sev_guest
+}  // namespace google::scp::azure::attestation::sev6
 
 #endif  // AZURE_ATTESTATION_SEV_GUEST_H
