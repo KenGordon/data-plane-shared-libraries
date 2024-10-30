@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-#ifndef ATTESTATION_ENDORSED_TCB_H
-#define ATTESTATION_ENDORSED_TCB_H
-
 #include <string>
 
 #include "utils/host_amd_certs.h"
@@ -41,5 +38,3 @@ std::string getSnpEndorsedTcb() {
 }
 
 }  // namespace google::scp::azure::attestation
-
-#endif  // ATTESTATION_ENDORSED_TCB_H

@@ -14,22 +14,16 @@
  * limitations under the License.
  */
 
+#ifndef AZURE_ATTESTATION_SEV6_H
+#define AZURE_ATTESTATION_SEV6_H
+
 #include "attestation.h"
+#include <memory>
+#include <string>
 
-namespace google::scp::azure::attestation {
+namespace google::scp::azure::attestation::sev6 {
+std::unique_ptr<SnpReport> getReport(const std::string report_data);
 
-SnpType getSnpType() {
-  std::ifstream sev_file("/dev/sev");
-  if (sev_file.good()) {
-    return SnpType::SEV;
-  }
-  std::ifstream sev_guest_file("/dev/sev-guest");
-  if (sev_guest_file.good()) {
-    return SnpType::SEV_GUEST;
-  }
-  return SnpType::NONE;
-}
+}  // namespace google::scp::azure::attestation::sev6
 
-bool hasSnp() { return getSnpType() != SnpType::NONE; }
-
-}  // namespace google::scp::azure::attestation
+#endif  // AZURE_ATTESTATION_SEV6_H
