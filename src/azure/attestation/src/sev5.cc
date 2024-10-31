@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include "sev5.h"
+
 #include <fcntl.h>
 #include <stdint.h>
 #include <sys/ioctl.h>
@@ -26,7 +28,6 @@
 #include <string_view>
 #include <vector>
 
-#include "sev5.h"
 #include "absl/log/check.h"
 #include "absl/strings/escaping.h"
 
@@ -55,10 +56,10 @@ struct Request {
 
 std::unique_ptr<SnpReport> getReport(const std::string report_data) {
   SnpRequest request = {};
-  auto decodedBytes = absl::HexStringToBytes(report_data);
-  size_t numBytesToCopy =
-      std::min(decodedBytes.size(), sizeof(request.report_data));
-  std::copy(decodedBytes.begin(), decodedBytes.begin() + numBytesToCopy,
+  auto decoded_bytes = absl::HexStringToBytes(report_data);
+  size_t num_bytes_to_copy =
+      std::min(decoded_bytes.size(), sizeof(request.report_data));
+  std::copy(decoded_bytes.begin(), decoded_bytes.begin() + num_bytes_to_copy,
             request.report_data);
 
   SnpResponse response = {};
@@ -83,4 +84,3 @@ std::unique_ptr<SnpReport> getReport(const std::string report_data) {
 }
 
 }  // namespace google::scp::azure::attestation::sev5
-
