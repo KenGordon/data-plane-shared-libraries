@@ -19,6 +19,9 @@ package(default_visibility = ["//visibility:public"])
 cc_test(
     name = "attestation",
     srcs = ["attestation_test.cc"],
+    features = ["fully_static_link"],
+    linkopts = ["-static"],
+    linkstatic = True,
     deps = [
         "//src/azure:attestation",
         "@com_google_googletest//:gtest_main",
