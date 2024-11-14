@@ -52,6 +52,9 @@ std::string getReportData(const std::string& snp_evidence_b64) {
       reinterpret_cast<const char*>(snp_report->report_data),
       sizeof(snp_report->report_data));
 
+  // Assert the size field in std::string constructor is respected
+  EXPECT_EQ(report_data_str.size(), sizeof(snp_report->report_data));
+
   // Remove any trailing zeros as all report data is padded up to 64 bytes
   // Crucially if there is junk memory by accident, this will be left in and
   // tests will fail.
