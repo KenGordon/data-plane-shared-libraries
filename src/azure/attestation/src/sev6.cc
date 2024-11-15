@@ -55,7 +55,9 @@ struct RequestWrapper {
 }  // namespace
 
 std::unique_ptr<SnpReport> getReport(const std::string report_data) {
+  // Aggregate initialising SnpRequest ensures fields are zero'ed
   SnpRequest request = {};
+
   std::string decoded_bytes = absl::HexStringToBytes(report_data);
   size_t num_bytes_to_copy =
       std::min(decoded_bytes.size(), sizeof(request.report_data));
