@@ -44,28 +44,19 @@ std::string getReportData(const std::string& snp_evidence_b64) {
   // Parse the byte string into the SnpReport struct
   std::vector<uint8_t> snp_evidence_bytes(snp_evidence_str.begin(),
                                           snp_evidence_str.end());
-  SnpReport* snp_report =
-      reinterpret_cast<SnpReport*>(snp_evidence_bytes.data());
+  SnpReport snp_report;
+  EXPECT_EQ(snp_evidence_bytes.size(), sizeof(SnpReport));
+  std::memcpy(&snp_report, snp_evidence_bytes.data(), sizeof(SnpReport));
 
   // Parse the report data into a string since all tests provided as a string
   std::string report_data_str(
-      reinterpret_cast<const char*>(snp_report->report_data),
-      sizeof(snp_report->report_data));
+      reinterpret_cast<const char*>(snp_report.report_data),
+      sizeof(snp_report.report_data));
 
   // Assert the size field in std::string constructor is respected
-  EXPECT_EQ(report_data_str.size(), sizeof(snp_report->report_data));
+  EXPECT_EQ(report_data_str.size(), sizeof(snp_report.report_data));
 
-  // Remove any trailing zeros as all report data is padded up to 64 bytes
-  // Crucially if there is junk memory by accident, this will be left in and
-  // tests will fail.
-  size_t end = report_data_str.find_last_not_of('\0');
-  if (end == std::string::npos) {
-    report_data_str.clear();
-  } else {
-    report_data_str.resize(end + 1);
-  }
-
-  std::cout << "report_data: \"" << report_data_str << "\"" << std::endl;
+  std::cout << "report_data (without padding): \"" << report_data_str << "\"" << std::endl;
   return report_data_str;
 }
 
@@ -86,7 +77,9 @@ TEST_F(JsonAttestationReportTest, FetchRealAttestation) {
   }
   auto attestation_report = fetchSnpAttestation();
   EXPECT_TRUE(attestation_report.has_value());
-  EXPECT_EQ(getReportData(attestation_report->evidence), "");
+  EXPECT_EQ(
+    getReportData(attestation_report->evidence),
+    std::string(64, '\0'));
 }
 
 TEST_F(JsonAttestationReportTest, FetchRealAttestationNormalReportData) {
@@ -96,7 +89,10 @@ TEST_F(JsonAttestationReportTest, FetchRealAttestationNormalReportData) {
   std::string report_data = "example_report_data";
   auto attestation_report = fetchSnpAttestation(toHex(report_data));
   EXPECT_TRUE(attestation_report.has_value());
-  EXPECT_EQ(getReportData(attestation_report->evidence), report_data);
+  EXPECT_EQ(
+    getReportData(attestation_report->evidence),
+    report_data.append(64 - report_data.size(), '\0')
+  );
 }
 
 TEST_F(JsonAttestationReportTest, FetchRealAttestationLongReportData) {
@@ -108,8 +104,10 @@ TEST_F(JsonAttestationReportTest, FetchRealAttestationLongReportData) {
       "data_length";
   auto attestation_report = fetchSnpAttestation(toHex(report_data));
   EXPECT_TRUE(attestation_report.has_value());
-  EXPECT_EQ(getReportData(attestation_report->evidence),
-            report_data.substr(0, 64));
+  EXPECT_EQ(
+    getReportData(attestation_report->evidence),
+    report_data.substr(0, 64)
+  );
 }
 
 TEST_F(JsonAttestationReportTest, FetchRealAttestationNonSnp) {
