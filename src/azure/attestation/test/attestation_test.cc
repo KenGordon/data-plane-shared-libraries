@@ -107,6 +107,28 @@ TEST_F(JsonAttestationReportTest, FetchRealAttestationNormalReportData) {
   EXPECT_EQ(getReportData(attestation_report->evidence), expected);
 }
 
+TEST_F(JsonAttestationReportTest, FetchRealAttestationReportDataWithNull) {
+  if (!hasSnp()) {
+    return;
+  }
+  // Define test inputs and outputs
+  std::string report_data =
+      "6578616d706c655f776974685f005f63686172";  // "example_with_\0_char"
+  std::array<uint8_t, 64> expected = {
+      'e', 'x', 'a', 'm', 'p', 'l', 'e', '_', 'w', 'i', 't', 'h', '_',
+      0,   '_', 'c', 'h', 'a', 'r', 0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+  };
+
+  std::optional<AttestationReport> attestation_report =
+      fetchSnpAttestation(report_data);
+
+  EXPECT_TRUE(attestation_report.has_value());
+  EXPECT_EQ(getReportData(attestation_report->evidence), expected);
+}
+
 TEST_F(JsonAttestationReportTest, FetchRealAttestationLongReportData) {
   if (!hasSnp()) {
     return;
