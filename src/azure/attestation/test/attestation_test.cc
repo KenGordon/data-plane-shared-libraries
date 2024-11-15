@@ -38,7 +38,7 @@ std::string toHex(const std::string& input) {
   return hex_stream.str();
 }
 
-std::string getReportData(const std::string& snp_evidence_b64) {
+std::array<uint8_t, 64> getReportData(const std::string& snp_evidence_b64) {
   std::string snp_evidence_str;
   Base64Decode(snp_evidence_b64, snp_evidence_str);
 
@@ -49,16 +49,10 @@ std::string getReportData(const std::string& snp_evidence_b64) {
   EXPECT_EQ(snp_evidence_bytes.size(), sizeof(SnpReport));
   std::memcpy(&snp_report, snp_evidence_bytes.data(), sizeof(SnpReport));
 
-  // Parse the report data into a string since all tests provided as a string
-  std::string report_data_str(
-      reinterpret_cast<const char*>(snp_report.report_data),
-      sizeof(snp_report.report_data));
-
-  // Assert the size field in std::string constructor is respected
-  EXPECT_EQ(report_data_str.size(), sizeof(snp_report.report_data));
-
-  std::cout << "report_data (without padding): \"" << report_data_str << "\"" << std::endl;
-  return report_data_str;
+  std::array<uint8_t, 64> report_data;
+  EXPECT_EQ(sizeof(snp_report.report_data), report_data.size());
+  std::memcpy(&report_data, snp_report.report_data, report_data.size());
+  return report_data;
 }
 
 class JsonAttestationReportTest : public ::testing::Test {
@@ -76,39 +70,62 @@ TEST_F(JsonAttestationReportTest, FetchRealAttestation) {
   if (!hasSnp()) {
     return;
   }
+  // Define test inputs and outputs
+  // Input is omitted as we're testing default is ""
+  std::array<uint8_t, 64> expected = {
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  };
+
   std::optional<AttestationReport> attestation_report = fetchSnpAttestation();
+
   EXPECT_TRUE(attestation_report.has_value());
-  EXPECT_EQ(
-    getReportData(attestation_report->evidence),
-    std::string(64, '\0'));
+  EXPECT_EQ(getReportData(attestation_report->evidence), expected);
 }
 
 TEST_F(JsonAttestationReportTest, FetchRealAttestationNormalReportData) {
   if (!hasSnp()) {
     return;
   }
+  // Define test inputs and outputs
+  std::string report_data = toHex("example_report_data");
+  std::array<uint8_t, 64> expected = {
+      'e', 'x', 'a', 'm', 'p', 'l', 'e', '_', 'r', 'e', 'p', 'o', 'r',
+      't', '_', 'd', 'a', 't', 'a', 0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+  };
+
   std::optional<AttestationReport> attestation_report =
       fetchSnpAttestation(report_data);
+
   EXPECT_TRUE(attestation_report.has_value());
-  EXPECT_EQ(
-    getReportData(attestation_report->evidence),
-    report_data.append(64 - report_data.size(), '\0')
-  );
+  EXPECT_EQ(getReportData(attestation_report->evidence), expected);
 }
 
 TEST_F(JsonAttestationReportTest, FetchRealAttestationLongReportData) {
   if (!hasSnp()) {
     return;
   }
-  std::string report_data =
+  // Define test inputs and outputs
+  std::string report_data = toHex(
       "a_very_long_report_data_string_which_is_so_long_that_it_exceeds_report_"
+      "data_length");
+  std::array<uint8_t, 64> expected = {
+      'a', '_', 'v', 'e', 'r', 'y', '_', 'l', 'o', 'n', 'g', '_', 'r',
+      'e', 'p', 'o', 'r', 't', '_', 'd', 'a', 't', 'a', '_', 's', 't',
+      'r', 'i', 'n', 'g', '_', 'w', 'h', 'i', 'c', 'h', '_', 'i', 's',
+      '_', 's', 'o', '_', 'l', 'o', 'n', 'g', '_', 't', 'h', 'a', 't',
+      '_', 'i', 't', '_', 'e', 'x', 'c', 'e', 'e', 'd', 's', '_',
+  };
+
   std::optional<AttestationReport> attestation_report =
       fetchSnpAttestation(report_data);
+
   EXPECT_TRUE(attestation_report.has_value());
-  EXPECT_EQ(
-    getReportData(attestation_report->evidence),
-    report_data.substr(0, 64)
-  );
+  EXPECT_EQ(getReportData(attestation_report->evidence), expected);
 }
 
 TEST_F(JsonAttestationReportTest, FetchRealAttestationNonSnp) {
