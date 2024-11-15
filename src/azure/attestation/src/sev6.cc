@@ -55,8 +55,13 @@ struct RequestWrapper {
 }  // namespace
 
 std::unique_ptr<SnpReport> getReport(const std::string report_data) {
+  // Aggregate initialising SnpRequest ensures fields are zero'ed
   SnpRequest request = {};
-  auto decoded_bytes = absl::HexStringToBytes(report_data);
+
+  std::string decoded_bytes = absl::HexStringToBytes(report_data);
+
+  // Copy the number of bytes provided up to the size of report data to avoid
+  // copying out of bounds of the report data field
   size_t num_bytes_to_copy =
       std::min(decoded_bytes.size(), sizeof(request.report_data));
   std::copy(decoded_bytes.begin(), decoded_bytes.begin() + num_bytes_to_copy,
@@ -70,14 +75,14 @@ std::unique_ptr<SnpReport> getReport(const std::string report_data) {
       .resp_data = (uint64_t)&resp_wrapper,
   };
 
-  auto sev_guest_file = open("/dev/sev-guest", O_RDWR | O_CLOEXEC);
+  int sev_guest_file = open("/dev/sev-guest", O_RDWR | O_CLOEXEC);
 
-  auto rc = ioctl(sev_guest_file, SNP_GET_REPORT, &payload);
+  int rc = ioctl(sev_guest_file, SNP_GET_REPORT, &payload);
   CHECK(rc >= 0) << "Failed to issue ioctl SNP_GET_REPORT";
 
   SnpResponse* response = (SnpResponse*)&resp_wrapper.data;
 
-  auto report = std::make_unique<SnpReport>();
+  std::unique_ptr<SnpReport> report = std::make_unique<SnpReport>();
   *report = response->report;
   return report;
 }
