@@ -19,6 +19,7 @@
 
 #include "src/core/utils/base64.h"
 
+using google::scp::azure::attestation::AttestationReport;
 using google::scp::azure::attestation::fetchFakeSnpAttestation;
 using google::scp::azure::attestation::fetchSnpAttestation;
 using google::scp::azure::attestation::hasSnp;
@@ -75,7 +76,7 @@ TEST_F(JsonAttestationReportTest, FetchRealAttestation) {
   if (!hasSnp()) {
     return;
   }
-  auto attestation_report = fetchSnpAttestation();
+  std::optional<AttestationReport> attestation_report = fetchSnpAttestation();
   EXPECT_TRUE(attestation_report.has_value());
   EXPECT_EQ(
     getReportData(attestation_report->evidence),
@@ -86,8 +87,8 @@ TEST_F(JsonAttestationReportTest, FetchRealAttestationNormalReportData) {
   if (!hasSnp()) {
     return;
   }
-  std::string report_data = "example_report_data";
-  auto attestation_report = fetchSnpAttestation(toHex(report_data));
+  std::optional<AttestationReport> attestation_report =
+      fetchSnpAttestation(report_data);
   EXPECT_TRUE(attestation_report.has_value());
   EXPECT_EQ(
     getReportData(attestation_report->evidence),
@@ -101,8 +102,8 @@ TEST_F(JsonAttestationReportTest, FetchRealAttestationLongReportData) {
   }
   std::string report_data =
       "a_very_long_report_data_string_which_is_so_long_that_it_exceeds_report_"
-      "data_length";
-  auto attestation_report = fetchSnpAttestation(toHex(report_data));
+  std::optional<AttestationReport> attestation_report =
+      fetchSnpAttestation(report_data);
   EXPECT_TRUE(attestation_report.has_value());
   EXPECT_EQ(
     getReportData(attestation_report->evidence),
