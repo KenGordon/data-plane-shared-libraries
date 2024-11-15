@@ -17,6 +17,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "src/azure/attestation/src/sev6.h"
 #include "src/core/utils/base64.h"
 
 using google::scp::azure::attestation::AttestationReport;
@@ -24,6 +25,7 @@ using google::scp::azure::attestation::fetchFakeSnpAttestation;
 using google::scp::azure::attestation::fetchSnpAttestation;
 using google::scp::azure::attestation::hasSnp;
 using google::scp::azure::attestation::SnpReport;
+using google::scp::azure::attestation::sev6::getReport;
 
 using google::scp::core::utils::Base64Decode;
 
@@ -133,5 +135,65 @@ TEST_F(JsonAttestationReportTest, FetchRealAttestationNonSnp) {
     return;
   }
   EXPECT_FALSE(fetchSnpAttestation().has_value());
+}
+
+TEST_F(JsonAttestationReportTest, GetReport) {
+  if (!hasSnp()) {
+    return;
+  }
+  // Define test inputs and outputs
+  std::string report_data = "";
+  uint8_t expected[64] = {
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  };
+
+  std::unique_ptr<SnpReport> snp_report = getReport(report_data);
+
+  EXPECT_TRUE(std::equal(std::begin(expected), std::end(expected),
+                         std::begin(snp_report.get()->report_data)));
+}
+
+TEST_F(JsonAttestationReportTest, GetReportWithReportDataUnder64) {
+  if (!hasSnp()) {
+    return;
+  }
+  // Define test inputs and outputs
+  std::string report_data = toHex("example_report_data");
+  uint8_t expected[64] = {
+      'e', 'x', 'a', 'm', 'p', 'l', 'e', '_', 'r', 'e', 'p', 'o', 'r',
+      't', '_', 'd', 'a', 't', 'a', 0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+  };
+
+  std::unique_ptr<SnpReport> snp_report = getReport(report_data);
+
+  EXPECT_TRUE(std::equal(std::begin(expected), std::end(expected),
+                         std::begin(snp_report.get()->report_data)));
+}
+
+TEST_F(JsonAttestationReportTest, GetReportWithReportDataOver64) {
+  if (!hasSnp()) {
+    return;
+  }
+  // Define test inputs and outputs
+  std::string report_data = toHex(
+      "a_very_long_report_data_string_which_is_so_long_that_it_exceeds_report_"
+      "data_length");
+  uint8_t expected[64] = {
+      'a', '_', 'v', 'e', 'r', 'y', '_', 'l', 'o', 'n', 'g', '_', 'r',
+      'e', 'p', 'o', 'r', 't', '_', 'd', 'a', 't', 'a', '_', 's', 't',
+      'r', 'i', 'n', 'g', '_', 'w', 'h', 'i', 'c', 'h', '_', 'i', 's',
+      '_', 's', 'o', '_', 'l', 'o', 'n', 'g', '_', 't', 'h', 'a', 't',
+      '_', 'i', 't', '_', 'e', 'x', 'c', 'e', 'e', 'd', 's', '_',
+  };
+
+  std::unique_ptr<SnpReport> snp_report = getReport(report_data);
+
+  EXPECT_TRUE(std::equal(std::begin(expected), std::end(expected),
+                         std::begin(snp_report.get()->report_data)));
 }
 }  // namespace google::scp::cc::azure::attestation::test
