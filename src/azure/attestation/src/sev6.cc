@@ -59,6 +59,9 @@ std::unique_ptr<SnpReport> getReport(const std::string report_data) {
   SnpRequest request = {};
 
   std::string decoded_bytes = absl::HexStringToBytes(report_data);
+
+  // Copy the number of bytes provided up to the size of report data to avoid
+  // copying out of bounds of the report data field
   size_t num_bytes_to_copy =
       std::min(decoded_bytes.size(), sizeof(request.report_data));
   std::copy(decoded_bytes.begin(), decoded_bytes.begin() + num_bytes_to_copy,
