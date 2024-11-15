@@ -40,6 +40,13 @@ std::string toHex(const std::string& input) {
   return hex_stream.str();
 }
 
+// Narrowed equivalent of C++ 20's std::to_array
+std::array<uint8_t, 64> to_array(uint8_t (&c_array)[64]) {
+  std::array<uint8_t, 64> arr;
+  std::copy(std::begin(c_array), std::end(c_array), arr.begin());
+  return arr;
+}
+
 std::array<uint8_t, 64> getReportData(const std::string& snp_evidence_b64) {
   std::string snp_evidence_str;
   Base64Decode(snp_evidence_b64, snp_evidence_str);
@@ -51,10 +58,7 @@ std::array<uint8_t, 64> getReportData(const std::string& snp_evidence_b64) {
   EXPECT_EQ(snp_evidence_bytes.size(), sizeof(SnpReport));
   std::memcpy(&snp_report, snp_evidence_bytes.data(), sizeof(SnpReport));
 
-  std::array<uint8_t, 64> report_data;
-  EXPECT_EQ(sizeof(snp_report.report_data), report_data.size());
-  std::memcpy(&report_data, snp_report.report_data, report_data.size());
-  return report_data;
+  return to_array(snp_report.report_data);
 }
 
 class JsonAttestationReportTest : public ::testing::Test {
@@ -165,7 +169,7 @@ TEST_F(JsonAttestationReportTest, GetReport) {
   }
   // Define test inputs and outputs
   std::string report_data = "";
-  uint8_t expected[64] = {
+  std::array<uint8_t, 64> expected = {
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -173,8 +177,7 @@ TEST_F(JsonAttestationReportTest, GetReport) {
 
   std::unique_ptr<SnpReport> snp_report = getReport(report_data);
 
-  EXPECT_TRUE(std::equal(std::begin(expected), std::end(expected),
-                         std::begin(snp_report.get()->report_data)));
+  EXPECT_EQ(to_array(snp_report->report_data), expected);
 }
 
 TEST_F(JsonAttestationReportTest, GetReportWithReportDataUnder64) {
@@ -183,7 +186,7 @@ TEST_F(JsonAttestationReportTest, GetReportWithReportDataUnder64) {
   }
   // Define test inputs and outputs
   std::string report_data = toHex("example_report_data");
-  uint8_t expected[64] = {
+  std::array<uint8_t, 64> expected = {
       'e', 'x', 'a', 'm', 'p', 'l', 'e', '_', 'r', 'e', 'p', 'o', 'r',
       't', '_', 'd', 'a', 't', 'a', 0,   0,   0,   0,   0,   0,   0,
       0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
@@ -193,8 +196,7 @@ TEST_F(JsonAttestationReportTest, GetReportWithReportDataUnder64) {
 
   std::unique_ptr<SnpReport> snp_report = getReport(report_data);
 
-  EXPECT_TRUE(std::equal(std::begin(expected), std::end(expected),
-                         std::begin(snp_report.get()->report_data)));
+  EXPECT_EQ(to_array(snp_report->report_data), expected);
 }
 
 TEST_F(JsonAttestationReportTest, GetReportWithReportDataOver64) {
@@ -205,7 +207,7 @@ TEST_F(JsonAttestationReportTest, GetReportWithReportDataOver64) {
   std::string report_data = toHex(
       "a_very_long_report_data_string_which_is_so_long_that_it_exceeds_report_"
       "data_length");
-  uint8_t expected[64] = {
+  std::array<uint8_t, 64> expected = {
       'a', '_', 'v', 'e', 'r', 'y', '_', 'l', 'o', 'n', 'g', '_', 'r',
       'e', 'p', 'o', 'r', 't', '_', 'd', 'a', 't', 'a', '_', 's', 't',
       'r', 'i', 'n', 'g', '_', 'w', 'h', 'i', 'c', 'h', '_', 'i', 's',
@@ -215,7 +217,6 @@ TEST_F(JsonAttestationReportTest, GetReportWithReportDataOver64) {
 
   std::unique_ptr<SnpReport> snp_report = getReport(report_data);
 
-  EXPECT_TRUE(std::equal(std::begin(expected), std::end(expected),
-                         std::begin(snp_report.get()->report_data)));
+  EXPECT_EQ(to_array(snp_report->report_data), expected);
 }
 }  // namespace google::scp::cc::azure::attestation::test
