@@ -59,7 +59,8 @@ namespace {
 constexpr char kDefaultGetTokenUrl[] =
     "http://169.254.169.254/metadata/identity/oauth2/token";
 constexpr char kGetTokenQuery[] =
-    "?api-version=2018-02-01&resource=https%3A%2F%confidential-ledger.azure.com%2F";
+    "?api-version=2018-02-01&resource=https%3A%2F%confidential-ledger.azure."
+    "com%2F";
 constexpr char kMetadataHeader[] = "Metadata";
 constexpr char kMetadataHeaderValue[] = "true";
 constexpr int kTokenTtlInSecondHeaderValue = 1000;

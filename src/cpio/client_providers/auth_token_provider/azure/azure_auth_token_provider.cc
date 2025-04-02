@@ -62,7 +62,8 @@ constexpr char kMetadataHeaderValue[] = "true";
 constexpr char kDefaultGetTokenUrl[] =
     "http://169.254.169.254/metadata/identity/oauth2/token";
 constexpr char kGetTokenQuery[] =
-    "?api-version=2018-02-01&resource=https%3A%2F%2Fconfidential-ledger.azure.com%2F";
+    "?api-version=2018-02-01&resource=https%3A%2F%2Fconfidential-ledger.azure."
+    "com%2F";
 constexpr char kGetTokenUrlEnvVar[] = "AZURE_BA_PARAM_GET_TOKEN_URL";
 constexpr char kJsonAccessTokenKey[] = "access_token";
 constexpr char kJsonTokenExpiryKey[] = "expires_in";
