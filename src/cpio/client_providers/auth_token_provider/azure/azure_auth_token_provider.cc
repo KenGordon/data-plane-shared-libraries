@@ -61,6 +61,8 @@ constexpr char kMetadataHeaderValue[] = "true";
 // https://learn.microsoft.com/en-us/azure/container-instances/container-instances-managed-identity
 constexpr char kDefaultGetTokenUrl[] =
     "http://169.254.169.254/metadata/identity/oauth2/token";
+// This could be parameterized as an env variable, but for now keeping this
+// hardcoded to save time
 constexpr char kGetTokenQuery[] =
     "?api-version=2018-02-01&resource=https%3A%2F%2Fconfidential-ledger.azure."
     "com%2F";
